@@ -1,0 +1,314 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+
+const formSchema = z.object({
+  certificateType: z.string().min(1, "Please select a certificate type"),
+  fullName: z.string().trim().min(2, "Full name must be at least 2 characters").max(100, "Full name is too long"),
+  contactNumber: z.string().trim().regex(/^[0-9+\-() ]+$/, "Please enter a valid contact number").min(7, "Contact number is too short"),
+  email: z.string().trim().email("Please enter a valid email address").optional().or(z.literal("")),
+  householdNumber: z.string().trim().min(1, "Household number is required").max(50, "Household number is too long"),
+  birthDate: z.date({
+    required_error: "Birth date is required",
+  }).refine((date) => date <= new Date(), "Birth date cannot be in the future"),
+  purpose: z.string().trim().min(10, "Please provide more details about the purpose (at least 10 characters)").max(500, "Purpose is too long"),
+  priority: z.enum(["normal", "urgent"], {
+    required_error: "Please select a priority level",
+  }),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+interface CertificateRequestFormProps {
+  onSuccess: (controlNumber: string) => void;
+}
+
+const certificateTypes = [
+  "Barangay Clearance",
+  "Certificate of Indigency",
+  "Certificate of Residency",
+  "Certificate of Good Moral Character",
+  "Business Permit Clearance",
+  "First Time Job Seeker Certificate",
+  "Certificate for Senior Citizen/PWD ID",
+];
+
+const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      certificateType: "",
+      fullName: "",
+      contactNumber: "",
+      email: "",
+      householdNumber: "",
+      purpose: "",
+      priority: "normal",
+    },
+  });
+
+  const onSubmit = (data: FormValues) => {
+    // Generate control number
+    const date = new Date();
+    const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
+    const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    const controlNumber = `CERT-${dateStr}-${randomNum}`;
+
+    console.log("Form submitted:", data);
+    console.log("Control number generated:", controlNumber);
+    
+    // Call success callback
+    onSuccess(controlNumber);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Certificate Type */}
+        <FormField
+          control={form.control}
+          name="certificateType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Certificate Type *</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Select certificate type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent className="bg-popover z-50">
+                  {certificateTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Personal Information Section */}
+        <div className="pt-4 border-t border-border">
+          <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+          
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="fullName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Juan Dela Cruz" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="contactNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact Number *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="09123456789" type="tel" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email Address</FormLabel>
+                  <FormControl>
+                    <Input placeholder="juan@example.com" type="email" {...field} />
+                  </FormControl>
+                  <FormDescription>Optional - for email notifications</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Verification Section */}
+        <div className="pt-4 border-t border-border">
+          <h3 className="text-lg font-semibold mb-4">Verification</h3>
+          
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="householdNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Household Number *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="HH-2024-001" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    This information will be verified against our records
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="birthDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Birth Date *</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal bg-background",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormDescription>
+                    This information will be verified against our records
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Request Details Section */}
+        <div className="pt-4 border-t border-border">
+          <h3 className="text-lg font-semibold mb-4">Request Details</h3>
+          
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="purpose"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Purpose *</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Please describe the purpose of your certificate request..."
+                      className="min-h-[100px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Priority</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex flex-col space-y-2"
+                    >
+                      <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="normal" />
+                        </FormControl>
+                        <FormLabel className="font-normal cursor-pointer">
+                          Normal (3-5 business days)
+                        </FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="urgent" />
+                        </FormControl>
+                        <FormLabel className="font-normal cursor-pointer">
+                          Urgent (1-2 business days - for medical/emergency cases)
+                        </FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <Button 
+          type="submit" 
+          size="lg" 
+          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+        >
+          Submit Request
+        </Button>
+      </form>
+    </Form>
+  );
+};
+
+export default CertificateRequestForm;
