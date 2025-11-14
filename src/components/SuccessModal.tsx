@@ -29,8 +29,8 @@ const SuccessModal = ({ open, onOpenChange, controlNumber }: SuccessModalProps) 
   };
 
   const handleTrackRequest = () => {
-    // TODO: Navigate to tracking page when implemented
-    toast.info("Tracking page will be implemented soon");
+    onOpenChange(false);
+    navigate(`/track-request`);
   };
 
   const handleNewRequest = () => {
