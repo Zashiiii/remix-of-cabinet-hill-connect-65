@@ -5,63 +5,18 @@ import Breadcrumb from "@/components/Breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import RequestStatusCard, { RequestData } from "@/components/RequestStatusCard";
 import { toast } from "sonner";
-
-// Mock data for demonstration
-const mockRequests: Record<string, RequestData> = {
-  "CERT-20251001-0001": {
-    controlNumber: "CERT-20251001-0001",
-    certificateType: "Barangay Clearance",
-    residentName: "Juan Dela Cruz",
-    dateRequested: new Date("2025-10-01"),
-    status: "ready_for_pickup",
-    purpose: "Employment requirement for job application at ABC Company",
-    remarks: "Certificate is ready for pickup at the barangay hall during office hours (8:00 AM - 5:00 PM, Monday-Friday). Please bring a valid ID.",
-  },
-  "CERT-20251002-0023": {
-    controlNumber: "CERT-20251002-0023",
-    certificateType: "Certificate of Indigency",
-    residentName: "Maria Santos",
-    dateRequested: new Date("2025-10-02"),
-    status: "for_review",
-    purpose: "Medical assistance for hospital bills",
-  },
-  "CERT-20251003-0045": {
-    controlNumber: "CERT-20251003-0045",
-    certificateType: "Certificate of Residency",
-    residentName: "Pedro Reyes",
-    dateRequested: new Date("2025-10-03"),
-    status: "approved",
-    purpose: "Proof of residency for school enrollment",
-    remarks: "Document is being prepared and will be ready for pickup soon.",
-  },
-  "CERT-20251004-0067": {
-    controlNumber: "CERT-20251004-0067",
-    certificateType: "Business Permit Clearance",
-    residentName: "Ana Garcia",
-    dateRequested: new Date("2025-10-04"),
-    status: "pending",
-    purpose: "Starting a sari-sari store in the barangay",
-  },
-  "CERT-20251005-0089": {
-    controlNumber: "CERT-20251005-0089",
-    certificateType: "Certificate of Good Moral Character",
-    residentName: "Jose Mendoza",
-    dateRequested: new Date("2025-10-05"),
-    status: "rejected",
-    purpose: "Application for scholarship program",
-    remarks: "Unable to verify residency. Please visit the barangay hall to update your records.",
-  },
-};
+import { trackRequest } from "@/utils/api";
 
 const TrackRequest = () => {
   const [controlNumber, setControlNumber] = useState("");
   const [requestData, setRequestData] = useState<RequestData | null>(null);
   const [searched, setSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleTrack = (e: React.FormEvent) => {
+  const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!controlNumber.trim()) {
@@ -69,17 +24,26 @@ const TrackRequest = () => {
       return;
     }
 
-    const request = mockRequests[controlNumber.trim()];
-    
-    if (request) {
-      setRequestData(request);
-      toast.success("Request found!");
-    } else {
+    try {
+      setIsSearching(true);
+      const request = await trackRequest(controlNumber.trim());
+      
+      if (request) {
+        setRequestData(request);
+        toast.success("Request found!");
+      } else {
+        setRequestData(null);
+        toast.error("No request found with this control number");
+      }
+      
+      setSearched(true);
+    } catch (error) {
+      toast.error("Something went wrong. Please try again or visit the barangay hall.");
       setRequestData(null);
-      toast.error("No request found with this control number");
+      setSearched(true);
+    } finally {
+      setIsSearching(false);
     }
-    
-    setSearched(true);
   };
 
   return (
@@ -118,9 +82,19 @@ const TrackRequest = () => {
                     type="submit"
                     size="lg"
                     className="bg-accent hover:bg-accent/90 text-accent-foreground sm:w-auto"
+                    disabled={isSearching}
                   >
-                    <Search className="mr-2 h-5 w-5" />
-                    Track Request
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="mr-2 h-5 w-5" />
+                        Track Request
+                      </>
+                    )}
                   </Button>
                 </form>
                 
