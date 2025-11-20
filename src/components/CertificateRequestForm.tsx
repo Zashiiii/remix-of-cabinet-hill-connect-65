@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -27,9 +28,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { submitCertificateRequest } from "@/utils/api";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   certificateType: z.string().min(1, "Please select a certificate type"),
@@ -63,6 +66,8 @@ const certificateTypes = [
 ];
 
 const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -76,18 +81,32 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    // Generate control number
-    const date = new Date();
-    const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
-    const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    const controlNumber = `CERT-${dateStr}-${randomNum}`;
-
-    console.log("Form submitted:", data);
-    console.log("Control number generated:", controlNumber);
-    
-    // Call success callback
-    onSuccess(controlNumber);
+  const onSubmit = async (data: FormValues) => {
+    try {
+      setIsSubmitting(true);
+      
+      // Call the API placeholder function
+      const controlNumber = await submitCertificateRequest({
+        certificateType: data.certificateType,
+        fullName: data.fullName,
+        contactNumber: data.contactNumber,
+        email: data.email,
+        householdNumber: data.householdNumber,
+        birthDate: data.birthDate,
+        purpose: data.purpose,
+        priority: data.priority,
+      });
+      
+      // Show success
+      onSuccess(controlNumber);
+      
+      // Reset the form
+      form.reset();
+    } catch (error) {
+      toast.error("Something went wrong. Please try again or visit the barangay hall.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -303,8 +322,16 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
           type="submit" 
           size="lg" 
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+          disabled={isSubmitting}
         >
-          Submit Request
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            "Submit Request"
+          )}
         </Button>
       </form>
     </Form>
