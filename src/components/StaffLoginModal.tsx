@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 interface StaffLoginModalProps {
@@ -11,13 +12,16 @@ interface StaffLoginModalProps {
 }
 
 const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // Placeholder - will be connected to backend in Phase 2
-    toast.info("Staff login will be available in Phase 2");
+    toast.success("Login successful");
+    onOpenChange(false);
+    navigate("/staff-dashboard");
   };
 
   return (

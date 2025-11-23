@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import RequestCertificate from "./pages/RequestCertificate";
 import TrackRequest from "./pages/TrackRequest";
+import StaffDashboard from "./pages/StaffDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/request-certificate" element={<RequestCertificate />} />
           <Route path="/track-request" element={<TrackRequest />} />
+          <Route path="/staff-dashboard" element={<StaffDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
