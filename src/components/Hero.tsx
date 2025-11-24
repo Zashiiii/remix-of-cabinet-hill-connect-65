@@ -26,7 +26,7 @@ const Hero = () => {
       <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
         <div className="max-w-3xl">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-            Barangay Cabinet Hill
+            Barangay Salud Mitra
             <span className="block text-accent mt-2">
               Resident Information System
             </span>
