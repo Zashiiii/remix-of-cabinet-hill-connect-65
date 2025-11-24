@@ -35,6 +35,9 @@ All colors MUST be HSL.
     --border: 217 20% 90%;
     --input: 217 20% 90%;
     --ring: 217 65% 33%;
+    
+    --active-nav: 45 93% 58%;
+    --active-nav-foreground: 217 65% 20%;
 
     --radius: 0.5rem;
     
@@ -87,6 +90,9 @@ All colors MUST be HSL.
     --border: 217 30% 25%;
     --input: 217 30% 25%;
     --ring: 217 65% 55%;
+    
+    --active-nav: 45 93% 58%;
+    --active-nav-foreground: 217 65% 20%;
   }
 }
 

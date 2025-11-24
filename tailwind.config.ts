@@ -50,6 +50,10 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        "active-nav": {
+          DEFAULT: "hsl(var(--active-nav))",
+          foreground: "hsl(var(--active-nav-foreground))",
+        },
       },
       backgroundImage: {
         'gradient-hero': 'var(--gradient-hero)',

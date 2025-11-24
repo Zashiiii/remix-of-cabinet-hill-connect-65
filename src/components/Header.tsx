@@ -1,13 +1,21 @@
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Moon, Sun } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/logo.png";
 import StaffLoginModal from "@/components/StaffLoginModal";
+import { useTheme } from "@/components/theme-provider";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [staffLoginOpen, setStaffLoginOpen] = useState(false);
+  const location = useLocation();
+  const { theme, setTheme } = useTheme();
+  
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname === path;
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full bg-background border-b border-border shadow-soft">
@@ -29,10 +37,14 @@ const Header = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex md:items-center md:gap-8">
+          <div className="hidden md:flex md:items-center md:gap-6">
             <a 
               href="#home" 
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+              className={`text-sm font-medium transition-colors px-3 py-2 rounded-md ${
+                isActive('/') 
+                  ? 'bg-active-nav text-active-nav-foreground' 
+                  : 'text-foreground hover:text-primary'
+              }`}
               onClick={(e) => {
                 e.preventDefault();
                 if (window.location.pathname === '/') {
@@ -46,7 +58,7 @@ const Header = () => {
             </a>
             <a 
               href="#services" 
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+              className="text-sm font-medium text-foreground hover:text-primary transition-colors px-3 py-2 rounded-md"
               onClick={(e) => {
                 e.preventDefault();
                 if (window.location.pathname === '/') {
@@ -60,7 +72,7 @@ const Header = () => {
             </a>
             <a 
               href="#contact" 
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+              className="text-sm font-medium text-foreground hover:text-primary transition-colors px-3 py-2 rounded-md"
               onClick={(e) => {
                 e.preventDefault();
                 if (window.location.pathname === '/') {
@@ -72,6 +84,18 @@ const Header = () => {
             >
               Contact
             </a>
+            <Button 
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="h-9 w-9"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
             <Button 
               variant="outline" 
               size="sm"
@@ -97,7 +121,11 @@ const Header = () => {
             <div className="flex flex-col gap-4">
               <a 
                 href="#home" 
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2"
+                className={`text-sm font-medium transition-colors py-2 px-3 rounded-md ${
+                  isActive('/') 
+                    ? 'bg-active-nav text-active-nav-foreground' 
+                    : 'text-foreground hover:text-primary'
+                }`}
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileMenuOpen(false);
@@ -112,7 +140,7 @@ const Header = () => {
               </a>
               <a 
                 href="#services" 
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2"
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-3 rounded-md"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileMenuOpen(false);
@@ -127,7 +155,7 @@ const Header = () => {
               </a>
               <a 
                 href="#contact" 
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2"
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-3 rounded-md"
                 onClick={(e) => {
                   e.preventDefault();
                   setMobileMenuOpen(false);
@@ -140,17 +168,34 @@ const Header = () => {
               >
                 Contact
               </a>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setStaffLoginOpen(true);
-                }}
-              >
-                Staff Login
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => {
+                    setTheme(theme === "dark" ? "light" : "dark");
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex-1"
+                >
+                  {theme === "dark" ? (
+                    <Sun className="h-5 w-5" />
+                  ) : (
+                    <Moon className="h-5 w-5" />
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-[3]"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setStaffLoginOpen(true);
+                  }}
+                >
+                  Staff Login
+                </Button>
+              </div>
             </div>
           </div>
         )}
