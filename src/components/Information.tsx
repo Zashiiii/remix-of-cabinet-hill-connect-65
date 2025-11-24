@@ -10,7 +10,7 @@ const contactInfo = [
   {
     icon: MapPin,
     label: "Address",
-    value: "Barangay Cabinet Hill, Baguio City, Philippines",
+    value: "Barangay Salud Mitra, Baguio City, Philippines",
   },
   {
     icon: Phone,
@@ -20,7 +20,7 @@ const contactInfo = [
   {
     icon: Mail,
     label: "Email",
-    value: "cabinethillbrgy@baguio.gov.ph",
+    value: "saludmitrabrgy@baguio.gov.ph",
   },
 ];
 
@@ -33,7 +33,7 @@ const Information = () => {
             Contact Information
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Get in touch with Barangay Cabinet Hill
+            Get in touch with Barangay Salud Mitra
           </p>
         </div>
 

@@ -39,7 +39,7 @@ const formSchema = z.object({
   fullName: z.string().trim().min(2, "Full name must be at least 2 characters").max(100, "Full name is too long"),
   contactNumber: z.string().trim().regex(/^[0-9+\-() ]+$/, "Please enter a valid contact number").min(7, "Contact number is too short"),
   email: z.string().trim().email("Please enter a valid email address").optional().or(z.literal("")),
-  householdNumber: z.string().trim().min(1, "Household number is required").max(50, "Household number is too long"),
+  householdNumber: z.string().trim().regex(/^\d{11}$/, "Household number must be exactly 11 digits"),
   birthDate: z.date({
     required_error: "Birth date is required",
   }).refine((date) => date <= new Date(), "Birth date cannot be in the future"),
@@ -200,10 +200,18 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                 <FormItem>
                   <FormLabel>Household Number *</FormLabel>
                   <FormControl>
-                    <Input placeholder="HH-2024-001" {...field} />
+                    <Input 
+                      placeholder="09171234567" 
+                      maxLength={11}
+                      {...field}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '');
+                        field.onChange(value);
+                      }}
+                    />
                   </FormControl>
                   <FormDescription>
-                    This information will be verified against our records
+                    Enter exactly 11 digits - This will be verified against our records
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

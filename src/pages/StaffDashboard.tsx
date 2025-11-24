@@ -77,15 +77,23 @@ const StaffSidebar = () => {
   const { state } = useSidebar();
 
   const menuItems = [
-    { title: "Home", icon: Home, path: "/staff-dashboard" },
-    { title: "Manage Residents", icon: Users, path: "#" },
-    { title: "Certificate Requests", icon: FileText, path: "#" },
-    { title: "View Reports", icon: BarChart3, path: "#" },
+    { title: "Home", icon: Home, path: "/" },
+    { title: "Manage Residents", icon: Users, path: "manage-residents" },
+    { title: "Certificate Requests", icon: FileText, path: "certificate-requests" },
+    { title: "View Reports", icon: BarChart3, path: "view-reports" },
   ];
 
   const handleLogout = () => {
     toast.success("Logged out successfully");
     navigate("/");
+  };
+
+  const handleNavigation = (path: string) => {
+    if (path === "/") {
+      navigate("/");
+    } else {
+      toast.info(`${path.replace("-", " ")} feature coming in Phase 2`);
+    }
   };
 
   const isCollapsed = state === "collapsed";
@@ -108,7 +116,7 @@ const StaffSidebar = () => {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    onClick={() => item.path !== "#" && navigate(item.path)}
+                    onClick={() => handleNavigation(item.path)}
                     className="hover:bg-muted/50"
                   >
                     <item.icon className="h-4 w-4" />
