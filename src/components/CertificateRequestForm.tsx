@@ -118,7 +118,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
           name="certificateType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Certificate Type *</FormLabel>
+              <FormLabel>Certificate Type / Uri ng Sertipiko *</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger className="bg-background">
@@ -140,7 +140,9 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
 
         {/* Personal Information Section */}
         <div className="pt-4 border-t border-border">
-          <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            Personal Information / Pansariling Impormasyon
+          </h3>
           
           <div className="space-y-4">
             <FormField
@@ -148,7 +150,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name *</FormLabel>
+                  <FormLabel>Full Name / Buong Pangalan *</FormLabel>
                   <FormControl>
                     <Input placeholder="Juan Dela Cruz" {...field} />
                   </FormControl>
@@ -162,7 +164,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
               name="contactNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contact Number *</FormLabel>
+                  <FormLabel>Contact Number / Numero ng Telepono *</FormLabel>
                   <FormControl>
                     <Input placeholder="09123456789" type="tel" {...field} />
                   </FormControl>
@@ -176,7 +178,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email Address</FormLabel>
+                  <FormLabel>Email Address / Email Address</FormLabel>
                   <FormControl>
                     <Input placeholder="juan@example.com" type="email" {...field} />
                   </FormControl>
@@ -190,7 +192,9 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
 
         {/* Verification Section */}
         <div className="pt-4 border-t border-border">
-          <h3 className="text-lg font-semibold mb-4">Verification</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            Verification / Pagpapatunay
+          </h3>
           
           <div className="space-y-4">
             <FormField
@@ -198,7 +202,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
               name="householdNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Household Number *</FormLabel>
+                  <FormLabel>Household Number / Numero ng Sambahayan *</FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="09171234567" 
@@ -223,7 +227,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
               name="birthDate"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Birth Date *</FormLabel>
+                  <FormLabel>Birth Date / Petsa ng Kapanganakan *</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -268,7 +272,9 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
 
         {/* Request Details Section */}
         <div className="pt-4 border-t border-border">
-          <h3 className="text-lg font-semibold mb-4">Request Details</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            Request Details / Detalye ng Kahilingan
+          </h3>
           
           <div className="space-y-4">
             <FormField
@@ -276,7 +282,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
               name="purpose"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Purpose *</FormLabel>
+                  <FormLabel>Purpose / Layunin *</FormLabel>
                   <FormControl>
                     <Textarea 
                       placeholder="Please describe the purpose of your certificate request..."
@@ -294,7 +300,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
               name="priority"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel>Priority</FormLabel>
+                  <FormLabel>Priority / Priyoridad</FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
@@ -335,10 +341,10 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Submitting...
+              Submitting / Isinusumite...
             </>
           ) : (
-            "Submit Request"
+            "Submit Request / Magsumite ng Kahilingan"
           )}
         </Button>
       </form>
