@@ -38,38 +38,36 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex md:items-center md:gap-6">
-            <a 
-              href="#home" 
+            <Link 
+              to="/" 
               className={`text-sm font-medium transition-colors px-3 py-2 rounded-md ${
                 isActive('/') 
                   ? 'bg-active-nav text-active-nav-foreground' 
                   : 'text-foreground hover:text-primary'
               }`}
-              onClick={(e) => {
-                e.preventDefault();
-                if (window.location.pathname === '/') {
-                  document.getElementById('home')?.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                  window.location.href = '/';
-                }
-              }}
             >
               Home
-            </a>
-            <a 
-              href="#services" 
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors px-3 py-2 rounded-md"
-              onClick={(e) => {
-                e.preventDefault();
-                if (window.location.pathname === '/') {
-                  document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                  window.location.href = '/#services';
-                }
-              }}
+            </Link>
+            <Link 
+              to="/request-certificate" 
+              className={`text-sm font-medium transition-colors px-3 py-2 rounded-md ${
+                isActive('/request-certificate') 
+                  ? 'bg-active-nav text-active-nav-foreground' 
+                  : 'text-foreground hover:text-primary'
+              }`}
             >
-              Services
-            </a>
+              Request Certificate
+            </Link>
+            <Link 
+              to="/track-request" 
+              className={`text-sm font-medium transition-colors px-3 py-2 rounded-md ${
+                isActive('/track-request') 
+                  ? 'bg-active-nav text-active-nav-foreground' 
+                  : 'text-foreground hover:text-primary'
+              }`}
+            >
+              Track Request Status
+            </Link>
             <a 
               href="#contact" 
               className="text-sm font-medium text-foreground hover:text-primary transition-colors px-3 py-2 rounded-md"
@@ -119,40 +117,39 @@ const Header = () => {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border animate-fade-in">
             <div className="flex flex-col gap-4">
-              <a 
-                href="#home" 
+              <Link 
+                to="/" 
                 className={`text-sm font-medium transition-colors py-2 px-3 rounded-md ${
                   isActive('/') 
                     ? 'bg-active-nav text-active-nav-foreground' 
                     : 'text-foreground hover:text-primary'
                 }`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setMobileMenuOpen(false);
-                  if (window.location.pathname === '/') {
-                    document.getElementById('home')?.scrollIntoView({ behavior: 'smooth' });
-                  } else {
-                    window.location.href = '/';
-                  }
-                }}
+                onClick={() => setMobileMenuOpen(false)}
               >
                 Home
-              </a>
-              <a 
-                href="#services" 
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-3 rounded-md"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setMobileMenuOpen(false);
-                  if (window.location.pathname === '/') {
-                    document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
-                  } else {
-                    window.location.href = '/#services';
-                  }
-                }}
+              </Link>
+              <Link 
+                to="/request-certificate" 
+                className={`text-sm font-medium transition-colors py-2 px-3 rounded-md ${
+                  isActive('/request-certificate') 
+                    ? 'bg-active-nav text-active-nav-foreground' 
+                    : 'text-foreground hover:text-primary'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
               >
-                Services
-              </a>
+                Request Certificate
+              </Link>
+              <Link 
+                to="/track-request" 
+                className={`text-sm font-medium transition-colors py-2 px-3 rounded-md ${
+                  isActive('/track-request') 
+                    ? 'bg-active-nav text-active-nav-foreground' 
+                    : 'text-foreground hover:text-primary'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Track Request Status
+              </Link>
               <a 
                 href="#contact" 
                 className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-3 rounded-md"

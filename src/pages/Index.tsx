@@ -5,6 +5,7 @@ import Announcements from "@/components/Announcements";
 import AboutUs from "@/components/AboutUs";
 import Information from "@/components/Information";
 import Officials from "@/components/Officials";
+import GoogleMap from "@/components/GoogleMap";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -18,6 +19,7 @@ const Index = () => {
         <AboutUs />
         <Information />
         <Officials />
+        <GoogleMap />
       </main>
       <Footer />
     </div>

@@ -1,25 +1,31 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, UserPlus, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const services = [
   {
     icon: FileText,
     title: "Certificate Requests",
     description: "Request barangay clearance, indigency certificates, and more online",
+    path: "/request-certificate",
   },
   {
     icon: UserPlus,
     title: "Resident Registration",
     description: "Register or update your information at the barangay hall",
+    path: "/register",
   },
   {
     icon: Search,
     title: "Track Requests",
     description: "Monitor your certificate request status in real-time",
+    path: "/track-request",
   },
 ];
 
 const Services = () => {
+  const navigate = useNavigate();
+
   return (
     <section id="services" className="py-20 bg-secondary/30">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,7 +42,8 @@ const Services = () => {
           {services.map((service, index) => (
             <Card 
               key={index} 
-              className="hover:shadow-medium transition-shadow duration-300 border-border bg-card"
+              className="hover:shadow-lg hover:scale-105 transition-all duration-300 border-border bg-card cursor-pointer"
+              onClick={() => navigate(service.path)}
             >
               <CardHeader>
                 <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
