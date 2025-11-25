@@ -46,6 +46,10 @@ interface PendingRequest {
   certificateType: string;
   dateSubmitted: string;
   status: "pending" | "processing" | "approved" | "rejected";
+  verificationStatus?: "verified" | "not-verified" | "checking";
+  processedBy?: string;
+  processedDate?: string;
+  notes?: string;
 }
 
 const mockPendingRequests: PendingRequest[] = [
@@ -55,6 +59,7 @@ const mockPendingRequests: PendingRequest[] = [
     certificateType: "Barangay Clearance",
     dateSubmitted: "2024-01-15",
     status: "pending",
+    verificationStatus: "verified",
   },
   {
     id: "BR-002",
@@ -62,6 +67,7 @@ const mockPendingRequests: PendingRequest[] = [
     certificateType: "Certificate of Indigency",
     dateSubmitted: "2024-01-14",
     status: "processing",
+    verificationStatus: "verified",
   },
   {
     id: "BR-003",
@@ -69,6 +75,79 @@ const mockPendingRequests: PendingRequest[] = [
     certificateType: "Business Permit",
     dateSubmitted: "2024-01-13",
     status: "pending",
+    verificationStatus: "checking",
+  },
+  {
+    id: "BR-004",
+    residentName: "Ana Garcia",
+    certificateType: "Certificate of Residency",
+    dateSubmitted: "2024-01-12",
+    status: "pending",
+    verificationStatus: "verified",
+  },
+  {
+    id: "BR-005",
+    residentName: "Carlos Torres",
+    certificateType: "Barangay Clearance",
+    dateSubmitted: "2024-01-12",
+    status: "processing",
+    verificationStatus: "verified",
+  },
+  {
+    id: "BR-006",
+    residentName: "Elena Cruz",
+    certificateType: "Certificate of Good Moral Character",
+    dateSubmitted: "2024-01-11",
+    status: "pending",
+    verificationStatus: "not-verified",
+  },
+  {
+    id: "BR-007",
+    residentName: "Roberto Fernandez",
+    certificateType: "Business Permit Clearance",
+    dateSubmitted: "2024-01-11",
+    status: "pending",
+    verificationStatus: "verified",
+  },
+  {
+    id: "BR-008",
+    residentName: "Sofia Ramos",
+    certificateType: "First Time Job Seeker Certificate",
+    dateSubmitted: "2024-01-10",
+    status: "processing",
+    verificationStatus: "verified",
+  },
+  {
+    id: "BR-009",
+    residentName: "Miguel Santos",
+    certificateType: "Certificate for Senior Citizen/PWD ID",
+    dateSubmitted: "2024-01-10",
+    status: "pending",
+    verificationStatus: "verified",
+  },
+  {
+    id: "BR-010",
+    residentName: "Isabel Martinez",
+    certificateType: "Barangay Clearance",
+    dateSubmitted: "2024-01-09",
+    status: "pending",
+    verificationStatus: "checking",
+  },
+  {
+    id: "BR-011",
+    residentName: "Diego Lopez",
+    certificateType: "Certificate of Indigency",
+    dateSubmitted: "2024-01-09",
+    status: "processing",
+    verificationStatus: "verified",
+  },
+  {
+    id: "BR-012",
+    residentName: "Carmen Rivera",
+    certificateType: "Certificate of Residency",
+    dateSubmitted: "2024-01-08",
+    status: "pending",
+    verificationStatus: "verified",
   },
 ];
 
@@ -152,8 +231,46 @@ const StaffDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAction = (action: string, requestId: string) => {
-    toast.info(`${action} action for request ${requestId} - Feature coming in Phase 2`);
+  const [requests, setRequests] = useState<PendingRequest[]>(mockPendingRequests);
+  const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
+
+  const handleAction = (action: string, request: PendingRequest) => {
+    const timestamp = new Date().toLocaleString();
+    
+    if (action === "Approve") {
+      setRequests(prev => prev.map(r => 
+        r.id === request.id 
+          ? { 
+              ...r, 
+              status: "approved", 
+              processedBy: "Staff Admin",
+              processedDate: timestamp,
+              notes: "Approved - All requirements verified"
+            } 
+          : r
+      ));
+      toast.success(`Request ${request.id} approved successfully`, {
+        description: `Certificate for ${request.residentName} has been approved.`
+      });
+    } else if (action === "Reject") {
+      setRequests(prev => prev.map(r => 
+        r.id === request.id 
+          ? { 
+              ...r, 
+              status: "rejected", 
+              processedBy: "Staff Admin",
+              processedDate: timestamp,
+              notes: "Rejected - Incomplete requirements"
+            } 
+          : r
+      ));
+      toast.error(`Request ${request.id} rejected`, {
+        description: `Certificate request for ${request.residentName} has been rejected.`
+      });
+    } else if (action === "View") {
+      setSelectedRequest(request);
+      toast.info(`Viewing details for request ${request.id}`);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -286,37 +403,73 @@ const StaffDashboard = () => {
                       <TableHead>Certificate Type</TableHead>
                       <TableHead>Date Submitted</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Verification</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockPendingRequests.map((request) => (
+                    {requests.map((request) => (
                       <TableRow key={request.id}>
                         <TableCell className="font-medium">{request.id}</TableCell>
                         <TableCell>{request.residentName}</TableCell>
                         <TableCell>{request.certificateType}</TableCell>
                         <TableCell>{request.dateSubmitted}</TableCell>
-                        <TableCell>{getStatusBadge(request.status)}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {getStatusBadge(request.status)}
+                            {request.processedBy && (
+                              <div className="text-xs text-muted-foreground">
+                                By: {request.processedBy}
+                                <br />
+                                {request.processedDate}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {request.verificationStatus === "verified" && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              ✓ Verified
+                            </Badge>
+                          )}
+                          {request.verificationStatus === "not-verified" && (
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                              ✗ Not Verified
+                            </Badge>
+                          )}
+                          {request.verificationStatus === "checking" && (
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                              Checking...
+                            </Badge>
+                          )}
+                          {!request.verificationStatus && (
+                            <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
+                              Pending
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleAction("View", request.id)}
+                              onClick={() => handleAction("View", request)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleAction("Approve", request.id)}
+                              onClick={() => handleAction("Approve", request)}
+                              className="hover:bg-green-50"
                             >
                               <CheckCircle className="h-4 w-4 text-green-600" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleAction("Reject", request.id)}
+                              onClick={() => handleAction("Reject", request)}
+                              className="hover:bg-red-50"
                             >
                               <XCircle className="h-4 w-4 text-red-600" />
                             </Button>
@@ -326,6 +479,14 @@ const StaffDashboard = () => {
                     ))}
                   </TableBody>
                 </Table>
+                
+                {/* Selected Request Details */}
+                {selectedRequest && selectedRequest.notes && (
+                  <div className="mt-6 p-4 bg-muted/50 rounded-lg border">
+                    <h3 className="font-semibold mb-2">Notes for {selectedRequest.id}</h3>
+                    <p className="text-sm text-muted-foreground">{selectedRequest.notes}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </main>

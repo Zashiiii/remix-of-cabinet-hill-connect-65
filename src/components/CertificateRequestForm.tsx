@@ -37,9 +37,9 @@ import { toast } from "sonner";
 const formSchema = z.object({
   certificateType: z.string().min(1, "Please select a certificate type"),
   fullName: z.string().trim().min(2, "Full name must be at least 2 characters").max(100, "Full name is too long"),
-  contactNumber: z.string().trim().regex(/^[0-9+\-() ]+$/, "Please enter a valid contact number").min(7, "Contact number is too short"),
+  contactNumber: z.string().trim().regex(/^09\d{9}$/, "Contact number must be 11 digits starting with 09 (e.g., 09123456789)"),
   email: z.string().trim().email("Please enter a valid email address").optional().or(z.literal("")),
-  householdNumber: z.string().trim().regex(/^\d{11}$/, "Household number must be exactly 11 digits"),
+  householdNumber: z.string().trim().min(3, "Household number must be at least 3 characters").max(5, "Household number must be at most 5 characters"),
   birthDate: z.date({
     required_error: "Birth date is required",
   }).refine((date) => date <= new Date(), "Birth date cannot be in the future"),
@@ -205,17 +205,13 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                   <FormLabel>Household Number / Numero ng Sambahayan *</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="09171234567" 
-                      maxLength={11}
+                      placeholder="001, A-10, etc." 
+                      maxLength={5}
                       {...field}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '');
-                        field.onChange(value);
-                      }}
                     />
                   </FormControl>
                   <FormDescription>
-                    Enter exactly 11 digits - This will be verified against our records
+                    Enter 3-5 character household code
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
