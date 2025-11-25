@@ -248,9 +248,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) =>
-                          date > new Date() || date < new Date("1900-01-01")
-                        }
+                        disabled={(date) => date < new Date()}
                         initialFocus
                         className="pointer-events-auto"
                       />
@@ -308,7 +306,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                           <RadioGroupItem value="normal" />
                         </FormControl>
                         <FormLabel className="font-normal cursor-pointer">
-                          Normal (3-5 business days)
+                          Normal
                         </FormLabel>
                       </FormItem>
                       <FormItem className="flex items-center space-x-3 space-y-0">
@@ -316,7 +314,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                           <RadioGroupItem value="urgent" />
                         </FormControl>
                         <FormLabel className="font-normal cursor-pointer">
-                          Urgent (1-2 business days - for medical/emergency cases)
+                          Urgent
                         </FormLabel>
                       </FormItem>
                     </RadioGroup>

@@ -13,8 +13,8 @@ const Index = () => {
       <Header />
       <main className="flex-1">
         <Hero />
-        <Services />
         <Announcements />
+        <Services />
         <AboutUs />
         <Information />
         <Officials />
