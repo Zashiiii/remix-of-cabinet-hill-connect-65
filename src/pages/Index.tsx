@@ -2,9 +2,6 @@ import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import Services from "@/components/Services";
 import Announcements from "@/components/Announcements";
-import AboutUs from "@/components/AboutUs";
-import Information from "@/components/Information";
-import Officials from "@/components/Officials";
 import GoogleMap from "@/components/GoogleMap";
 import Footer from "@/components/Footer";
 
@@ -16,9 +13,6 @@ const Index = () => {
         <Hero />
         <Announcements />
         <Services />
-        <AboutUs />
-        <Information />
-        <Officials />
         <GoogleMap />
       </main>
       <Footer />

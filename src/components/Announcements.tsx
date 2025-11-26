@@ -1,8 +1,20 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell } from "lucide-react";
 
-const announcements = [
+interface Announcement {
+  id: string;
+  type: "important" | "general";
+  title: string;
+  titleTl: string;
+  description: string;
+  descriptionTl: string;
+  date: string;
+}
+
+const defaultAnnouncements: Announcement[] = [
   {
+    id: "1",
     type: "important",
     title: "New Online Certificate System",
     titleTl: "Bagong Sistema ng Online na Sertipiko",
@@ -11,6 +23,7 @@ const announcements = [
     date: "January 15, 2024",
   },
   {
+    id: "2",
     type: "general",
     title: "Office Hours Update",
     titleTl: "Pagbabago sa Oras ng Opisina",
@@ -19,6 +32,7 @@ const announcements = [
     date: "January 10, 2024",
   },
   {
+    id: "3",
     type: "general",
     title: "Community Clean-up Drive",
     titleTl: "Kampanya sa Paglilinis ng Komunidad",
@@ -29,6 +43,42 @@ const announcements = [
 ];
 
 const Announcements = () => {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    // Load announcements from localStorage or use defaults
+    const loadAnnouncements = () => {
+      try {
+        const stored = localStorage.getItem("barangay_announcements");
+        if (stored) {
+          setAnnouncements(JSON.parse(stored));
+        } else {
+          setAnnouncements(defaultAnnouncements);
+          localStorage.setItem("barangay_announcements", JSON.stringify(defaultAnnouncements));
+        }
+      } catch (error) {
+        console.error("Error loading announcements:", error);
+        setAnnouncements(defaultAnnouncements);
+      }
+    };
+
+    loadAnnouncements();
+
+    // Listen for storage changes for live updates
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "barangay_announcements" && e.newValue) {
+        try {
+          setAnnouncements(JSON.parse(e.newValue));
+        } catch (error) {
+          console.error("Error parsing announcements:", error);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
   return (
     <section className="py-20 bg-secondary/30">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
