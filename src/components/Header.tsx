@@ -68,20 +68,16 @@ const Header = () => {
             >
               Track Request Status
             </Link>
-            <a 
-              href="#contact" 
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors px-3 py-2 rounded-md"
-              onClick={(e) => {
-                e.preventDefault();
-                if (window.location.pathname === '/') {
-                  document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                  window.location.href = '/#contact';
-                }
-              }}
+            <Link 
+              to="/contact" 
+              className={`text-sm font-medium transition-colors px-3 py-2 rounded-md ${
+                isActive('/contact') 
+                  ? 'bg-active-nav text-active-nav-foreground' 
+                  : 'text-foreground hover:text-primary'
+              }`}
             >
               Contact
-            </a>
+            </Link>
             <Button 
               variant="ghost"
               size="icon"
@@ -150,21 +146,17 @@ const Header = () => {
               >
                 Track Request Status
               </Link>
-              <a 
-                href="#contact" 
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors py-2 px-3 rounded-md"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setMobileMenuOpen(false);
-                  if (window.location.pathname === '/') {
-                    document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-                  } else {
-                    window.location.href = '/#contact';
-                  }
-                }}
+              <Link 
+                to="/contact" 
+                className={`text-sm font-medium transition-colors py-2 px-3 rounded-md ${
+                  isActive('/contact') 
+                    ? 'bg-active-nav text-active-nav-foreground' 
+                    : 'text-foreground hover:text-primary'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
               >
                 Contact
-              </a>
+              </Link>
               <div className="flex gap-2">
                 <Button 
                   variant="outline" 
