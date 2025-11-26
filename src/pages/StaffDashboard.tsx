@@ -172,10 +172,12 @@ const StaffDashboard = () => {
         const stored = localStorage.getItem("certificateRequests");
         if (stored) {
           const parsedRequests = JSON.parse(stored);
-          setRequests(parsedRequests);
+          // Ensure we always have an array
+          setRequests(Array.isArray(parsedRequests) ? parsedRequests : []);
         }
       } catch (error) {
         console.error("Error loading requests:", error);
+        setRequests([]);
       }
     };
 
@@ -255,10 +257,13 @@ const StaffDashboard = () => {
       try {
         const stored = localStorage.getItem("barangay_announcements");
         if (stored) {
-          setAnnouncements(JSON.parse(stored));
+          const parsedAnnouncements = JSON.parse(stored);
+          // Ensure we always have an array
+          setAnnouncements(Array.isArray(parsedAnnouncements) ? parsedAnnouncements : []);
         }
       } catch (error) {
         console.error("Error loading announcements:", error);
+        setAnnouncements([]);
       }
     };
     loadAnnouncements();
