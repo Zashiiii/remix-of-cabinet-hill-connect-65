@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useStaffAuthContext } from "@/context/StaffAuthContext";
+import { Loader2 } from "lucide-react";
 
 interface StaffLoginModalProps {
   open: boolean;
@@ -13,15 +15,43 @@ interface StaffLoginModalProps {
 
 const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
   const navigate = useNavigate();
+  const { login } = useStaffAuthContext();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Placeholder - will be connected to backend in Phase 2
-    toast.success("Login successful");
-    onOpenChange(false);
-    navigate("/staff-dashboard");
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const result = await login(username, password);
+      
+      if (result.success) {
+        toast.success("Login successful", {
+          description: "Welcome to the Staff Dashboard"
+        });
+        onOpenChange(false);
+        setUsername("");
+        setPassword("");
+        navigate("/staff-dashboard");
+      } else {
+        setError(result.error || "Invalid credentials");
+        toast.error("Login failed", {
+          description: result.error || "Please check your credentials"
+        });
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("An unexpected error occurred");
+      toast.error("Login error", {
+        description: "Please try again later"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -34,6 +64,11 @@ const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleLogin} className="space-y-4">
+          {error && (
+            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+              {error}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
             <Input
@@ -43,6 +78,7 @@ const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter your username"
               required
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -54,10 +90,18 @@ const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
+              disabled={isLoading}
             />
           </div>
-          <Button type="submit" className="w-full">
-            Login
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Logging in...
+              </>
+            ) : (
+              "Login"
+            )}
           </Button>
         </form>
       </DialogContent>

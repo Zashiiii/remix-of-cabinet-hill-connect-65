@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Home,
@@ -17,6 +17,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,7 +43,6 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -61,6 +61,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useStaffAuthContext } from "@/context/StaffAuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchPendingRequests,
+  updateRequestStatus,
+  fetchActiveAnnouncements,
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+} from "@/utils/api";
 
 interface PendingRequest {
   id: string;
@@ -88,8 +98,15 @@ interface Announcement {
   date: string;
 }
 
-const StaffSidebar = ({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: (tab: string) => void }) => {
-  const navigate = useNavigate();
+const StaffSidebar = ({ 
+  activeTab, 
+  setActiveTab, 
+  onLogout 
+}: { 
+  activeTab: string; 
+  setActiveTab: (tab: string) => void;
+  onLogout: () => void;
+}) => {
   const { state } = useSidebar();
 
   const menuItems = [
@@ -99,11 +116,6 @@ const StaffSidebar = ({ activeTab, setActiveTab }: { activeTab: string; setActiv
     { title: "Manage Residents", icon: Users, tab: "manage-residents" },
     { title: "View Reports", icon: BarChart3, tab: "view-reports" },
   ];
-
-  const handleLogout = () => {
-    toast.success("Logged out successfully");
-    navigate("/");
-  };
 
   const isCollapsed = state === "collapsed";
 
@@ -135,7 +147,7 @@ const StaffSidebar = ({ activeTab, setActiveTab }: { activeTab: string; setActiv
               ))}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={handleLogout}
+                  onClick={onLogout}
                   className="hover:bg-destructive/10 text-destructive"
                 >
                   <LogOut className="h-4 w-4" />
@@ -152,8 +164,18 @@ const StaffSidebar = ({ activeTab, setActiveTab }: { activeTab: string; setActiv
 
 const StaffDashboard = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useStaffAuthContext();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeTab, setActiveTab] = useState("home");
+  const [isDataLoading, setIsDataLoading] = useState(true);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast.error("Please login to access the dashboard");
+      navigate("/");
+    }
+  }, [authLoading, isAuthenticated, navigate]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -162,68 +184,159 @@ const StaffDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Load real certificate requests from localStorage
+  // Certificate requests state
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
+  const [totalResidents, setTotalResidents] = useState(0);
 
-  useEffect(() => {
-    const loadRequests = () => {
+  // Load certificate requests from Supabase
+  const loadRequests = useCallback(async () => {
+    try {
+      // Fetch from Supabase
+      const { data: supabaseData, error } = await supabase
+        .from('certificate_requests')
+        .select('*')
+        .order('resident_name', { ascending: true });
+
+      if (supabaseData && !error) {
+        const mapped: PendingRequest[] = supabaseData.map((item) => ({
+          id: item.control_number,
+          residentName: item.resident_name,
+          certificateType: item.certificate_type,
+          dateSubmitted: item.requested_date 
+            ? new Date(item.requested_date).toLocaleDateString() 
+            : new Date().toLocaleDateString(),
+          status: (item.status?.toLowerCase() || 'pending') as PendingRequest['status'],
+          processedBy: item.processed_by || undefined,
+          processedDate: item.processed_date 
+            ? new Date(item.processed_date).toLocaleString() 
+            : undefined,
+          notes: item.admin_notes || item.rejection_reason || undefined,
+          contactNumber: item.resident_contact || undefined,
+          email: item.resident_email || undefined,
+          purpose: item.purpose,
+        }));
+        setRequests(mapped);
+      } else {
+        // Fallback to localStorage
+        const stored = localStorage.getItem("certificateRequests");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setRequests(Array.isArray(parsed) ? parsed : []);
+        }
+      }
+
+      // Get resident count
+      const { count } = await supabase
+        .from('residents')
+        .select('*', { count: 'exact', head: true });
+      setTotalResidents(count || 0);
+
+    } catch (error) {
+      console.error("Error loading requests:", error);
+      // Fallback to localStorage
       try {
         const stored = localStorage.getItem("certificateRequests");
         if (stored) {
-          const parsedRequests = JSON.parse(stored);
-          // Ensure we always have an array
-          setRequests(Array.isArray(parsedRequests) ? parsedRequests : []);
+          const parsed = JSON.parse(stored);
+          setRequests(Array.isArray(parsed) ? parsed : []);
         }
-      } catch (error) {
-        console.error("Error loading requests:", error);
+      } catch {
         setRequests([]);
       }
-    };
-
-    loadRequests();
-    // Refresh every 5 seconds to catch new submissions
-    const interval = setInterval(loadRequests, 5000);
-    return () => clearInterval(interval);
+    } finally {
+      setIsDataLoading(false);
+    }
   }, []);
 
-  const handleAction = (action: string, request: PendingRequest) => {
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadRequests();
+      // Refresh every 30 seconds
+      const interval = setInterval(loadRequests, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, loadRequests]);
+
+  const handleAction = async (action: string, request: PendingRequest) => {
     const timestamp = new Date().toLocaleString();
+    const staffName = user?.fullName || "Staff Admin";
     
     if (action === "Approve") {
-      const updatedRequests = requests.map(r => 
-        r.id === request.id 
-          ? { 
-              ...r, 
-              status: "approved" as const, 
-              processedBy: "Staff Admin",
-              processedDate: timestamp,
-              notes: "Approved - All requirements verified"
-            } 
-          : r
-      );
-      setRequests(updatedRequests);
-      localStorage.setItem("certificateRequests", JSON.stringify(updatedRequests));
-      toast.success(`Request ${request.id} approved successfully`, {
-        description: `Certificate for ${request.residentName} has been approved.`
-      });
+      try {
+        // Update in Supabase
+        const { data: dbRequest } = await supabase
+          .from('certificate_requests')
+          .select('id')
+          .eq('control_number', request.id)
+          .single();
+
+        if (dbRequest) {
+          await updateRequestStatus(
+            dbRequest.id, 
+            'Approved', 
+            staffName,
+            'Approved - All requirements verified'
+          );
+        }
+
+        const updatedRequests = requests.map(r => 
+          r.id === request.id 
+            ? { 
+                ...r, 
+                status: "approved" as const, 
+                processedBy: staffName,
+                processedDate: timestamp,
+                notes: "Approved - All requirements verified"
+              } 
+            : r
+        );
+        setRequests(updatedRequests);
+        localStorage.setItem("certificateRequests", JSON.stringify(updatedRequests));
+        toast.success(`Request ${request.id} approved successfully`, {
+          description: `Certificate for ${request.residentName} has been approved.`
+        });
+      } catch (error) {
+        console.error("Error approving request:", error);
+        toast.error("Failed to approve request");
+      }
     } else if (action === "Reject") {
-      const updatedRequests = requests.map(r => 
-        r.id === request.id 
-          ? { 
-              ...r, 
-              status: "rejected" as const, 
-              processedBy: "Staff Admin",
-              processedDate: timestamp,
-              notes: "Rejected - Incomplete requirements"
-            } 
-          : r
-      );
-      setRequests(updatedRequests);
-      localStorage.setItem("certificateRequests", JSON.stringify(updatedRequests));
-      toast.error(`Request ${request.id} rejected`, {
-        description: `Certificate request for ${request.residentName} has been rejected.`
-      });
+      try {
+        const { data: dbRequest } = await supabase
+          .from('certificate_requests')
+          .select('id')
+          .eq('control_number', request.id)
+          .single();
+
+        if (dbRequest) {
+          await updateRequestStatus(
+            dbRequest.id, 
+            'Rejected', 
+            staffName,
+            'Rejected - Incomplete requirements'
+          );
+        }
+
+        const updatedRequests = requests.map(r => 
+          r.id === request.id 
+            ? { 
+                ...r, 
+                status: "rejected" as const, 
+                processedBy: staffName,
+                processedDate: timestamp,
+                notes: "Rejected - Incomplete requirements"
+              } 
+            : r
+        );
+        setRequests(updatedRequests);
+        localStorage.setItem("certificateRequests", JSON.stringify(updatedRequests));
+        toast.error(`Request ${request.id} rejected`, {
+          description: `Certificate request for ${request.residentName} has been rejected.`
+        });
+      } catch (error) {
+        console.error("Error rejecting request:", error);
+        toast.error("Failed to reject request");
+      }
     } else if (action === "View") {
       setSelectedRequest(request);
       toast.info(`Viewing details for request ${request.id}`);
@@ -252,60 +365,125 @@ const StaffDashboard = () => {
     type: "general" as "important" | "general",
   });
 
-  useEffect(() => {
-    const loadAnnouncements = () => {
+  // Load announcements from Supabase
+  const loadAnnouncements = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('announcements')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (data && !error) {
+        const mapped: Announcement[] = data.map((item) => ({
+          id: item.id,
+          type: (item.announcement_type === 'important' ? 'important' : 'general') as "important" | "general",
+          title: item.title,
+          titleTl: item.title_tl || item.title,
+          description: item.content,
+          descriptionTl: item.content_tl || item.content,
+          date: new Date(item.created_at || Date.now()).toLocaleDateString("en-US", { 
+            year: "numeric", 
+            month: "long", 
+            day: "numeric" 
+          }),
+        }));
+        setAnnouncements(mapped);
+      } else {
+        // Fallback to localStorage
+        const stored = localStorage.getItem("barangay_announcements");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setAnnouncements(Array.isArray(parsed) ? parsed : []);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading announcements:", error);
       try {
         const stored = localStorage.getItem("barangay_announcements");
         if (stored) {
-          const parsedAnnouncements = JSON.parse(stored);
-          // Ensure we always have an array
-          setAnnouncements(Array.isArray(parsedAnnouncements) ? parsedAnnouncements : []);
+          const parsed = JSON.parse(stored);
+          setAnnouncements(Array.isArray(parsed) ? parsed : []);
         }
-      } catch (error) {
-        console.error("Error loading announcements:", error);
+      } catch {
         setAnnouncements([]);
       }
-    };
-    loadAnnouncements();
+    }
   }, []);
 
-  const handleCreateAnnouncement = () => {
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadAnnouncements();
+    }
+  }, [isAuthenticated, loadAnnouncements]);
+
+  const handleCreateAnnouncement = async () => {
     if (!announcementForm.title || !announcementForm.description) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    const newAnnouncement: Announcement = {
-      id: editingAnnouncement?.id || `ann-${Date.now()}`,
-      type: announcementForm.type,
-      title: announcementForm.title,
-      titleTl: announcementForm.titleTl || announcementForm.title,
-      description: announcementForm.description,
-      descriptionTl: announcementForm.descriptionTl || announcementForm.description,
-      date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
-    };
+    try {
+      if (editingAnnouncement) {
+        // Update existing announcement
+        await updateAnnouncement(editingAnnouncement.id, {
+          title: announcementForm.title,
+          content: announcementForm.description,
+          titleTl: announcementForm.titleTl,
+          contentTl: announcementForm.descriptionTl,
+          type: announcementForm.type,
+        });
+        toast.success("Announcement updated successfully");
+      } else {
+        // Create new announcement
+        await createAnnouncement({
+          title: announcementForm.title,
+          content: announcementForm.description,
+          titleTl: announcementForm.titleTl,
+          contentTl: announcementForm.descriptionTl,
+          type: announcementForm.type,
+          createdBy: user?.id,
+        });
+        toast.success("Announcement created successfully");
+      }
 
-    let updatedAnnouncements;
-    if (editingAnnouncement) {
-      updatedAnnouncements = announcements.map(a => a.id === editingAnnouncement.id ? newAnnouncement : a);
-      toast.success("Announcement updated successfully");
-    } else {
-      updatedAnnouncements = [newAnnouncement, ...announcements];
-      toast.success("Announcement created successfully");
+      // Reload announcements
+      await loadAnnouncements();
+
+      // Also update localStorage for backward compatibility
+      const localAnnouncement: Announcement = {
+        id: editingAnnouncement?.id || `ann-${Date.now()}`,
+        type: announcementForm.type,
+        title: announcementForm.title,
+        titleTl: announcementForm.titleTl || announcementForm.title,
+        description: announcementForm.description,
+        descriptionTl: announcementForm.descriptionTl || announcementForm.description,
+        date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+      };
+
+      const storedAnnouncements = JSON.parse(localStorage.getItem("barangay_announcements") || "[]");
+      let updatedLocal;
+      if (editingAnnouncement) {
+        updatedLocal = storedAnnouncements.map((a: Announcement) => 
+          a.id === editingAnnouncement.id ? localAnnouncement : a
+        );
+      } else {
+        updatedLocal = [localAnnouncement, ...storedAnnouncements];
+      }
+      localStorage.setItem("barangay_announcements", JSON.stringify(updatedLocal));
+      
+      window.dispatchEvent(new StorageEvent("storage", {
+        key: "barangay_announcements",
+        newValue: JSON.stringify(updatedLocal),
+      }));
+
+      setShowAnnouncementDialog(false);
+      setEditingAnnouncement(null);
+      setAnnouncementForm({ title: "", titleTl: "", description: "", descriptionTl: "", type: "general" });
+    } catch (error) {
+      console.error("Error saving announcement:", error);
+      toast.error("Failed to save announcement");
     }
-
-    setAnnouncements(updatedAnnouncements);
-    localStorage.setItem("barangay_announcements", JSON.stringify(updatedAnnouncements));
-    
-    // Trigger storage event for live update
-    window.dispatchEvent(new StorageEvent("storage", {
-      key: "barangay_announcements",
-      newValue: JSON.stringify(updatedAnnouncements),
-    }));
-
-    setShowAnnouncementDialog(false);
-    setEditingAnnouncement(null);
-    setAnnouncementForm({ title: "", titleTl: "", description: "", descriptionTl: "", type: "general" });
   };
 
   const handleEditAnnouncement = (announcement: Announcement) => {
@@ -320,25 +498,57 @@ const StaffDashboard = () => {
     setShowAnnouncementDialog(true);
   };
 
-  const handleDeleteAnnouncement = (id: string) => {
-    const updatedAnnouncements = announcements.filter(a => a.id !== id);
-    setAnnouncements(updatedAnnouncements);
-    localStorage.setItem("barangay_announcements", JSON.stringify(updatedAnnouncements));
-    
-    window.dispatchEvent(new StorageEvent("storage", {
-      key: "barangay_announcements",
-      newValue: JSON.stringify(updatedAnnouncements),
-    }));
-    
-    toast.success("Announcement deleted successfully");
+  const handleDeleteAnnouncement = async (id: string) => {
+    try {
+      await deleteAnnouncement(id);
+      await loadAnnouncements();
+
+      // Also update localStorage
+      const storedAnnouncements = JSON.parse(localStorage.getItem("barangay_announcements") || "[]");
+      const updatedLocal = storedAnnouncements.filter((a: Announcement) => a.id !== id);
+      localStorage.setItem("barangay_announcements", JSON.stringify(updatedLocal));
+      
+      window.dispatchEvent(new StorageEvent("storage", {
+        key: "barangay_announcements",
+        newValue: JSON.stringify(updatedLocal),
+      }));
+      
+      toast.success("Announcement deleted successfully");
+    } catch (error) {
+      console.error("Error deleting announcement:", error);
+      toast.error("Failed to delete announcement");
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    toast.success("Logged out successfully");
+    navigate("/");
   };
 
   const pendingCount = requests.filter(r => r.status === "pending").length;
 
+  // Show loading state
+  if (authLoading || isDataLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}
@@ -354,7 +564,9 @@ const StaffDashboard = () => {
             
             <div className="flex items-center gap-6">
               <div className="hidden md:flex flex-col items-end">
-                <span className="text-sm font-medium text-foreground">Staff Admin</span>
+                <span className="text-sm font-medium text-foreground">
+                  {user?.fullName || "Staff Admin"}
+                </span>
                 <span className="text-xs text-muted-foreground">
                   {currentTime.toLocaleDateString()} {currentTime.toLocaleTimeString()}
                 </span>
@@ -362,10 +574,7 @@ const StaffDashboard = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  toast.success("Logged out successfully");
-                  navigate("/");
-                }}
+                onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
@@ -385,7 +594,7 @@ const StaffDashboard = () => {
                       <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">1,344</div>
+                      <div className="text-2xl font-bold">{totalResidents || 1344}</div>
                       <p className="text-xs text-muted-foreground">Registered residents</p>
                     </CardContent>
                   </Card>
