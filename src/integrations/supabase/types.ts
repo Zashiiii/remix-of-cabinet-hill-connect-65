@@ -18,31 +18,37 @@ export type Database = {
         Row: {
           announcement_type: string | null
           content: string
+          content_tl: string | null
           created_at: string | null
           created_by: string | null
           id: string
           is_active: boolean | null
           title: string
+          title_tl: string | null
           updated_at: string | null
         }
         Insert: {
           announcement_type?: string | null
           content: string
+          content_tl?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
           is_active?: boolean | null
           title: string
+          title_tl?: string | null
           updated_at?: string | null
         }
         Update: {
           announcement_type?: string | null
           content?: string
+          content_tl?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
           is_active?: boolean | null
           title?: string
+          title_tl?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -625,6 +631,15 @@ export type Database = {
           resident_email: string
           resident_name: string
           status: string
+        }[]
+      }
+      validate_session: {
+        Args: { p_token: string }
+        Returns: {
+          full_name: string
+          role: string
+          staff_id: string
+          username: string
         }[]
       }
       verify_resident_exists: {
