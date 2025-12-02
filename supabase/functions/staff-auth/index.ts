@@ -24,7 +24,8 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    console.log('Staff auth function called');
+    console.log('Staff auth function invoked');
+    console.log('Method:', req.method);
     console.log('Supabase URL available:', !!supabaseUrl);
     console.log('Service key available:', !!supabaseServiceKey);
     
@@ -33,7 +34,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get('action') || 'login';
     
-    console.log('Action:', action);
+    console.log('Action requested:', action);
 
     if (action === 'login') {
       const { username, password }: LoginRequest = await req.json();
