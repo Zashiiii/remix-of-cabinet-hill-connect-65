@@ -365,7 +365,9 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                         disabled={(date) => {
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
-                          return date < today;
+                          const dayOfWeek = date.getDay();
+                          // Disable past dates and weekends (0 = Sunday, 6 = Saturday)
+                          return date < today || dayOfWeek === 0 || dayOfWeek === 6;
                         }}
                         initialFocus
                         className="pointer-events-auto"
