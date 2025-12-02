@@ -1,9 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Version 2.2 - Added robust error handling and logging
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 interface CertificateRequestData {
@@ -19,8 +22,12 @@ interface CertificateRequestData {
 }
 
 serve(async (req) => {
+  console.log('=== Submit Certificate Function Started ===');
+  console.log('Request method:', req.method);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -39,7 +46,19 @@ serve(async (req) => {
     // Create Supabase client with service role (bypasses RLS)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const data: CertificateRequestData = await req.json();
+    // Parse request body safely
+    let data: CertificateRequestData;
+    try {
+      const text = await req.text();
+      console.log('Request body received, length:', text.length);
+      data = JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     console.log('Received certificate request:', {
       type: data.certificateType,
       name: data.fullName,
