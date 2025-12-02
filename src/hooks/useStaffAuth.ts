@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface StaffUser {
@@ -25,52 +25,25 @@ export const useStaffAuth = () => {
     isLoading: true,
   });
 
-  // Validate session using supabase.functions.invoke
-  const validateSession = useCallback(async (token: string): Promise<boolean> => {
-    try {
-      console.log('Validating session...');
-      const { data, error } = await supabase.functions.invoke('staff-auth', {
-        body: {},
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  // Ref to track if we've already initialized
+  const initializedRef = useRef(false);
+  // Ref to track ongoing validation
+  const validatingRef = useRef(false);
 
-      // The function doesn't support query params via invoke, so we need to use fetch
-      // but let's try with a different approach - pass action in body
-      const response = await supabase.functions.invoke('staff-auth?action=validate', {
-        body: {},
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      console.log('Validation response:', response);
-      
-      if (response.error) {
-        console.error('Validation error:', response.error);
-        return false;
-      }
-
-      return response.data?.valid === true;
-    } catch (error) {
-      console.error('Session validation error:', error);
-      return false;
-    }
-  }, []);
-
-  // Load session from localStorage on mount
+  // Load session from localStorage on mount - no validation needed for navigation
   useEffect(() => {
-    const loadSession = async () => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    const loadSession = () => {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const session = JSON.parse(stored);
           
-          // Validate the session with the server
-          const isValid = await validateSession(session.token);
-          
-          if (isValid) {
+          // Check if session has expired locally
+          if (session.expiresAt && new Date(session.expiresAt) > new Date()) {
+            console.log('Session loaded from localStorage, user:', session.user?.username);
             setAuthState({
               user: session.user,
               token: session.token,
@@ -78,7 +51,8 @@ export const useStaffAuth = () => {
               isLoading: false,
             });
           } else {
-            // Session expired or invalid
+            // Session expired
+            console.log('Session expired, clearing...');
             localStorage.removeItem(STORAGE_KEY);
             setAuthState({
               user: null,
@@ -97,14 +71,73 @@ export const useStaffAuth = () => {
     };
 
     loadSession();
-  }, [validateSession]);
+
+    // Listen for storage events (for multi-tab support)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        if (e.newValue) {
+          try {
+            const session = JSON.parse(e.newValue);
+            if (session.expiresAt && new Date(session.expiresAt) > new Date()) {
+              setAuthState({
+                user: session.user,
+                token: session.token,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+            }
+          } catch {
+            // Invalid session
+          }
+        } else {
+          // Session was cleared
+          setAuthState({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Validate session with server (called periodically or on demand)
+  const validateSession = useCallback(async (token: string): Promise<boolean> => {
+    if (validatingRef.current) return true;
+    validatingRef.current = true;
+
+    try {
+      console.log('Validating session with server...');
+      const response = await supabase.functions.invoke('staff-auth', {
+        body: { action: 'validate', token },
+      });
+
+      console.log('Validation response:', response);
+      
+      if (response.error) {
+        console.error('Validation error:', response.error);
+        return false;
+      }
+
+      return response.data?.valid === true;
+    } catch (error) {
+      console.error('Session validation error:', error);
+      return false;
+    } finally {
+      validatingRef.current = false;
+    }
+  }, []);
 
   const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       console.log('Attempting login for:', username);
       
-      const { data, error } = await supabase.functions.invoke('staff-auth?action=login', {
-        body: { username, password },
+      const { data, error } = await supabase.functions.invoke('staff-auth', {
+        body: { action: 'login', username, password },
       });
 
       console.log('Login response:', { data, error });
@@ -148,8 +181,8 @@ export const useStaffAuth = () => {
     try {
       if (authState.token) {
         console.log('Logging out...');
-        await supabase.functions.invoke('staff-auth?action=logout', {
-          body: { token: authState.token },
+        await supabase.functions.invoke('staff-auth', {
+          body: { action: 'logout', token: authState.token },
         });
       }
     } catch (error) {

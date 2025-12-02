@@ -92,7 +92,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
     try {
       setIsSubmitting(true);
       
-      // Call the API placeholder function
+      // Call the API function
       const controlNumber = await submitCertificateRequest({
         certificateType: data.certificateType,
         fullName: data.fullName,
@@ -111,7 +111,11 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
       // Reset the form
       form.reset();
     } catch (error) {
-      toast.error("Something went wrong. Please try again or visit the barangay hall.");
+      const errorMessage = error instanceof Error ? error.message : "Something went wrong";
+      console.error('Form submission error:', errorMessage);
+      toast.error(errorMessage, {
+        description: "Please try again or visit the barangay hall."
+      });
     } finally {
       setIsSubmitting(false);
     }

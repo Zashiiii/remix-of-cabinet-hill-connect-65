@@ -28,33 +28,72 @@ export interface RequestStatus {
  * @returns Control number for tracking
  */
 export const submitCertificateRequest = async (data: CertificateRequestData): Promise<string> => {
-  // Generate control number (database trigger will also generate one if not provided)
-  const date = new Date();
-  const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
-  const randomNum = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-  const controlNumber = `CERT-${dateStr}-${randomNum}`;
+  // Validate required fields before sending
+  if (!data.fullName || !data.contactNumber || !data.certificateType || !data.purpose) {
+    throw new Error('Please fill in all required fields');
+  }
 
-  const { error } = await supabase
-    .from('certificate_requests')
-    .insert({
-      control_number: controlNumber,
-      certificate_type: data.certificateType,
-      resident_name: data.fullName,
-      resident_contact: data.contactNumber,
-      resident_email: data.email || null,
+  // Validate contact number format (11 digits starting with 09)
+  if (!/^09\d{9}$/.test(data.contactNumber)) {
+    throw new Error('Contact number must be 11 digits starting with 09');
+  }
+
+  // Validate household number (3-5 chars)
+  if (!data.householdNumber || data.householdNumber.length < 3 || data.householdNumber.length > 5) {
+    throw new Error('Household number must be 3-5 characters');
+  }
+
+  // Validate birth date is in the past
+  if (!data.birthDate || data.birthDate > new Date()) {
+    throw new Error('Birth date must be a past date');
+  }
+
+  // Validate pickup date is today or future
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (!data.preferredPickupDate || data.preferredPickupDate < today) {
+    throw new Error('Preferred pickup date must be today or a future date');
+  }
+
+  console.log('Submitting certificate request via edge function:', {
+    certificate_type: data.certificateType,
+    resident_name: data.fullName,
+    priority: data.priority,
+  });
+
+  // Use edge function to bypass RLS issues
+  const { data: response, error } = await supabase.functions.invoke('submit-certificate', {
+    body: {
+      certificateType: data.certificateType,
+      fullName: data.fullName,
+      contactNumber: data.contactNumber,
+      email: data.email || null,
+      householdNumber: data.householdNumber,
+      birthDate: data.birthDate.toISOString().split('T')[0],
       purpose: data.purpose,
-      priority: data.priority.charAt(0).toUpperCase() + data.priority.slice(1),
-      status: 'Pending',
-      requested_date: new Date().toISOString(),
-      ready_date: data.preferredPickupDate.toISOString(),
-    });
+      priority: data.priority,
+      preferredPickupDate: data.preferredPickupDate.toISOString(),
+    },
+  });
 
   if (error) {
     console.error('Error submitting certificate request:', error);
     throw new Error(error.message || 'Failed to submit request');
   }
 
-  // Also store in localStorage for backward compatibility with dashboard
+  if (response?.error) {
+    console.error('Server error:', response.error);
+    throw new Error(response.error);
+  }
+
+  if (!response?.success || !response?.controlNumber) {
+    throw new Error('Invalid response from server');
+  }
+
+  const controlNumber = response.controlNumber;
+  console.log('Certificate request submitted successfully:', controlNumber);
+
+  // Also store in localStorage for backward compatibility
   try {
     const existingRequests = JSON.parse(localStorage.getItem('certificateRequests') || '[]');
     const newRequest = {

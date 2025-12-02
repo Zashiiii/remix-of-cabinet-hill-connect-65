@@ -56,6 +56,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -425,6 +426,23 @@ const StaffDashboard = () => {
   useEffect(() => {
     if (isAuthenticated) {
       loadAnnouncements();
+      
+      // Real-time subscription for announcements
+      const announcementsChannel = supabase
+        .channel('announcements-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'announcements'
+        }, () => {
+          console.log('Announcements changed, reloading...');
+          loadAnnouncements();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(announcementsChannel);
+      };
     }
   }, [isAuthenticated, loadAnnouncements]);
 
@@ -1017,6 +1035,11 @@ const StaffDashboard = () => {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingAnnouncement ? "Edit Announcement" : "Create New Announcement"}</DialogTitle>
+            <DialogDescription>
+              {editingAnnouncement 
+                ? "Update the announcement details below. Changes will be visible on the landing page immediately."
+                : "Fill in the details below to create a new announcement. It will appear on the landing page for residents."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
