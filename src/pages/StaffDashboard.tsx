@@ -18,6 +18,11 @@ import {
   Pencil,
   Trash2,
   Loader2,
+  Phone,
+  Mail,
+  Calendar,
+  User,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,6 +94,10 @@ interface PendingRequest {
   email?: string;
   householdNumber?: string;
   purpose?: string;
+  priority?: string;
+  readyDate?: string;
+  rejectionReason?: string;
+  residentNotes?: string;
 }
 
 interface Announcement {
@@ -194,6 +203,16 @@ const StaffDashboard = () => {
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
   const [totalResidents, setTotalResidents] = useState(0);
 
+  // View Details Dialog state
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [detailsRequest, setDetailsRequest] = useState<PendingRequest | null>(null);
+
+  // Rejection Dialog state
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [requestToReject, setRequestToReject] = useState<PendingRequest | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
   // Load certificate requests from Supabase
   const loadRequests = useCallback(async () => {
     try {
@@ -216,10 +235,16 @@ const StaffDashboard = () => {
           processedDate: item.processed_date 
             ? new Date(item.processed_date).toLocaleString() 
             : undefined,
-          notes: item.admin_notes || item.rejection_reason || undefined,
+          notes: item.admin_notes || undefined,
+          rejectionReason: item.rejection_reason || undefined,
           contactNumber: item.resident_contact || undefined,
           email: item.resident_email || undefined,
-          purpose: item.purpose,
+          purpose: item.purpose || undefined,
+          priority: item.priority || 'Normal',
+          readyDate: item.ready_date 
+            ? new Date(item.ready_date).toLocaleDateString()
+            : undefined,
+          residentNotes: item.resident_notes || undefined,
         }));
         setRequests(mapped);
       }
@@ -237,7 +262,8 @@ const StaffDashboard = () => {
           processedDate: item.processed_date 
             ? new Date(item.processed_date).toLocaleString() 
             : undefined,
-          notes: item.admin_notes || item.rejection_reason || undefined,
+          notes: item.admin_notes || undefined,
+          rejectionReason: item.rejection_reason || undefined,
         }));
         setRecentRequests(mappedRecent);
       }
@@ -279,37 +305,112 @@ const StaffDashboard = () => {
     }
   }, [isAuthenticated, loadRequests]);
 
+  // Open View Details Dialog
+  const handleViewDetails = (request: PendingRequest) => {
+    setDetailsRequest(request);
+    setShowDetailsDialog(true);
+  };
+
+  // Open Rejection Dialog
+  const handleOpenRejectDialog = (request: PendingRequest) => {
+    setRequestToReject(request);
+    setRejectionReason("");
+    setShowRejectDialog(true);
+  };
+
+  // Confirm Rejection with reason
+  const handleConfirmReject = async () => {
+    if (!requestToReject || !rejectionReason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+
+    setIsProcessing(true);
+    const staffName = user?.fullName || "Staff Admin";
+
+    try {
+      // Get database record by control number
+      const { data: dbRequest, error: fetchError } = await supabase
+        .from('certificate_requests')
+        .select('id')
+        .eq('control_number', requestToReject.id)
+        .single();
+
+      if (fetchError || !dbRequest) {
+        throw new Error("Request not found in database");
+      }
+
+      // Update in Supabase with rejection reason
+      await updateRequestStatus(
+        dbRequest.id, 
+        'Rejected', 
+        staffName,
+        rejectionReason.trim()
+      );
+
+      toast.success(`Request rejected successfully`, {
+        description: `Certificate for ${requestToReject.residentName} has been rejected.`
+      });
+
+      // Close dialog and reload
+      setShowRejectDialog(false);
+      setRequestToReject(null);
+      setRejectionReason("");
+      loadRequests();
+    } catch (error: any) {
+      console.error("Error rejecting request:", error);
+      if (error.message?.includes('RLS') || error.message?.includes('policy')) {
+        toast.error("Permission denied. Please contact administrator.");
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        toast.error("Network error. Please check your connection.");
+      } else {
+        toast.error(`Failed to reject request: ${error.message || 'Unknown error'}`);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleAction = async (action: string, request: PendingRequest) => {
     const timestamp = new Date().toLocaleString();
     const staffName = user?.fullName || "Staff Admin";
+
+    // Handle View action
+    if (action === "View") {
+      handleViewDetails(request);
+      return;
+    }
+
+    // Handle Reject action - open dialog instead of direct rejection
+    if (action === "Reject") {
+      handleOpenRejectDialog(request);
+      return;
+    }
     
-    if (action === "Approve" || action === "Reject" || action === "Verifying") {
+    if (action === "Approve" || action === "Verifying") {
+      setIsProcessing(true);
       try {
         // Get database record by control number
-        const { data: dbRequest } = await supabase
+        const { data: dbRequest, error: fetchError } = await supabase
           .from('certificate_requests')
           .select('id')
           .eq('control_number', request.id)
           .single();
 
-        if (!dbRequest) {
-          toast.error("Request not found in database");
-          return;
+        if (fetchError || !dbRequest) {
+          throw new Error("Request not found in database");
         }
 
         // Map action to status
         const statusMap: Record<string, string> = {
           'Approve': 'Approved',
-          'Reject': 'Rejected',
           'Verifying': 'Verifying',
         };
 
         const newStatus = statusMap[action];
         const actionNote = action === 'Approve' 
           ? 'Approved - All requirements verified'
-          : action === 'Reject' 
-            ? 'Rejected - Incomplete requirements'
-            : 'Under verification';
+          : 'Under verification';
 
         // Update in Supabase
         await updateRequestStatus(
@@ -335,9 +436,7 @@ const StaffDashboard = () => {
 
         const actionMessage = action === 'Approve' 
           ? 'approved' 
-          : action === 'Reject' 
-            ? 'rejected' 
-            : 'marked as verifying';
+          : 'marked as verifying';
         
         toast.success(`Request ${actionMessage} successfully`, {
           description: `Certificate for ${request.residentName} has been ${actionMessage}.`
@@ -345,13 +444,47 @@ const StaffDashboard = () => {
 
         // Reload to get fresh data
         loadRequests();
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error ${action}ing request:`, error);
-        toast.error(`Failed to ${action.toLowerCase()} request`);
+        if (error.message?.includes('RLS') || error.message?.includes('policy')) {
+          toast.error("Permission denied. Please contact administrator.");
+        } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+          toast.error("Network error. Please check your connection.");
+        } else {
+          toast.error(`Failed to ${action.toLowerCase()} request: ${error.message || 'Unknown error'}`);
+        }
+      } finally {
+        setIsProcessing(false);
       }
-    } else if (action === "View") {
-      setSelectedRequest(request);
-      toast.info(`Viewing details for request ${request.id}`);
+    }
+  };
+
+  // Create demo request for testing
+  const createDemoRequest = async () => {
+    const demoControlNumber = `DEMO-${Date.now().toString().slice(-8)}`;
+    
+    try {
+      const { error } = await supabase.from('certificate_requests').insert({
+        control_number: demoControlNumber,
+        certificate_type: 'Barangay Clearance',
+        resident_name: 'Juan Dela Cruz',
+        resident_contact: '09123456789',
+        resident_email: 'juan.delacruz@email.com',
+        purpose: 'Employment requirement for job application at ABC Company',
+        priority: 'Normal',
+        status: 'Pending',
+        requested_date: new Date().toISOString(),
+        ready_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        resident_notes: 'Household: A-01 | Birth Date: 1990-05-15',
+      });
+
+      if (error) throw error;
+
+      toast.success(`Demo request created: ${demoControlNumber}`);
+      loadRequests();
+    } catch (error: any) {
+      console.error("Error creating demo request:", error);
+      toast.error(`Failed to create demo request: ${error.message}`);
     }
   };
 
@@ -359,10 +492,35 @@ const StaffDashboard = () => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       pending: "secondary",
       processing: "default",
+      verifying: "default",
       approved: "outline",
       rejected: "destructive",
     };
-    return <Badge variant={variants[status] || "default"}>{status}</Badge>;
+    
+    const labels: Record<string, string> = {
+      pending: "Pending",
+      processing: "Processing",
+      verifying: "Under Verification",
+      approved: "Approved",
+      rejected: "Rejected",
+    };
+
+    const colors: Record<string, string> = {
+      pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      processing: "bg-blue-100 text-blue-800 border-blue-200",
+      verifying: "bg-purple-100 text-purple-800 border-purple-200",
+      approved: "bg-green-100 text-green-800 border-green-200",
+      rejected: "bg-red-100 text-red-800 border-red-200",
+    };
+    
+    return (
+      <Badge 
+        variant={variants[status] || "default"} 
+        className={colors[status] || ""}
+      >
+        {labels[status] || status}
+      </Badge>
+    );
   };
 
   // Announcement Management
@@ -680,6 +838,10 @@ const StaffDashboard = () => {
                       <FileText className="h-4 w-4 mr-2" />
                       View Certificate Requests
                     </Button>
+                    <Button variant="secondary" onClick={createDemoRequest}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Demo Request
+                    </Button>
                   </div>
                 </div>
 
@@ -728,6 +890,10 @@ const StaffDashboard = () => {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">Certificate Requests</h2>
+                  <Button variant="secondary" onClick={createDemoRequest}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Demo Request
+                  </Button>
                 </div>
 
                 {/* Status Filter Buttons */}
@@ -799,11 +965,13 @@ const StaffDashboard = () => {
                                   <TableCell>
                                     <div className="flex gap-2">
                                       <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
                                         onClick={() => handleAction("View", request)}
+                                        title="View Details"
                                       >
-                                        <Eye className="h-4 w-4" />
+                                        <Eye className="h-4 w-4 mr-1" />
+                                        View
                                       </Button>
                                       {(request.status === "pending" || request.status === "verifying") && (
                                         <>
@@ -811,27 +979,33 @@ const StaffDashboard = () => {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => handleAction("Approve", request)}
-                                            className="hover:bg-green-50"
+                                            className="hover:bg-green-50 text-green-600"
+                                            disabled={isProcessing}
+                                            title="Approve Request"
                                           >
-                                            <CheckCircle className="h-4 w-4 text-green-600" />
+                                            <CheckCircle className="h-4 w-4" />
                                           </Button>
                                           <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => handleAction("Reject", request)}
-                                            className="hover:bg-red-50"
+                                            className="hover:bg-red-50 text-red-600"
+                                            disabled={isProcessing}
+                                            title="Reject Request"
                                           >
-                                            <XCircle className="h-4 w-4 text-red-600" />
+                                            <XCircle className="h-4 w-4" />
                                           </Button>
                                           {request.status === "pending" && (
                                             <Button
                                               variant="outline"
                                               size="sm"
                                               onClick={() => handleAction("Verifying", request)}
-                                              className="text-blue-600"
+                                              className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                                              disabled={isProcessing}
+                                              title="Mark as Verifying"
                                             >
                                               <Clock className="h-4 w-4 mr-1" />
-                                              Verifying
+                                              Verify
                                             </Button>
                                           )}
                                         </>
@@ -1029,6 +1203,253 @@ const StaffDashboard = () => {
           </main>
         </div>
       </div>
+
+      {/* View Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Request Details
+            </DialogTitle>
+            <DialogDescription>
+              Complete information for certificate request {detailsRequest?.id}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {detailsRequest && (
+            <div className="space-y-6">
+              {/* Status Badge */}
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <span className="text-sm font-medium">Current Status</span>
+                {getStatusBadge(detailsRequest.status)}
+              </div>
+
+              {/* Request Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Control Number</Label>
+                  <p className="font-mono text-sm font-medium">{detailsRequest.id}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Certificate Type</Label>
+                  <p className="font-medium">{detailsRequest.certificateType}</p>
+                </div>
+              </div>
+
+              {/* Resident Information */}
+              <div className="space-y-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Resident Information
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Full Name</Label>
+                    <p className="font-medium">{detailsRequest.residentName}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Phone className="h-3 w-3" /> Contact Number
+                    </Label>
+                    <p>{detailsRequest.contactNumber || 'Not provided'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Mail className="h-3 w-3" /> Email
+                    </Label>
+                    <p>{detailsRequest.email || 'Not provided'}</p>
+                  </div>
+                  {detailsRequest.residentNotes && (
+                    <div className="space-y-1 col-span-2">
+                      <Label className="text-xs text-muted-foreground">Additional Info</Label>
+                      <p className="text-sm">{detailsRequest.residentNotes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Request Details */}
+              <div className="space-y-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Request Details
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Date Submitted</Label>
+                    <p>{detailsRequest.dateSubmitted}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Priority</Label>
+                    <Badge variant={detailsRequest.priority === 'Urgent' ? 'destructive' : 'secondary'}>
+                      {detailsRequest.priority || 'Normal'}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Preferred Pickup Date</Label>
+                    <p>{detailsRequest.readyDate || 'Not specified'}</p>
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <Label className="text-xs text-muted-foreground">Purpose</Label>
+                    <p className="text-sm">{detailsRequest.purpose || 'Not provided'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Processing Information */}
+              {(detailsRequest.processedBy || detailsRequest.notes || detailsRequest.rejectionReason) && (
+                <div className="space-y-4">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    Processing Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6">
+                    {detailsRequest.processedBy && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Processed By</Label>
+                        <p>{detailsRequest.processedBy}</p>
+                      </div>
+                    )}
+                    {detailsRequest.processedDate && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Processed Date</Label>
+                        <p>{detailsRequest.processedDate}</p>
+                      </div>
+                    )}
+                    {detailsRequest.notes && (
+                      <div className="space-y-1 col-span-2">
+                        <Label className="text-xs text-muted-foreground">Admin Notes</Label>
+                        <p className="text-sm">{detailsRequest.notes}</p>
+                      </div>
+                    )}
+                    {detailsRequest.rejectionReason && (
+                      <div className="space-y-1 col-span-2">
+                        <Label className="text-xs text-muted-foreground text-red-600 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> Rejection Reason
+                        </Label>
+                        <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{detailsRequest.rejectionReason}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+              Close
+            </Button>
+            {detailsRequest && (detailsRequest.status === "pending" || detailsRequest.status === "verifying") && (
+              <>
+                <Button 
+                  variant="default" 
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    setShowDetailsDialog(false);
+                    handleAction("Approve", detailsRequest);
+                  }}
+                  disabled={isProcessing}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Approve
+                </Button>
+                <Button 
+                  variant="destructive"
+                  onClick={() => {
+                    setShowDetailsDialog(false);
+                    handleAction("Reject", detailsRequest);
+                  }}
+                  disabled={isProcessing}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Reject
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rejection Reason Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <XCircle className="h-5 w-5" />
+              Reject Request
+            </DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this certificate request. This will be visible to the resident.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {requestToReject && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm">
+                  <strong>Request:</strong> {requestToReject.id}
+                </p>
+                <p className="text-sm">
+                  <strong>Resident:</strong> {requestToReject.residentName}
+                </p>
+                <p className="text-sm">
+                  <strong>Certificate:</strong> {requestToReject.certificateType}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rejection-reason" className="text-sm font-medium">
+                  Rejection Reason <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="rejection-reason"
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="e.g., Incomplete documentation. Please bring valid ID when visiting the barangay hall."
+                  rows={4}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This message will be shown to the resident when they track their request.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowRejectDialog(false);
+                setRequestToReject(null);
+                setRejectionReason("");
+              }}
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleConfirmReject}
+              disabled={isProcessing || !rejectionReason.trim()}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Confirm Rejection
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Announcement Dialog */}
       <Dialog open={showAnnouncementDialog} onOpenChange={setShowAnnouncementDialog}>
