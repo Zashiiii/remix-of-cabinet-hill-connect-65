@@ -9,6 +9,7 @@ export interface CertificateRequestData {
   birthDate: Date;
   purpose: string;
   priority: string;
+  preferredPickupDate: Date;
 }
 
 export interface RequestStatus {
@@ -45,6 +46,7 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
       priority: data.priority,
       status: 'Pending',
       requested_date: new Date().toISOString(),
+      ready_date: data.preferredPickupDate.toISOString(),
     });
 
   if (error) {

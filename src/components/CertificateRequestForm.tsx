@@ -47,6 +47,13 @@ const formSchema = z.object({
   priority: z.enum(["normal", "urgent"], {
     required_error: "Please select a priority level",
   }),
+  preferredPickupDate: z.date({
+    required_error: "Please select your preferred pickup date",
+  }).refine((date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date >= today;
+  }, "Pickup date must be today or a future date"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -95,6 +102,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
         birthDate: data.birthDate,
         purpose: data.purpose,
         priority: data.priority,
+        preferredPickupDate: data.preferredPickupDate,
       });
       
       // Show success
@@ -319,6 +327,54 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                       </FormItem>
                     </RadioGroup>
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="preferredPickupDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Preferred Pickup Date / Gustong Petsa ng Pagkuha *</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal bg-background",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return date < today;
+                        }}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormDescription>
+                    Select when you would like to pick up your certificate
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
