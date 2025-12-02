@@ -45,19 +45,31 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Parse body first to check for action
+    let body: any = {};
+    try {
+      const text = await req.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch (e) {
+      console.log('Could not parse body:', e);
+    }
+
+    // Get action from URL params or body
     const url = new URL(req.url);
-    const action = url.searchParams.get('action') || 'login';
+    const action = url.searchParams.get('action') || body.action || 'login';
     
     console.log('Action requested:', action);
+    console.log('Body received:', JSON.stringify(body));
 
     if (action === 'login') {
-      const body = await req.json();
-      const { username, password }: LoginRequest = body;
+      const { username, password } = body;
       
       console.log('Login attempt - username:', username);
 
       if (!username || !password) {
-        console.log('Missing credentials');
+        console.log('Missing credentials - username:', !!username, 'password:', !!password);
         return new Response(
           JSON.stringify({ error: 'Username and password are required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -150,8 +162,7 @@ serve(async (req) => {
     }
 
     if (action === 'logout') {
-      const body = await req.json();
-      const { token }: LogoutRequest = body;
+      const { token } = body;
 
       console.log('Logout attempt');
 
@@ -177,8 +188,9 @@ serve(async (req) => {
     }
 
     if (action === 'validate') {
+      // Check for token in body or header
       const authHeader = req.headers.get('Authorization');
-      const token = authHeader?.replace('Bearer ', '');
+      const token = body.token || authHeader?.replace('Bearer ', '');
 
       console.log('Validate attempt - token present:', !!token);
 
