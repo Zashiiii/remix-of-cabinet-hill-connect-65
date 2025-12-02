@@ -1,3 +1,5 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -14,20 +16,32 @@ interface LogoutRequest {
   token: string;
 }
 
-Deno.serve(async (req) => {
+serve(async (req) => {
+  console.log('=== Staff Auth Function Started ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    console.log('Staff auth function invoked');
-    console.log('Method:', req.method);
-    console.log('Supabase URL available:', !!supabaseUrl);
-    console.log('Service key available:', !!supabaseServiceKey);
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing environment variables');
+      console.error('SUPABASE_URL present:', !!supabaseUrl);
+      console.error('SUPABASE_SERVICE_ROLE_KEY present:', !!supabaseServiceKey);
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('Environment variables loaded successfully');
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -37,16 +51,18 @@ Deno.serve(async (req) => {
     console.log('Action requested:', action);
 
     if (action === 'login') {
-      const { username, password }: LoginRequest = await req.json();
+      const body = await req.json();
+      const { username, password }: LoginRequest = body;
+      
+      console.log('Login attempt - username:', username);
 
       if (!username || !password) {
+        console.log('Missing credentials');
         return new Response(
           JSON.stringify({ error: 'Username and password are required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-
-      console.log(`Login attempt for user: ${username}`);
 
       // Find user by username
       const { data: user, error: userError } = await supabase
@@ -56,29 +72,30 @@ Deno.serve(async (req) => {
         .single();
 
       if (userError) {
-        console.error('Database error finding user:', userError);
+        console.error('Database error finding user:', userError.message);
       }
 
       if (userError || !user) {
-        console.log(`User not found: ${username}`);
+        console.log('User not found:', username);
         return new Response(
           JSON.stringify({ error: 'Invalid username or password' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
+      console.log('User found:', user.username, 'Active:', user.is_active);
+
       if (!user.is_active) {
+        console.log('Account deactivated:', username);
         return new Response(
           JSON.stringify({ error: 'Account is deactivated' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Simple password verification (in production, use bcrypt)
-      // For now, we'll do a simple comparison - the password_hash should store the plain password
-      // In a real system, you'd hash the incoming password and compare
+      // Simple password verification
       if (user.password_hash !== password) {
-        console.log(`Invalid password for user: ${username}`);
+        console.log('Invalid password for user:', username);
         return new Response(
           JSON.stringify({ error: 'Invalid username or password' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -88,6 +105,8 @@ Deno.serve(async (req) => {
       // Generate session token
       const token = crypto.randomUUID() + '-' + crypto.randomUUID();
       const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 hours from now
+
+      console.log('Creating session for user:', user.id);
 
       // Create session
       const { error: sessionError } = await supabase
@@ -99,7 +118,7 @@ Deno.serve(async (req) => {
         });
 
       if (sessionError) {
-        console.error('Session creation error:', sessionError);
+        console.error('Session creation error:', sessionError.message);
         return new Response(
           JSON.stringify({ error: 'Failed to create session' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -112,7 +131,7 @@ Deno.serve(async (req) => {
         .update({ last_login: new Date().toISOString() })
         .eq('id', user.id);
 
-      console.log(`Login successful for user: ${username}`);
+      console.log('Login successful for user:', username);
 
       return new Response(
         JSON.stringify({
@@ -131,7 +150,10 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'logout') {
-      const { token }: LogoutRequest = await req.json();
+      const body = await req.json();
+      const { token }: LogoutRequest = body;
+
+      console.log('Logout attempt');
 
       if (!token) {
         return new Response(
@@ -146,6 +168,8 @@ Deno.serve(async (req) => {
         .delete()
         .eq('token', token);
 
+      console.log('Logout successful');
+
       return new Response(
         JSON.stringify({ success: true }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -155,6 +179,8 @@ Deno.serve(async (req) => {
     if (action === 'validate') {
       const authHeader = req.headers.get('Authorization');
       const token = authHeader?.replace('Bearer ', '');
+
+      console.log('Validate attempt - token present:', !!token);
 
       if (!token) {
         return new Response(
@@ -166,7 +192,12 @@ Deno.serve(async (req) => {
       // Validate session using the database function
       const { data, error } = await supabase.rpc('validate_session', { p_token: token });
 
+      if (error) {
+        console.error('Validation RPC error:', error.message);
+      }
+
       if (error || !data || data.length === 0) {
+        console.log('Invalid or expired session');
         return new Response(
           JSON.stringify({ valid: false, error: 'Invalid or expired session' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -174,6 +205,8 @@ Deno.serve(async (req) => {
       }
 
       const session = data[0];
+      console.log('Session valid for user:', session.username);
+      
       return new Response(
         JSON.stringify({
           valid: true,
@@ -188,6 +221,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log('Invalid action:', action);
     return new Response(
       JSON.stringify({ error: 'Invalid action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
