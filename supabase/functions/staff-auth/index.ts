@@ -24,10 +24,16 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
+    console.log('Staff auth function called');
+    console.log('Supabase URL available:', !!supabaseUrl);
+    console.log('Service key available:', !!supabaseServiceKey);
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const url = new URL(req.url);
     const action = url.searchParams.get('action') || 'login';
+    
+    console.log('Action:', action);
 
     if (action === 'login') {
       const { username, password }: LoginRequest = await req.json();
@@ -47,6 +53,10 @@ Deno.serve(async (req) => {
         .select('id, username, password_hash, full_name, role, is_active')
         .eq('username', username)
         .single();
+
+      if (userError) {
+        console.error('Database error finding user:', userError);
+      }
 
       if (userError || !user) {
         console.log(`User not found: ${username}`);
@@ -184,8 +194,9 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Staff auth error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
