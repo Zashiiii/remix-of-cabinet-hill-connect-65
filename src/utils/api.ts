@@ -17,7 +17,7 @@ export interface RequestStatus {
   certificateType: string;
   residentName: string;
   dateRequested: Date;
-  status: "pending" | "for_review" | "approved" | "ready_for_pickup" | "released" | "rejected";
+  status: "pending" | "for_review" | "verifying" | "approved" | "ready_for_pickup" | "released" | "rejected";
   purpose: string;
   remarks?: string;
 }
@@ -200,6 +200,7 @@ export const trackRequest = async (controlNumber: string): Promise<RequestStatus
     const statusMap: Record<string, RequestStatus['status']> = {
       'Pending': 'pending',
       'Processing': 'for_review',
+      'Verifying': 'verifying',
       'Approved': 'approved',
       'Ready for Pickup': 'ready_for_pickup',
       'Released': 'released',

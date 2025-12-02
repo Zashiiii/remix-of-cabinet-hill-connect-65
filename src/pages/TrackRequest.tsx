@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -9,12 +9,49 @@ import { Search, Loader2 } from "lucide-react";
 import RequestStatusCard, { RequestData } from "@/components/RequestStatusCard";
 import { toast } from "sonner";
 import { trackRequest } from "@/utils/api";
+import { supabase } from "@/integrations/supabase/client";
 
 const TrackRequest = () => {
   const [controlNumber, setControlNumber] = useState("");
   const [requestData, setRequestData] = useState<RequestData | null>(null);
   const [searched, setSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+
+  // Real-time subscription for status updates
+  useEffect(() => {
+    if (!requestData?.controlNumber) return;
+
+    console.log('Setting up real-time subscription for:', requestData.controlNumber);
+
+    const channel = supabase
+      .channel(`track-request-${requestData.controlNumber}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'certificate_requests',
+          filter: `control_number=eq.${requestData.controlNumber}`,
+        },
+        async (payload) => {
+          console.log('Real-time update received:', payload);
+          // Refetch the updated data
+          const updated = await trackRequest(requestData.controlNumber);
+          if (updated) {
+            setRequestData(updated);
+            toast.info("Status updated!");
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
+
+    return () => {
+      console.log('Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [requestData?.controlNumber]);
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,18 +135,12 @@ const TrackRequest = () => {
                   </Button>
                 </form>
                 
-                {/* Helper text with example control numbers */}
+                {/* Helper text */}
                 <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    <strong>Demo control numbers you can try:</strong>
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Note:</strong> Enter the control number you received when submitting your certificate request. 
+                    Status updates will appear in real-time without refreshing the page.
                   </p>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• CERT-20251001-0001 (Ready for Pickup)</li>
-                    <li>• CERT-20251002-0023 (For Review)</li>
-                    <li>• CERT-20251003-0045 (Approved)</li>
-                    <li>• CERT-20251004-0067 (Pending)</li>
-                    <li>• CERT-20251005-0089 (Rejected)</li>
-                  </ul>
                 </div>
               </CardContent>
             </Card>
