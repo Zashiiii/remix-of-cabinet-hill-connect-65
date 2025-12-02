@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, Loader2 } from "lucide-react";
 import { fetchActiveAnnouncements } from "@/utils/api";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Announcement {
   id: string;
@@ -91,6 +92,19 @@ const Announcements = () => {
 
     loadAnnouncements();
 
+    // Real-time subscription for announcements
+    const channel = supabase
+      .channel('public-announcements-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'announcements'
+      }, () => {
+        console.log('Announcement changed, reloading...');
+        loadAnnouncements();
+      })
+      .subscribe();
+
     // Listen for storage changes for live updates (backward compatibility)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "barangay_announcements" && e.newValue) {
@@ -104,7 +118,10 @@ const Announcements = () => {
     };
 
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, []);
 
   if (isLoading) {
