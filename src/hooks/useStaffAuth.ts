@@ -25,6 +25,40 @@ export const useStaffAuth = () => {
     isLoading: true,
   });
 
+  // Validate session using supabase.functions.invoke
+  const validateSession = useCallback(async (token: string): Promise<boolean> => {
+    try {
+      console.log('Validating session...');
+      const { data, error } = await supabase.functions.invoke('staff-auth', {
+        body: {},
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // The function doesn't support query params via invoke, so we need to use fetch
+      // but let's try with a different approach - pass action in body
+      const response = await supabase.functions.invoke('staff-auth?action=validate', {
+        body: {},
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log('Validation response:', response);
+      
+      if (response.error) {
+        console.error('Validation error:', response.error);
+        return false;
+      }
+
+      return response.data?.valid === true;
+    } catch (error) {
+      console.error('Session validation error:', error);
+      return false;
+    }
+  }, []);
+
   // Load session from localStorage on mount
   useEffect(() => {
     const loadSession = async () => {
@@ -63,55 +97,29 @@ export const useStaffAuth = () => {
     };
 
     loadSession();
-  }, []);
-
-  const validateSession = async (token: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase.functions.invoke('staff-auth', {
-        body: {},
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      // Check URL params for action=validate
-      const response = await fetch(
-        `https://cdkfweqmzdrozhttmcao.supabase.co/functions/v1/staff-auth?action=validate`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({}),
-        }
-      );
-
-      const result = await response.json();
-      return result.valid === true;
-    } catch (error) {
-      console.error('Session validation error:', error);
-      return false;
-    }
-  };
+  }, [validateSession]);
 
   const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch(
-        `https://cdkfweqmzdrozhttmcao.supabase.co/functions/v1/staff-auth?action=login`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ username, password }),
-        }
-      );
+      console.log('Attempting login for:', username);
+      
+      const { data, error } = await supabase.functions.invoke('staff-auth?action=login', {
+        body: { username, password },
+      });
 
-      const data = await response.json();
+      console.log('Login response:', { data, error });
 
-      if (!response.ok || data.error) {
-        return { success: false, error: data.error || 'Login failed' };
+      if (error) {
+        console.error('Login invoke error:', error);
+        return { success: false, error: error.message || 'Login failed' };
+      }
+
+      if (data?.error) {
+        return { success: false, error: data.error };
+      }
+
+      if (!data?.success || !data?.token || !data?.user) {
+        return { success: false, error: 'Invalid response from server' };
       }
 
       const session = {
@@ -132,23 +140,17 @@ export const useStaffAuth = () => {
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      return { success: false, error: 'Network error. Please check your connection and try again.' };
     }
   }, []);
 
   const logout = useCallback(async () => {
     try {
       if (authState.token) {
-        await fetch(
-          `https://cdkfweqmzdrozhttmcao.supabase.co/functions/v1/staff-auth?action=logout`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ token: authState.token }),
-          }
-        );
+        console.log('Logging out...');
+        await supabase.functions.invoke('staff-auth?action=logout', {
+          body: { token: authState.token },
+        });
       }
     } catch (error) {
       console.error('Logout error:', error);
