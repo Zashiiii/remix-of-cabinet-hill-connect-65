@@ -43,7 +43,7 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
       resident_contact: data.contactNumber,
       resident_email: data.email || null,
       purpose: data.purpose,
-      priority: data.priority,
+      priority: data.priority.charAt(0).toUpperCase() + data.priority.slice(1),
       status: 'Pending',
       requested_date: new Date().toISOString(),
       ready_date: data.preferredPickupDate.toISOString(),
