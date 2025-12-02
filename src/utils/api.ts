@@ -23,7 +23,18 @@ export interface RequestStatus {
 }
 
 /**
+ * Generate a control number for certificate requests
+ */
+const generateControlNumber = (): string => {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
+  const randomNum = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+  return `CERT-${dateStr}-${randomNum}`;
+};
+
+/**
  * Submit a certificate request to Supabase
+ * Uses edge function first, falls back to direct insert if that fails
  * @param data - Certificate request form data
  * @returns Control number for tracking
  */
@@ -55,45 +66,96 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
     throw new Error('Preferred pickup date must be today or a future date');
   }
 
-  console.log('Submitting certificate request via edge function:', {
+  console.log('Submitting certificate request:', {
     certificate_type: data.certificateType,
     resident_name: data.fullName,
     priority: data.priority,
   });
 
-  // Use edge function to bypass RLS issues
-  const { data: response, error } = await supabase.functions.invoke('submit-certificate', {
-    body: {
-      certificateType: data.certificateType,
-      fullName: data.fullName,
-      contactNumber: data.contactNumber,
-      email: data.email || null,
-      householdNumber: data.householdNumber,
-      birthDate: data.birthDate.toISOString().split('T')[0],
-      purpose: data.purpose,
-      priority: data.priority,
-      preferredPickupDate: data.preferredPickupDate.toISOString(),
-    },
-  });
+  let controlNumber: string | null = null;
 
-  if (error) {
-    console.error('Error submitting certificate request:', error);
-    throw new Error(error.message || 'Failed to submit request');
+  // Try edge function first
+  try {
+    console.log('Attempting edge function submission...');
+    const { data: response, error } = await supabase.functions.invoke('submit-certificate', {
+      body: {
+        certificateType: data.certificateType,
+        fullName: data.fullName,
+        contactNumber: data.contactNumber,
+        email: data.email || null,
+        householdNumber: data.householdNumber,
+        birthDate: data.birthDate.toISOString().split('T')[0],
+        purpose: data.purpose,
+        priority: data.priority,
+        preferredPickupDate: data.preferredPickupDate.toISOString(),
+      },
+    });
+
+    if (!error && response?.success && response?.controlNumber) {
+      controlNumber = response.controlNumber;
+      console.log('Edge function submission successful:', controlNumber);
+    } else if (response?.error) {
+      // Edge function returned an error response (validation error, etc.)
+      console.error('Edge function returned error:', response.error);
+      throw new Error(response.error);
+    } else if (error) {
+      console.warn('Edge function failed, will try fallback:', error.message);
+    }
+  } catch (edgeFunctionError: any) {
+    // If it's a validation error from the edge function, throw it
+    if (edgeFunctionError.message && !edgeFunctionError.message.includes('Failed to fetch') && !edgeFunctionError.message.includes('FunctionsHttpError')) {
+      throw edgeFunctionError;
+    }
+    console.warn('Edge function unavailable, trying direct insert...', edgeFunctionError);
   }
 
-  if (response?.error) {
-    console.error('Server error:', response.error);
-    throw new Error(response.error);
+  // Fallback: Direct Supabase insert if edge function failed
+  if (!controlNumber) {
+    console.log('Using fallback direct Supabase insert...');
+    
+    controlNumber = generateControlNumber();
+    const now = new Date();
+    
+    // Capitalize priority
+    const normalizedPriority = data.priority 
+      ? data.priority.charAt(0).toUpperCase() + data.priority.slice(1).toLowerCase()
+      : 'Regular';
+
+    // Store additional info in resident_notes
+    const additionalInfo = [];
+    if (data.householdNumber) {
+      additionalInfo.push(`Household: ${data.householdNumber}`);
+    }
+    if (data.birthDate) {
+      additionalInfo.push(`Birth Date: ${data.birthDate.toISOString().split('T')[0]}`);
+    }
+    const residentNotes = additionalInfo.length > 0 ? additionalInfo.join(' | ') : null;
+
+    const { error: insertError } = await supabase
+      .from('certificate_requests')
+      .insert({
+        control_number: controlNumber,
+        certificate_type: data.certificateType,
+        resident_name: data.fullName,
+        resident_contact: data.contactNumber,
+        resident_email: data.email || null,
+        purpose: data.purpose,
+        priority: normalizedPriority,
+        status: 'Pending',
+        requested_date: now.toISOString(),
+        ready_date: data.preferredPickupDate.toISOString(),
+        resident_notes: residentNotes,
+      });
+
+    if (insertError) {
+      console.error('Direct insert failed:', insertError);
+      throw new Error('Failed to submit request. Please try again or visit the barangay hall.');
+    }
+
+    console.log('Direct insert successful:', controlNumber);
   }
 
-  if (!response?.success || !response?.controlNumber) {
-    throw new Error('Invalid response from server');
-  }
-
-  const controlNumber = response.controlNumber;
-  console.log('Certificate request submitted successfully:', controlNumber);
-
-  // Also store in localStorage for backward compatibility
+  // Store in localStorage for backward compatibility
   try {
     const existingRequests = JSON.parse(localStorage.getItem('certificateRequests') || '[]');
     const newRequest = {
@@ -131,7 +193,7 @@ export const trackRequest = async (controlNumber: string): Promise<RequestStatus
     .from('certificate_requests')
     .select('*')
     .eq('control_number', controlNumber)
-    .single();
+    .maybeSingle();
 
   if (data && !error) {
     // Map database status to our status type
