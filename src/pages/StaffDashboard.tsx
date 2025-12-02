@@ -70,6 +70,8 @@ import {
   createAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
+  fetchAllRequests,
+  fetchRecentProcessedRequests,
 } from "@/utils/api";
 
 interface PendingRequest {
@@ -77,7 +79,7 @@ interface PendingRequest {
   residentName: string;
   certificateType: string;
   dateSubmitted: string;
-  status: "pending" | "processing" | "approved" | "rejected";
+  status: "pending" | "processing" | "approved" | "rejected" | "verifying";
   verificationStatus?: "verified" | "not-verified" | "checking";
   processedBy?: string;
   processedDate?: string;
@@ -186,20 +188,22 @@ const StaffDashboard = () => {
 
   // Certificate requests state
   const [requests, setRequests] = useState<PendingRequest[]>([]);
+  const [recentRequests, setRecentRequests] = useState<PendingRequest[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
   const [totalResidents, setTotalResidents] = useState(0);
 
   // Load certificate requests from Supabase
   const loadRequests = useCallback(async () => {
     try {
-      // Fetch from Supabase
-      const { data: supabaseData, error } = await supabase
-        .from('certificate_requests')
-        .select('*')
-        .order('resident_name', { ascending: true });
+      // Fetch from Supabase - both filtered and recent
+      const [allData, recentData] = await Promise.all([
+        fetchAllRequests(statusFilter),
+        fetchRecentProcessedRequests()
+      ]);
 
-      if (supabaseData && !error) {
-        const mapped: PendingRequest[] = supabaseData.map((item) => ({
+      if (allData) {
+        const mapped: PendingRequest[] = allData.map((item: any) => ({
           id: item.control_number,
           residentName: item.resident_name,
           certificateType: item.certificate_type,
@@ -217,13 +221,24 @@ const StaffDashboard = () => {
           purpose: item.purpose,
         }));
         setRequests(mapped);
-      } else {
-        // Fallback to localStorage
-        const stored = localStorage.getItem("certificateRequests");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setRequests(Array.isArray(parsed) ? parsed : []);
-        }
+      }
+
+      if (recentData) {
+        const mappedRecent: PendingRequest[] = recentData.map((item: any) => ({
+          id: item.control_number,
+          residentName: item.resident_name,
+          certificateType: item.certificate_type,
+          dateSubmitted: item.requested_date 
+            ? new Date(item.requested_date).toLocaleDateString() 
+            : new Date().toLocaleDateString(),
+          status: (item.status?.toLowerCase() || 'pending') as PendingRequest['status'],
+          processedBy: item.processed_by || undefined,
+          processedDate: item.processed_date 
+            ? new Date(item.processed_date).toLocaleString() 
+            : undefined,
+          notes: item.admin_notes || item.rejection_reason || undefined,
+        }));
+        setRecentRequests(mappedRecent);
       }
 
       // Get resident count
@@ -234,27 +249,32 @@ const StaffDashboard = () => {
 
     } catch (error) {
       console.error("Error loading requests:", error);
-      // Fallback to localStorage
-      try {
-        const stored = localStorage.getItem("certificateRequests");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setRequests(Array.isArray(parsed) ? parsed : []);
-        }
-      } catch {
-        setRequests([]);
-      }
+      toast.error("Failed to load certificate requests");
     } finally {
       setIsDataLoading(false);
     }
-  }, []);
+  }, [statusFilter]);
 
   useEffect(() => {
     if (isAuthenticated) {
       loadRequests();
-      // Refresh every 30 seconds
-      const interval = setInterval(loadRequests, 30000);
-      return () => clearInterval(interval);
+      
+      // Real-time subscription for certificate requests
+      const requestsChannel = supabase
+        .channel('certificate-requests-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'certificate_requests'
+        }, () => {
+          console.log('Certificate request changed, reloading...');
+          loadRequests();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(requestsChannel);
+      };
     }
   }, [isAuthenticated, loadRequests]);
 
@@ -262,80 +282,71 @@ const StaffDashboard = () => {
     const timestamp = new Date().toLocaleString();
     const staffName = user?.fullName || "Staff Admin";
     
-    if (action === "Approve") {
+    if (action === "Approve" || action === "Reject" || action === "Verifying") {
       try {
+        // Get database record by control number
+        const { data: dbRequest } = await supabase
+          .from('certificate_requests')
+          .select('id')
+          .eq('control_number', request.id)
+          .single();
+
+        if (!dbRequest) {
+          toast.error("Request not found in database");
+          return;
+        }
+
+        // Map action to status
+        const statusMap: Record<string, string> = {
+          'Approve': 'Approved',
+          'Reject': 'Rejected',
+          'Verifying': 'Verifying',
+        };
+
+        const newStatus = statusMap[action];
+        const actionNote = action === 'Approve' 
+          ? 'Approved - All requirements verified'
+          : action === 'Reject' 
+            ? 'Rejected - Incomplete requirements'
+            : 'Under verification';
+
         // Update in Supabase
-        const { data: dbRequest } = await supabase
-          .from('certificate_requests')
-          .select('id')
-          .eq('control_number', request.id)
-          .single();
+        await updateRequestStatus(
+          dbRequest.id, 
+          newStatus, 
+          staffName,
+          actionNote
+        );
 
-        if (dbRequest) {
-          await updateRequestStatus(
-            dbRequest.id, 
-            'Approved', 
-            staffName,
-            'Approved - All requirements verified'
-          );
-        }
-
+        // Update local state
         const updatedRequests = requests.map(r => 
           r.id === request.id 
             ? { 
                 ...r, 
-                status: "approved" as const, 
+                status: newStatus.toLowerCase() as PendingRequest['status'], 
                 processedBy: staffName,
                 processedDate: timestamp,
-                notes: "Approved - All requirements verified"
+                notes: actionNote
               } 
             : r
         );
         setRequests(updatedRequests);
-        localStorage.setItem("certificateRequests", JSON.stringify(updatedRequests));
-        toast.success(`Request ${request.id} approved successfully`, {
-          description: `Certificate for ${request.residentName} has been approved.`
-        });
-      } catch (error) {
-        console.error("Error approving request:", error);
-        toast.error("Failed to approve request");
-      }
-    } else if (action === "Reject") {
-      try {
-        const { data: dbRequest } = await supabase
-          .from('certificate_requests')
-          .select('id')
-          .eq('control_number', request.id)
-          .single();
 
-        if (dbRequest) {
-          await updateRequestStatus(
-            dbRequest.id, 
-            'Rejected', 
-            staffName,
-            'Rejected - Incomplete requirements'
-          );
-        }
-
-        const updatedRequests = requests.map(r => 
-          r.id === request.id 
-            ? { 
-                ...r, 
-                status: "rejected" as const, 
-                processedBy: staffName,
-                processedDate: timestamp,
-                notes: "Rejected - Incomplete requirements"
-              } 
-            : r
-        );
-        setRequests(updatedRequests);
-        localStorage.setItem("certificateRequests", JSON.stringify(updatedRequests));
-        toast.error(`Request ${request.id} rejected`, {
-          description: `Certificate request for ${request.residentName} has been rejected.`
+        const actionMessage = action === 'Approve' 
+          ? 'approved' 
+          : action === 'Reject' 
+            ? 'rejected' 
+            : 'marked as verifying';
+        
+        toast.success(`Request ${actionMessage} successfully`, {
+          description: `Certificate for ${request.residentName} has been ${actionMessage}.`
         });
+
+        // Reload to get fresh data
+        loadRequests();
       } catch (error) {
-        console.error("Error rejecting request:", error);
-        toast.error("Failed to reject request");
+        console.error(`Error ${action}ing request:`, error);
+        toast.error(`Failed to ${action.toLowerCase()} request`);
       }
     } else if (action === "View") {
       setSelectedRequest(request);
@@ -696,130 +707,193 @@ const StaffDashboard = () => {
             )}
 
             {activeTab === "certificate-requests" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pending Certificate Requests</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {requests.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg font-medium">No certificate requests yet</p>
-                      <p className="text-sm">When residents submit certificate requests, they will appear here for processing</p>
-                    </div>
-                  ) : (
-                    <>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Request ID</TableHead>
-                            <TableHead>Resident Name</TableHead>
-                            <TableHead>Certificate Type</TableHead>
-                            <TableHead>Date Submitted</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Verification</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {requests.map((request) => (
-                            <TableRow key={request.id}>
-                              <TableCell className="font-medium">{request.id}</TableCell>
-                              <TableCell>{request.residentName}</TableCell>
-                              <TableCell>{request.certificateType}</TableCell>
-                              <TableCell>{request.dateSubmitted}</TableCell>
-                              <TableCell>
-                                <div className="space-y-1">
-                                  {getStatusBadge(request.status)}
-                                  {request.processedBy && (
-                                    <div className="text-xs text-muted-foreground">
-                                      By: {request.processedBy}
-                                      <br />
-                                      {request.processedDate}
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">Certificate Requests</h2>
+                </div>
+
+                {/* Status Filter Buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  {["All", "Pending", "Verifying", "Approved", "Rejected"].map((status) => (
+                    <Button
+                      key={status}
+                      variant={statusFilter === status ? "default" : "outline"}
+                      onClick={() => setStatusFilter(status)}
+                      size="sm"
+                    >
+                      {status}
+                    </Button>
+                  ))}
+                </div>
+
+                {isDataLoading ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="inline-block animate-spin h-8 w-8 text-primary" />
+                    <p className="mt-2 text-muted-foreground">Loading requests...</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Pending/Filtered Certificate Requests Section */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>
+                          {statusFilter === "All" ? "All Certificate Requests" : `${statusFilter} Requests`}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {requests.length === 0 ? (
+                          <div className="text-center py-12 text-muted-foreground">
+                            <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                            <p className="text-lg font-medium">No {statusFilter !== "All" ? statusFilter.toLowerCase() : ""} requests found</p>
+                            <p className="text-sm">When residents submit certificate requests, they will appear here for processing</p>
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Control Number</TableHead>
+                                <TableHead>Resident Name</TableHead>
+                                <TableHead>Certificate Type</TableHead>
+                                <TableHead>Date Submitted</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {requests.map((request) => (
+                                <TableRow key={request.id}>
+                                  <TableCell className="font-medium font-mono text-xs">{request.id}</TableCell>
+                                  <TableCell>{request.residentName}</TableCell>
+                                  <TableCell>{request.certificateType}</TableCell>
+                                  <TableCell>{request.dateSubmitted}</TableCell>
+                                  <TableCell>
+                                    <div className="space-y-1">
+                                      {getStatusBadge(request.status)}
+                                      {request.processedBy && (
+                                        <div className="text-xs text-muted-foreground">
+                                          By: {request.processedBy}
+                                          <br />
+                                          {request.processedDate}
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                {request.verificationStatus === "verified" && (
-                                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                    ✓ Verified
-                                  </Badge>
-                                )}
-                                {request.verificationStatus === "not-verified" && (
-                                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                                    ✗ Not Verified
-                                  </Badge>
-                                )}
-                                {request.verificationStatus === "checking" && (
-                                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                                    Checking...
-                                  </Badge>
-                                )}
-                                {!request.verificationStatus && (
-                                  <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
-                                    Pending
-                                  </Badge>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleAction("View", request)}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleAction("Approve", request)}
-                                    className="hover:bg-green-50"
-                                    disabled={request.status !== "pending"}
-                                  >
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleAction("Reject", request)}
-                                    className="hover:bg-red-50"
-                                    disabled={request.status !== "pending"}
-                                  >
-                                    <XCircle className="h-4 w-4 text-red-600" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                      
-                      {selectedRequest && selectedRequest.notes && (
-                        <div className="mt-6 p-4 bg-muted/50 rounded-lg border">
-                          <h3 className="font-semibold mb-2">Notes for {selectedRequest.id}</h3>
-                          <p className="text-sm text-muted-foreground">{selectedRequest.notes}</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleAction("View", request)}
+                                      >
+                                        <Eye className="h-4 w-4" />
+                                      </Button>
+                                      {(request.status === "pending" || request.status === "verifying") && (
+                                        <>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleAction("Approve", request)}
+                                            className="hover:bg-green-50"
+                                          >
+                                            <CheckCircle className="h-4 w-4 text-green-600" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleAction("Reject", request)}
+                                            className="hover:bg-red-50"
+                                          >
+                                            <XCircle className="h-4 w-4 text-red-600" />
+                                          </Button>
+                                          {request.status === "pending" && (
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => handleAction("Verifying", request)}
+                                              className="text-blue-600"
+                                            >
+                                              <Clock className="h-4 w-4 mr-1" />
+                                              Verifying
+                                            </Button>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Recent Certificate Requests (History) */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Recent Certificate Requests (Last 30 Days)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {recentRequests.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <p>No recent processed requests found</p>
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Control Number</TableHead>
+                                <TableHead>Resident Name</TableHead>
+                                <TableHead>Certificate Type</TableHead>
+                                <TableHead>Date Submitted</TableHead>
+                                <TableHead>Current Status</TableHead>
+                                <TableHead>Processed Date</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {recentRequests.map((request) => (
+                                <TableRow key={request.id}>
+                                  <TableCell className="font-medium font-mono text-xs">{request.id}</TableCell>
+                                  <TableCell>{request.residentName}</TableCell>
+                                  <TableCell>{request.certificateType}</TableCell>
+                                  <TableCell>{request.dateSubmitted}</TableCell>
+                                  <TableCell>{getStatusBadge(request.status)}</TableCell>
+                                  <TableCell>
+                                    {request.processedDate || '-'}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+              </div>
             )}
 
             {activeTab === "announcements" && (
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold">Manage Announcements</h2>
-                  <Button onClick={() => {
-                    setEditingAnnouncement(null);
-                    setAnnouncementForm({ title: "", titleTl: "", description: "", descriptionTl: "", type: "general" });
-                    setShowAnnouncementDialog(true);
-                  }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New Announcement
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline"
+                      onClick={() => window.open('/', '_blank')}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View on Landing Page
+                    </Button>
+                    <Button onClick={() => {
+                      setEditingAnnouncement(null);
+                      setAnnouncementForm({ title: "", titleTl: "", description: "", descriptionTl: "", type: "general" });
+                      setShowAnnouncementDialog(true);
+                    }}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create New Announcement
+                    </Button>
+                  </div>
                 </div>
 
                 <Card>
@@ -836,7 +910,7 @@ const StaffDashboard = () => {
                           <TableRow>
                             <TableHead>Title</TableHead>
                             <TableHead>Type</TableHead>
-                            <TableHead>Date</TableHead>
+                            <TableHead>Created</TableHead>
                             <TableHead>Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -846,7 +920,7 @@ const StaffDashboard = () => {
                               <TableCell>
                                 <div>
                                   <p className="font-medium">{announcement.title}</p>
-                                  <p className="text-sm text-muted-foreground">{announcement.titleTl}</p>
+                                  <p className="text-sm text-muted-foreground line-clamp-2">{announcement.description}</p>
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -854,23 +928,44 @@ const StaffDashboard = () => {
                                   {announcement.type}
                                 </Badge>
                               </TableCell>
-                              <TableCell>{announcement.date}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {announcement.date}
+                              </TableCell>
                               <TableCell>
                                 <div className="flex gap-2">
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleEditAnnouncement(announcement)}
+                                    onClick={() => {
+                                      setEditingAnnouncement(announcement);
+                                      setAnnouncementForm({
+                                        title: announcement.title,
+                                        titleTl: announcement.titleTl,
+                                        description: announcement.description,
+                                        descriptionTl: announcement.descriptionTl,
+                                        type: announcement.type,
+                                      });
+                                      setShowAnnouncementDialog(true);
+                                    }}
                                   >
                                     <Pencil className="h-4 w-4" />
                                   </Button>
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleDeleteAnnouncement(announcement.id)}
-                                    className="text-destructive hover:text-destructive"
+                                    onClick={async () => {
+                                      if (confirm("Are you sure you want to delete this announcement?")) {
+                                        try {
+                                          await deleteAnnouncement(announcement.id);
+                                          toast.success("Announcement deleted successfully");
+                                          loadAnnouncements();
+                                        } catch (error) {
+                                          toast.error("Failed to delete announcement");
+                                        }
+                                      }
+                                    }}
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
                                 </div>
                               </TableCell>

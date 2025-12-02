@@ -154,6 +154,53 @@ export const fetchPendingRequests = async () => {
 };
 
 /**
+ * Fetch all certificate requests with optional status filter
+ */
+export const fetchAllRequests = async (statusFilter?: string) => {
+  let query = supabase
+    .from('certificate_requests')
+    .select('*')
+    .order('resident_name', { ascending: true });
+  
+  if (statusFilter && statusFilter !== 'All') {
+    // Normalize status for comparison
+    const normalizedStatus = statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1).toLowerCase();
+    query = query.eq('status', normalizedStatus);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching all requests:', error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+/**
+ * Fetch recent processed requests (last 30 days)
+ */
+export const fetchRecentProcessedRequests = async () => {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data, error } = await supabase
+    .from('certificate_requests')
+    .select('*')
+    .in('status', ['Approved', 'Rejected'])
+    .gte('processed_date', thirtyDaysAgo.toISOString())
+    .order('processed_date', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching recent processed requests:', error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+/**
  * Update certificate request status
  */
 export const updateRequestStatus = async (
@@ -162,14 +209,21 @@ export const updateRequestStatus = async (
   processedBy: string,
   notes?: string
 ) => {
+  // Normalize status to match database format (capitalize first letter)
+  const normalizedStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  
   const updateData: Record<string, any> = {
-    status,
+    status: normalizedStatus,
     processed_by: processedBy,
-    processed_date: new Date().toISOString(),
   };
+  
+  // Only set processed_date for final statuses
+  if (normalizedStatus === 'Approved' || normalizedStatus === 'Rejected') {
+    updateData.processed_date = new Date().toISOString();
+  }
 
   if (notes) {
-    if (status === 'Rejected') {
+    if (normalizedStatus === 'Rejected') {
       updateData.rejection_reason = notes;
     } else {
       updateData.admin_notes = notes;
