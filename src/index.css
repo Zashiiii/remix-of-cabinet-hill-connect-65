@@ -109,3 +109,24 @@ All colors MUST be HSL.
     @apply font-bold;
   }
 }
+
+/* Calendar dropdown styles for dark mode */
+.rdp-dropdown {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--input));
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.rdp-dropdown option {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.rdp-dropdown:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: hsl(var(--ring));
+}
