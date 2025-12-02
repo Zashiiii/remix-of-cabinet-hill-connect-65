@@ -12,16 +12,18 @@ interface TimelineStep {
 }
 
 const timelineSteps: TimelineStep[] = [
-  { label: "Submitted", statuses: ["pending", "for_review", "approved", "ready_for_pickup", "released", "rejected"] },
-  { label: "Under Review", statuses: ["for_review", "approved", "ready_for_pickup", "released", "rejected"] },
+  { label: "Submitted", statuses: ["pending", "for_review", "verifying", "approved", "ready_for_pickup", "released", "rejected"] },
+  { label: "Under Review", statuses: ["for_review", "verifying", "approved", "ready_for_pickup", "released", "rejected"] },
+  { label: "Under Verification", statuses: ["verifying", "approved", "ready_for_pickup", "released"] },
   { label: "Approved", statuses: ["approved", "ready_for_pickup", "released"] },
   { label: "Ready for Pickup", statuses: ["ready_for_pickup", "released"] },
   { label: "Released", statuses: ["released"] },
 ];
 
 const rejectedTimeline: TimelineStep[] = [
-  { label: "Submitted", statuses: ["pending", "for_review", "rejected"] },
-  { label: "Under Review", statuses: ["for_review", "rejected"] },
+  { label: "Submitted", statuses: ["pending", "for_review", "verifying", "rejected"] },
+  { label: "Under Review", statuses: ["for_review", "verifying", "rejected"] },
+  { label: "Under Verification", statuses: ["verifying", "rejected"] },
   { label: "Rejected", statuses: ["rejected"] },
 ];
 

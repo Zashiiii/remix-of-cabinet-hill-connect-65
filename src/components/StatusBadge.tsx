@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Circle } from "lucide-react";
 
-export type RequestStatus = "pending" | "for_review" | "approved" | "ready_for_pickup" | "released" | "rejected";
+export type RequestStatus = "pending" | "for_review" | "verifying" | "approved" | "ready_for_pickup" | "released" | "rejected";
 
 interface StatusBadgeProps {
   status: RequestStatus;
@@ -17,6 +17,11 @@ const statusConfig = {
     label: "For Review",
     color: "bg-blue-100 text-blue-800 border-blue-200",
     icon: "🔵",
+  },
+  verifying: {
+    label: "Under Verification",
+    color: "bg-purple-100 text-purple-800 border-purple-200",
+    icon: "🟣",
   },
   approved: {
     label: "Approved",
