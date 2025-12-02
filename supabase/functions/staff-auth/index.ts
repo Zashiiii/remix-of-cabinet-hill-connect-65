@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Version 3.0 - Fixed logout action handling, improved body parsing
+// Version 4.0 - Improved body parsing for logout action
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +11,7 @@ const corsHeaders = {
 
 serve(async (req) => {
   const startTime = Date.now();
-  console.log('=== Staff Auth Function v3.0 Started ===');
+  console.log('=== Staff Auth Function v4.0 Started ===');
   console.log('Timestamp:', new Date().toISOString());
   console.log('Request method:', req.method);
 
@@ -35,29 +35,26 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Parse body
+    // Parse body using req.json() for better reliability
     let body: any = {};
     try {
-      const text = await req.text();
-      console.log('Raw body text:', text);
-      if (text && text.length > 0) {
-        body = JSON.parse(text);
-      }
+      body = await req.json();
+      console.log('Parsed body:', JSON.stringify(body));
     } catch (e) {
-      console.error('Body parse error:', e);
+      console.log('Body parse failed (might be empty):', e);
+      body = {};
     }
 
-    // Get action from URL params or body - IMPORTANT: check body.action first
+    // Get action - check body first, then URL params
     const url = new URL(req.url);
-    const action = body.action || url.searchParams.get('action') || 'login';
+    const action = body?.action || url.searchParams.get('action') || 'login';
     
-    console.log('Parsed action:', action);
-    console.log('Body keys:', Object.keys(body));
+    console.log('Action detected:', action);
 
     // ========== LOGOUT ==========
     if (action === 'logout') {
-      const { token } = body;
-      console.log('Processing LOGOUT action, token present:', !!token);
+      const token = body?.token;
+      console.log('Processing LOGOUT - token present:', !!token);
 
       if (!token) {
         return new Response(
@@ -86,9 +83,9 @@ serve(async (req) => {
     // ========== VALIDATE ==========
     if (action === 'validate') {
       const authHeader = req.headers.get('Authorization');
-      const token = body.token || authHeader?.replace('Bearer ', '');
+      const token = body?.token || authHeader?.replace('Bearer ', '');
 
-      console.log('Processing VALIDATE action, token present:', !!token);
+      console.log('Processing VALIDATE - token present:', !!token);
 
       if (!token) {
         return new Response(
@@ -126,12 +123,13 @@ serve(async (req) => {
 
     // ========== LOGIN (default) ==========
     console.log('Processing LOGIN action');
-    const { username, password } = body;
+    const username = body?.username;
+    const password = body?.password;
     
     console.log('Login attempt - username:', username, 'password present:', !!password);
 
     if (!username || !password) {
-      console.log('Missing credentials');
+      console.log('Missing credentials for login');
       return new Response(
         JSON.stringify({ error: 'Username and password are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
