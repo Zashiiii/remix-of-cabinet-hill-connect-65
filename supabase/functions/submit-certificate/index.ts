@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Version 2.2 - Added robust error handling and logging
+// Version 3.0 - Fixed schema mismatch, removed invalid columns
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,7 +22,7 @@ interface CertificateRequestData {
 }
 
 serve(async (req) => {
-  console.log('=== Submit Certificate Function Started ===');
+  console.log('=== Submit Certificate Function v3.0 Started ===');
   console.log('Request method:', req.method);
 
   // Handle CORS preflight requests
@@ -59,6 +59,7 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
     console.log('Received certificate request:', {
       type: data.certificateType,
       name: data.fullName,
@@ -67,6 +68,7 @@ serve(async (req) => {
 
     // Validate required fields
     if (!data.fullName || !data.contactNumber || !data.certificateType || !data.purpose) {
+      console.error('Missing required fields');
       return new Response(
         JSON.stringify({ error: 'Please fill in all required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -81,14 +83,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate household number (3-5 chars)
-    if (!data.householdNumber || data.householdNumber.length < 3 || data.householdNumber.length > 5) {
-      return new Response(
-        JSON.stringify({ error: 'Household number must be 3-5 characters' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Generate control number
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
@@ -96,10 +90,23 @@ serve(async (req) => {
     const controlNumber = `CERT-${dateStr}-${randomNum}`;
 
     // Capitalize priority
-    const normalizedPriority = data.priority.charAt(0).toUpperCase() + data.priority.slice(1).toLowerCase();
+    const normalizedPriority = data.priority 
+      ? data.priority.charAt(0).toUpperCase() + data.priority.slice(1).toLowerCase()
+      : 'Regular';
+
+    // Store additional info (household number, birth date) in resident_notes
+    const additionalInfo = [];
+    if (data.householdNumber) {
+      additionalInfo.push(`Household: ${data.householdNumber}`);
+    }
+    if (data.birthDate) {
+      additionalInfo.push(`Birth Date: ${data.birthDate}`);
+    }
+    const residentNotes = additionalInfo.length > 0 ? additionalInfo.join(' | ') : null;
 
     console.log('Inserting certificate request with control number:', controlNumber);
 
+    // Insert only valid columns that exist in the schema
     const { data: insertedData, error } = await supabase
       .from('certificate_requests')
       .insert({
@@ -108,13 +115,12 @@ serve(async (req) => {
         resident_name: data.fullName,
         resident_contact: data.contactNumber,
         resident_email: data.email || null,
-        household_code: data.householdNumber,
-        birth_date: data.birthDate,
         purpose: data.purpose,
         priority: normalizedPriority,
         status: 'Pending',
         requested_date: now.toISOString(),
         ready_date: data.preferredPickupDate,
+        resident_notes: residentNotes,
       })
       .select()
       .single();
