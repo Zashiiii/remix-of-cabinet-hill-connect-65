@@ -14,16 +14,483 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      announcements: {
+        Row: {
+          content: string
+          content_tl: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          title: string
+          title_tl: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          content_tl?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          title: string
+          title_tl?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          content_tl?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          title?: string
+          title_tl?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      certificate_audit_trail: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          performed_by: string | null
+          request_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          performed_by?: string | null
+          request_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          performed_by?: string | null
+          request_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_audit_trail_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "certificate_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certificate_requests: {
+        Row: {
+          birth_date: string | null
+          certificate_type: string
+          contact_number: string | null
+          control_number: string
+          created_at: string | null
+          email: string | null
+          full_name: string
+          household_number: string | null
+          id: string
+          notes: string | null
+          preferred_pickup_date: string | null
+          priority: string | null
+          processed_by: string | null
+          purpose: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          birth_date?: string | null
+          certificate_type: string
+          contact_number?: string | null
+          control_number: string
+          created_at?: string | null
+          email?: string | null
+          full_name: string
+          household_number?: string | null
+          id?: string
+          notes?: string | null
+          preferred_pickup_date?: string | null
+          priority?: string | null
+          processed_by?: string | null
+          purpose?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          birth_date?: string | null
+          certificate_type?: string
+          contact_number?: string | null
+          control_number?: string
+          created_at?: string | null
+          email?: string | null
+          full_name?: string
+          household_number?: string | null
+          id?: string
+          notes?: string | null
+          preferred_pickup_date?: string | null
+          priority?: string | null
+          processed_by?: string | null
+          purpose?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      health_records: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          notes: string | null
+          record_date: string | null
+          record_type: string | null
+          resident_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          record_date?: string | null
+          record_type?: string | null
+          resident_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          record_date?: string | null
+          record_type?: string | null
+          resident_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_records_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      households: {
+        Row: {
+          address: string | null
+          barangay: string | null
+          city: string | null
+          created_at: string | null
+          household_number: string
+          id: string
+          province: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          barangay?: string | null
+          city?: string | null
+          created_at?: string | null
+          household_number: string
+          id?: string
+          province?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          barangay?: string | null
+          city?: string | null
+          created_at?: string | null
+          household_number?: string
+          id?: string
+          province?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      immunization_records: {
+        Row: {
+          administered_by: string | null
+          created_at: string | null
+          date_administered: string | null
+          dose_number: number | null
+          id: string
+          notes: string | null
+          resident_id: string | null
+          updated_at: string | null
+          vaccine_name: string
+        }
+        Insert: {
+          administered_by?: string | null
+          created_at?: string | null
+          date_administered?: string | null
+          dose_number?: number | null
+          id?: string
+          notes?: string | null
+          resident_id?: string | null
+          updated_at?: string | null
+          vaccine_name: string
+        }
+        Update: {
+          administered_by?: string | null
+          created_at?: string | null
+          date_administered?: string | null
+          dose_number?: number | null
+          id?: string
+          notes?: string | null
+          resident_id?: string | null
+          updated_at?: string | null
+          vaccine_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "immunization_records_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      residents: {
+        Row: {
+          birth_date: string | null
+          civil_status: string | null
+          contact_number: string | null
+          created_at: string | null
+          email: string | null
+          first_name: string
+          gender: string | null
+          household_id: string | null
+          id: string
+          is_head_of_household: boolean | null
+          last_name: string
+          middle_name: string | null
+          occupation: string | null
+          suffix: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          birth_date?: string | null
+          civil_status?: string | null
+          contact_number?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name: string
+          gender?: string | null
+          household_id?: string | null
+          id?: string
+          is_head_of_household?: boolean | null
+          last_name: string
+          middle_name?: string | null
+          occupation?: string | null
+          suffix?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          birth_date?: string | null
+          civil_status?: string | null
+          contact_number?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string
+          gender?: string | null
+          household_id?: string | null
+          id?: string
+          is_head_of_household?: boolean | null
+          last_name?: string
+          middle_name?: string | null
+          occupation?: string | null
+          suffix?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "residents_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          staff_user_id: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          staff_user_id?: string | null
+          token: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          staff_user_id?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_staff_user_id_fkey"
+            columns: ["staff_user_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_users: {
+        Row: {
+          created_at: string | null
+          full_name: string
+          id: string
+          is_active: boolean | null
+          password_hash: string
+          role: string | null
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean | null
+          password_hash: string
+          role?: string | null
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean | null
+          password_hash?: string
+          role?: string | null
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_active_announcements: {
+        Args: never
+        Returns: {
+          content: string
+          content_tl: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          title: string
+          title_tl: string | null
+          type: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "announcements"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_pending_requests: {
+        Args: never
+        Returns: {
+          birth_date: string | null
+          certificate_type: string
+          contact_number: string | null
+          control_number: string
+          created_at: string | null
+          email: string | null
+          full_name: string
+          household_number: string | null
+          id: string
+          notes: string | null
+          preferred_pickup_date: string | null
+          priority: string | null
+          processed_by: string | null
+          purpose: string | null
+          status: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "certificate_requests"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      validate_session: {
+        Args: { session_token: string }
+        Returns: {
+          full_name: string
+          role: string
+          staff_user_id: string
+          username: string
+        }[]
+      }
+      verify_resident_exists: {
+        Args: {
+          p_birth_date: string
+          p_full_name: string
+          p_household_number: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "staff" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +617,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "staff", "user"],
+    },
   },
 } as const
