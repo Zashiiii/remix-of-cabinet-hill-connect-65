@@ -225,26 +225,26 @@ const StaffDashboard = () => {
       if (allData) {
         const mapped: PendingRequest[] = allData.map((item: any) => ({
           id: item.control_number,
-          residentName: item.resident_name,
+          residentName: item.full_name,
           certificateType: item.certificate_type,
-          dateSubmitted: item.requested_date 
-            ? new Date(item.requested_date).toLocaleDateString() 
+          dateSubmitted: item.created_at 
+            ? new Date(item.created_at).toLocaleDateString() 
             : new Date().toLocaleDateString(),
           status: (item.status?.toLowerCase() || 'pending') as PendingRequest['status'],
           processedBy: item.processed_by || undefined,
-          processedDate: item.processed_date 
-            ? new Date(item.processed_date).toLocaleString() 
+          processedDate: item.updated_at 
+            ? new Date(item.updated_at).toLocaleString() 
             : undefined,
-          notes: item.admin_notes || undefined,
-          rejectionReason: item.rejection_reason || undefined,
-          contactNumber: item.resident_contact || undefined,
-          email: item.resident_email || undefined,
+          notes: item.notes || undefined,
+          rejectionReason: item.notes || undefined,
+          contactNumber: item.contact_number || undefined,
+          email: item.email || undefined,
           purpose: item.purpose || undefined,
           priority: item.priority || 'Normal',
-          readyDate: item.ready_date 
-            ? new Date(item.ready_date).toLocaleDateString()
+          readyDate: item.preferred_pickup_date 
+            ? new Date(item.preferred_pickup_date).toLocaleDateString()
             : undefined,
-          residentNotes: item.resident_notes || undefined,
+          residentNotes: item.household_number ? `Household: ${item.household_number}` : undefined,
         }));
         setRequests(mapped);
       }
@@ -252,18 +252,18 @@ const StaffDashboard = () => {
       if (recentData) {
         const mappedRecent: PendingRequest[] = recentData.map((item: any) => ({
           id: item.control_number,
-          residentName: item.resident_name,
+          residentName: item.full_name,
           certificateType: item.certificate_type,
-          dateSubmitted: item.requested_date 
-            ? new Date(item.requested_date).toLocaleDateString() 
+          dateSubmitted: item.created_at 
+            ? new Date(item.created_at).toLocaleDateString() 
             : new Date().toLocaleDateString(),
           status: (item.status?.toLowerCase() || 'pending') as PendingRequest['status'],
           processedBy: item.processed_by || undefined,
-          processedDate: item.processed_date 
-            ? new Date(item.processed_date).toLocaleString() 
+          processedDate: item.updated_at 
+            ? new Date(item.updated_at).toLocaleString() 
             : undefined,
-          notes: item.admin_notes || undefined,
-          rejectionReason: item.rejection_reason || undefined,
+          notes: item.notes || undefined,
+          rejectionReason: item.notes || undefined,
         }));
         setRecentRequests(mappedRecent);
       }
@@ -467,15 +467,15 @@ const StaffDashboard = () => {
       const { error } = await supabase.from('certificate_requests').insert({
         control_number: demoControlNumber,
         certificate_type: 'Barangay Clearance',
-        resident_name: 'Juan Dela Cruz',
-        resident_contact: '09123456789',
-        resident_email: 'juan.delacruz@email.com',
+        full_name: 'Juan Dela Cruz',
+        contact_number: '09123456789',
+        email: 'juan.delacruz@email.com',
         purpose: 'Employment requirement for job application at ABC Company',
         priority: 'Normal',
         status: 'Pending',
-        requested_date: new Date().toISOString(),
-        ready_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-        resident_notes: 'Household: A-01 | Birth Date: 1990-05-15',
+        household_number: 'A-01',
+        birth_date: '1990-05-15',
+        preferred_pickup_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       });
 
       if (error) throw error;
@@ -547,7 +547,7 @@ const StaffDashboard = () => {
       if (data && !error) {
         const mapped: Announcement[] = data.map((item) => ({
           id: item.id,
-          type: (item.announcement_type === 'important' ? 'important' : 'general') as "important" | "general",
+          type: (item.type === 'important' ? 'important' : 'general') as "important" | "general",
           title: item.title,
           titleTl: item.title_tl || item.title,
           description: item.content,

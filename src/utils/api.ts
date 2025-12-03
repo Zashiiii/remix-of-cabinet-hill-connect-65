@@ -136,15 +136,15 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
       .insert({
         control_number: controlNumber,
         certificate_type: data.certificateType,
-        resident_name: data.fullName,
-        resident_contact: data.contactNumber,
-        resident_email: data.email || null,
+        full_name: data.fullName,
+        contact_number: data.contactNumber,
+        email: data.email || null,
         purpose: data.purpose,
         priority: normalizedPriority,
         status: 'Pending',
-        requested_date: now.toISOString(),
-        ready_date: data.preferredPickupDate.toISOString(),
-        resident_notes: residentNotes,
+        preferred_pickup_date: data.preferredPickupDate.toISOString().split('T')[0],
+        household_number: data.householdNumber || null,
+        birth_date: data.birthDate.toISOString().split('T')[0],
       });
 
     if (insertError) {
@@ -210,11 +210,11 @@ export const trackRequest = async (controlNumber: string): Promise<RequestStatus
     return {
       controlNumber: data.control_number,
       certificateType: data.certificate_type,
-      residentName: data.resident_name,
-      dateRequested: new Date(data.requested_date || Date.now()),
+      residentName: data.full_name,
+      dateRequested: new Date(data.created_at || Date.now()),
       status: statusMap[data.status || 'Pending'] || 'pending',
-      purpose: data.purpose,
-      remarks: data.admin_notes || data.rejection_reason || undefined,
+      purpose: data.purpose || '',
+      remarks: data.notes || undefined,
     };
   }
 
@@ -264,7 +264,7 @@ export const fetchAllRequests = async (statusFilter?: string) => {
   let query = supabase
     .from('certificate_requests')
     .select('*')
-    .order('resident_name', { ascending: true });
+    .order('full_name', { ascending: true });
   
   if (statusFilter && statusFilter !== 'All') {
     // Normalize status for comparison
@@ -293,8 +293,8 @@ export const fetchRecentProcessedRequests = async () => {
     .from('certificate_requests')
     .select('*')
     .in('status', ['Approved', 'Rejected'])
-    .gte('processed_date', thirtyDaysAgo.toISOString())
-    .order('processed_date', { ascending: false });
+    .gte('updated_at', thirtyDaysAgo.toISOString())
+    .order('updated_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching recent processed requests:', error);
@@ -321,17 +321,8 @@ export const updateRequestStatus = async (
     processed_by: processedBy,
   };
   
-  // Only set processed_date for final statuses
-  if (normalizedStatus === 'Approved' || normalizedStatus === 'Rejected') {
-    updateData.processed_date = new Date().toISOString();
-  }
-
   if (notes) {
-    if (normalizedStatus === 'Rejected') {
-      updateData.rejection_reason = notes;
-    } else {
-      updateData.admin_notes = notes;
-    }
+    updateData.notes = notes;
   }
 
   // Update the request status
@@ -384,7 +375,7 @@ export const createAnnouncement = async (announcement: {
       content: announcement.content,
       title_tl: announcement.titleTl,
       content_tl: announcement.contentTl,
-      announcement_type: announcement.type,
+      type: announcement.type,
       created_by: announcement.createdBy,
       is_active: true,
     })
@@ -419,7 +410,7 @@ export const updateAnnouncement = async (
   if (announcement.content !== undefined) updateData.content = announcement.content;
   if (announcement.titleTl !== undefined) updateData.title_tl = announcement.titleTl;
   if (announcement.contentTl !== undefined) updateData.content_tl = announcement.contentTl;
-  if (announcement.type !== undefined) updateData.announcement_type = announcement.type;
+  if (announcement.type !== undefined) updateData.type = announcement.type;
   if (announcement.isActive !== undefined) updateData.is_active = announcement.isActive;
   updateData.updated_at = new Date().toISOString();
 
