@@ -334,31 +334,7 @@ export const updateRequestStatus = async (
     }
   }
 
-  // First, get the control_number for audit trail
-  const { data: requestData } = await supabase
-    .from('certificate_requests')
-    .select('control_number')
-    .eq('id', id)
-    .single();
-
-  // Manually insert audit trail with valid action value
-  if (requestData?.control_number) {
-    const { error: auditError } = await supabase
-      .from('certificate_audit_trail')
-      .insert({
-        control_number: requestData.control_number,
-        action: 'status_updated',
-        performed_by: processedBy,
-        new_status: normalizedStatus,
-        action_details: notes || `Status changed to ${normalizedStatus}`,
-      });
-
-    if (auditError) {
-      console.warn('Audit trail insert warning:', auditError);
-      // Don't throw - continue with status update even if audit fails
-    }
-  }
-
+  // Update the request status
   const { error } = await supabase
     .from('certificate_requests')
     .update(updateData)
@@ -366,6 +342,12 @@ export const updateRequestStatus = async (
 
   if (error) {
     console.error('Error updating request status:', error);
+    
+    // Check if it's the audit trail constraint error
+    if (error.message?.includes('certificate_audit_trail_action_check')) {
+      throw new Error('Database constraint error. Please run this SQL in Supabase SQL Editor to fix:\n\nALTER TABLE public.certificate_audit_trail DROP CONSTRAINT IF EXISTS certificate_audit_trail_action_check;\n\nALTER TABLE public.certificate_audit_trail ADD CONSTRAINT certificate_audit_trail_action_check CHECK (action IN (\'created\', \'submitted\', \'status_updated\', \'Pending\', \'Approved\', \'Rejected\', \'Verifying\', \'Ready for Pickup\', \'Released\'));');
+    }
+    
     throw error;
   }
 };
