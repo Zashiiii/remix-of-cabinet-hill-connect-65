@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Version 4.0 - Improved body parsing for logout action
+// Version 5.0 - Fixed body parsing for all actions
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +11,7 @@ const corsHeaders = {
 
 serve(async (req) => {
   const startTime = Date.now();
-  console.log('=== Staff Auth Function v4.0 Started ===');
+  console.log('=== Staff Auth Function v5.0 Started ===');
   console.log('Timestamp:', new Date().toISOString());
   console.log('Request method:', req.method);
 
@@ -35,13 +35,17 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Parse body using req.json() for better reliability
+    // Parse body - read as text first, then parse JSON
     let body: any = {};
     try {
-      body = await req.json();
-      console.log('Parsed body:', JSON.stringify(body));
+      const rawBody = await req.text();
+      console.log('Raw body received:', rawBody);
+      if (rawBody && rawBody.trim().length > 0) {
+        body = JSON.parse(rawBody);
+        console.log('Parsed body:', JSON.stringify(body));
+      }
     } catch (e) {
-      console.log('Body parse failed (might be empty):', e);
+      console.error('Body parse error:', e);
       body = {};
     }
 
