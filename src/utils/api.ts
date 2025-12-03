@@ -334,6 +334,31 @@ export const updateRequestStatus = async (
     }
   }
 
+  // First, get the control_number for audit trail
+  const { data: requestData } = await supabase
+    .from('certificate_requests')
+    .select('control_number')
+    .eq('id', id)
+    .single();
+
+  // Manually insert audit trail with valid action value
+  if (requestData?.control_number) {
+    const { error: auditError } = await supabase
+      .from('certificate_audit_trail')
+      .insert({
+        control_number: requestData.control_number,
+        action: 'status_updated',
+        performed_by: processedBy,
+        new_status: normalizedStatus,
+        action_details: notes || `Status changed to ${normalizedStatus}`,
+      });
+
+    if (auditError) {
+      console.warn('Audit trail insert warning:', auditError);
+      // Don't throw - continue with status update even if audit fails
+    }
+  }
+
   const { error } = await supabase
     .from('certificate_requests')
     .update(updateData)
