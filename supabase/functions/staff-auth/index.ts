@@ -98,7 +98,7 @@ serve(async (req) => {
         );
       }
 
-      const { data, error } = await supabase.rpc('validate_session', { p_token: token });
+      const { data, error } = await supabase.rpc('validate_session', { session_token: token });
 
       if (error || !data || data.length === 0) {
         console.log('Invalid or expired session');
@@ -115,7 +115,7 @@ serve(async (req) => {
         JSON.stringify({
           valid: true,
           user: {
-            id: session.staff_id,
+            id: session.staff_user_id,
             username: session.username,
             fullName: session.full_name,
             role: session.role,
@@ -184,7 +184,7 @@ serve(async (req) => {
     const { error: sessionError } = await supabase
       .from('sessions')
       .insert({
-        staff_id: user.id,
+        staff_user_id: user.id,
         token: token,
         expires_at: expiresAt.toISOString(),
       });
@@ -196,12 +196,6 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Update last login
-    await supabase
-      .from('staff_users')
-      .update({ last_login: new Date().toISOString() })
-      .eq('id', user.id);
 
     const duration = Date.now() - startTime;
     console.log('Login successful for user:', username, 'Duration:', duration, 'ms');
