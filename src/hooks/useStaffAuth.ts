@@ -180,8 +180,9 @@ export const useStaffAuth = () => {
   const logout = useCallback(async () => {
     try {
       if (authState.token) {
-        console.log('Logging out...');
-        await supabase.functions.invoke('staff-auth', {
+        console.log('Logging out with token...');
+        // Pass action as URL param for reliability
+        await supabase.functions.invoke('staff-auth?action=logout', {
           body: { action: 'logout', token: authState.token },
         });
       }
