@@ -136,15 +136,15 @@ serve(async (req) => {
       .insert({
         control_number: controlNumber,
         certificate_type: data.certificateType,
-        resident_name: data.fullName,
-        resident_contact: data.contactNumber,
-        resident_email: data.email || null,
+        full_name: data.fullName,
+        contact_number: data.contactNumber,
+        email: data.email || null,
         purpose: data.purpose,
         priority: normalizedPriority,
         status: 'Pending',
-        requested_date: now.toISOString(),
-        ready_date: data.preferredPickupDate,
-        resident_notes: residentNotes,
+        preferred_pickup_date: data.preferredPickupDate || null,
+        household_number: data.householdNumber || null,
+        birth_date: data.birthDate || null,
       })
       .select()
       .single();
