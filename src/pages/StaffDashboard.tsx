@@ -143,6 +143,7 @@ const StaffSidebar = ({
   const mainMenuItems = [
     { title: "Home", icon: Home, tab: "home" },
     { title: "Certificate Requests", icon: FileText, tab: "certificate-requests" },
+    { title: "Messages", icon: Mail, route: "/staff/messages" },
     { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", route: "/staff/incidents" },
     { title: "Manage Announcements", icon: Bell, tab: "announcements" },
     { title: "Manage Residents", icon: Users, route: "/staff/residents" },
