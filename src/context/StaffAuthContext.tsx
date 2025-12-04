@@ -13,7 +13,7 @@ interface StaffAuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string; code?: string }>;
   logout: () => Promise<void>;
 }
 

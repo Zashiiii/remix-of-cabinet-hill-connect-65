@@ -38,9 +38,24 @@ const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
         setPassword("");
         navigate("/staff-dashboard");
       } else {
-        setError(result.error || "Invalid credentials");
+        // Handle distinct error codes
+        let errorMessage = result.error || "Invalid credentials";
+        let toastDescription = "Please check your credentials";
+        
+        if (result.code === 'USER_NOT_FOUND') {
+          errorMessage = "User not found";
+          toastDescription = "No account exists with this username";
+        } else if (result.code === 'INVALID_PASSWORD') {
+          errorMessage = "Incorrect password";
+          toastDescription = "The password you entered is incorrect";
+        } else if (result.code === 'ACCOUNT_INACTIVE') {
+          errorMessage = "Account is deactivated";
+          toastDescription = "Please contact an administrator";
+        }
+        
+        setError(errorMessage);
         toast.error("Login failed", {
-          description: result.error || "Please check your credentials"
+          description: toastDescription
         });
       }
     } catch (err) {

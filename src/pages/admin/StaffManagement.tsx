@@ -26,6 +26,8 @@ interface StaffUser {
 const ROLES = [
   { value: "staff", label: "Staff" },
   { value: "admin", label: "Admin" },
+  { value: "barangay_official", label: "Barangay Official" },
+  { value: "sk_chairman", label: "SK Chairman" },
 ];
 
 const AdminStaffManagement = () => {
@@ -36,6 +38,7 @@ const AdminStaffManagement = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<StaffUser | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<string>("all");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -45,6 +48,11 @@ const AdminStaffManagement = () => {
     role: "staff",
     isActive: true,
   });
+
+  // Filtered staff users based on role filter
+  const filteredStaffUsers = roleFilter === "all" 
+    ? staffUsers 
+    : staffUsers.filter(u => u.role === roleFilter);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -239,20 +247,39 @@ const AdminStaffManagement = () => {
                 Add Staff User
               </Button>
             </div>
+            {/* Role Filter */}
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground">Filter by role:</Label>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  {ROLES.map(r => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-            ) : staffUsers.length === 0 ? (
+            ) : filteredStaffUsers.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="font-medium text-lg mb-2">No Staff Users</h3>
+                <h3 className="font-medium text-lg mb-2">
+                  {roleFilter === "all" ? "No Staff Users" : `No ${ROLES.find(r => r.value === roleFilter)?.label || roleFilter} Users`}
+                </h3>
                 <p className="text-muted-foreground mb-4">
-                  Create your first staff account.
+                  {roleFilter === "all" ? "Create your first staff account." : "No users found with this role."}
                 </p>
-                <Button onClick={() => handleEdit(null)}>Add Staff User</Button>
+                {roleFilter === "all" && (
+                  <Button onClick={() => handleEdit(null)}>Add Staff User</Button>
+                )}
               </div>
             ) : (
               <div className="rounded-md border overflow-x-auto">
@@ -268,14 +295,14 @@ const AdminStaffManagement = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {staffUsers.map((staffUser) => (
+                    {filteredStaffUsers.map((staffUser) => (
                       <TableRow key={staffUser.id}>
                         <TableCell className="font-medium">{staffUser.username}</TableCell>
                         <TableCell>{staffUser.fullName}</TableCell>
                         <TableCell>
-                          <Badge variant={staffUser.role === "admin" ? "default" : "secondary"}>
-                            {staffUser.role === "admin" && <Shield className="h-3 w-3 mr-1" />}
-                            {staffUser.role}
+                          <Badge variant={staffUser.role === "admin" || staffUser.role === "barangay_official" ? "default" : "secondary"}>
+                            {(staffUser.role === "admin" || staffUser.role === "barangay_official" || staffUser.role === "sk_chairman") && <Shield className="h-3 w-3 mr-1" />}
+                            {ROLES.find(r => r.value === staffUser.role)?.label || staffUser.role}
                           </Badge>
                         </TableCell>
                         <TableCell>
