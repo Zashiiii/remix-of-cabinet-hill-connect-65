@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import JSZip from "jszip";
 
 interface CertificateData {
   fullName: string;
@@ -17,6 +18,16 @@ interface TemplateData {
   certificateType: string;
   templateContent: string;
   placeholders: string[];
+}
+
+export interface CertificateRequestForBulk {
+  id: string;
+  controlNumber: string;
+  fullName: string;
+  certificateType: string;
+  birthDate?: string;
+  purpose?: string;
+  residentId?: string;
 }
 
 // System settings (would typically come from database)
@@ -163,6 +174,180 @@ export const downloadCertificatePdf = async (
   }
 };
 
+// Generate certificate HTML for bulk download (returns full HTML string)
+export const generateCertificateFullHtml = async (
+  certificateType: string,
+  data: CertificateData
+): Promise<{ html: string; filename: string } | null> => {
+  try {
+    const typeMap: Record<string, string> = {
+      "Barangay Clearance": "barangay-clearance",
+      "Certificate of Indigency": "certificate-of-indigency",
+      "Certificate of Residency": "certificate-of-residency",
+    };
+
+    const templateType = typeMap[certificateType] || certificateType.toLowerCase().replace(/ /g, "-");
+    const template = await fetchTemplateByType(templateType);
+
+    if (!template) {
+      console.error("Template not found for type:", templateType);
+      return null;
+    }
+
+    const html = generateCertificateHtml(template, data);
+    const filename = `${data.controlNumber}_${certificateType.replace(/ /g, "_")}.html`;
+
+    const fullHtml = `<!DOCTYPE html>
+<html>
+  <head>
+    <title>${template.name} - ${data.controlNumber}</title>
+    <style>
+      @media print {
+        body { margin: 0; padding: 20mm; }
+        @page { size: A4; margin: 20mm; }
+      }
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+      }
+      h1, h2, h3 { margin: 0.5em 0; }
+      hr { border: none; border-top: 2px solid #333; margin: 1em 0; }
+    </style>
+  </head>
+  <body>
+    ${html}
+  </body>
+</html>`;
+
+    return { html: fullHtml, filename };
+  } catch (error) {
+    console.error("Error generating certificate HTML:", error);
+    return null;
+  }
+};
+
+// Fetch certificate data for bulk download
+export const fetchCertificateDataForBulk = async (
+  controlNumber: string
+): Promise<CertificateData | null> => {
+  try {
+    const { data: requestData, error } = await supabase
+      .from('certificate_requests')
+      .select(`
+        *,
+        residents (
+          *,
+          households (*)
+        )
+      `)
+      .eq('control_number', controlNumber)
+      .single();
+
+    if (error || !requestData) {
+      console.error("Failed to fetch certificate data:", error);
+      return null;
+    }
+
+    // Calculate age from birth_date
+    let age: number | undefined;
+    if (requestData.birth_date) {
+      const today = new Date();
+      const birth = new Date(requestData.birth_date);
+      age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+    }
+
+    // Build address from resident data
+    let address = "";
+    if (requestData.residents?.households) {
+      const h = requestData.residents.households;
+      address = [h.address, h.barangay, h.city, h.province]
+        .filter(Boolean)
+        .join(", ");
+    }
+
+    // Get civil status and years of residency
+    const civilStatus = requestData.residents?.civil_status || undefined;
+    const yearsOfResidency = requestData.residents?.households?.years_staying || undefined;
+
+    return {
+      fullName: requestData.full_name,
+      address,
+      civilStatus,
+      age,
+      birthDate: requestData.birth_date ? new Date(requestData.birth_date).toLocaleDateString() : undefined,
+      purpose: requestData.purpose || undefined,
+      controlNumber: requestData.control_number,
+      yearsOfResidency,
+    };
+  } catch (error) {
+    console.error("Error fetching certificate data for bulk:", error);
+    return null;
+  }
+};
+
+// Bulk download certificates as ZIP
+export const bulkDownloadCertificates = async (
+  controlNumbers: string[],
+  certificateTypes: Record<string, string>,
+  onProgress?: (current: number, total: number) => void
+): Promise<boolean> => {
+  try {
+    const zip = new JSZip();
+    const total = controlNumbers.length;
+    let current = 0;
+    let successCount = 0;
+
+    for (const controlNumber of controlNumbers) {
+      current++;
+      onProgress?.(current, total);
+
+      // Fetch certificate data
+      const certData = await fetchCertificateDataForBulk(controlNumber);
+      if (!certData) {
+        console.warn(`Skipping ${controlNumber}: Could not fetch data`);
+        continue;
+      }
+
+      const certificateType = certificateTypes[controlNumber];
+      const result = await generateCertificateFullHtml(certificateType, certData);
+
+      if (result) {
+        zip.file(result.filename, result.html);
+        successCount++;
+      }
+    }
+
+    if (successCount === 0) {
+      console.error("No certificates were generated");
+      return false;
+    }
+
+    // Generate and download ZIP
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const filename = `certificates_${new Date().toISOString().split('T')[0]}_${Date.now()}.zip`;
+
+    // Trigger download
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    return true;
+  } catch (error) {
+    console.error("Error in bulk download:", error);
+    return false;
+  }
+};
+
 // Log audit trail for certificate generation
 export const logCertificateGeneration = async (
   controlNumber: string,
@@ -183,5 +368,53 @@ export const logCertificateGeneration = async (
     });
   } catch (error) {
     console.error("Error logging certificate generation:", error);
+  }
+};
+
+// Log bulk download audit trail
+export const logBulkCertificateDownload = async (
+  controlNumbers: string[],
+  downloadedBy: string
+) => {
+  try {
+    await supabase.from("audit_logs").insert({
+      action: "bulk_download_certificates",
+      entity_type: "certificate_request",
+      entity_id: null,
+      performed_by: downloadedBy,
+      performed_by_type: "staff",
+      details: {
+        control_numbers: controlNumbers,
+        count: controlNumbers.length,
+        downloaded_at: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("Error logging bulk certificate download:", error);
+  }
+};
+
+// Log batch status update audit trail
+export const logBatchStatusUpdate = async (
+  controlNumbers: string[],
+  newStatus: string,
+  updatedBy: string
+) => {
+  try {
+    await supabase.from("audit_logs").insert({
+      action: "batch_status_update",
+      entity_type: "certificate_request",
+      entity_id: null,
+      performed_by: updatedBy,
+      performed_by_type: "staff",
+      details: {
+        control_numbers: controlNumbers,
+        count: controlNumbers.length,
+        new_status: newStatus,
+        updated_at: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("Error logging batch status update:", error);
   }
 };
