@@ -183,12 +183,7 @@ const StaffResidents = () => {
     is_head_of_household: false,
   });
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast.error("Please login to access this page");
-      navigate("/");
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is now handled by ProtectedRoute wrapper
 
   const loadResidents = useCallback(async () => {
     setIsLoading(true);

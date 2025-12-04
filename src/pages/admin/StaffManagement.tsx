@@ -54,12 +54,7 @@ const AdminStaffManagement = () => {
     ? staffUsers 
     : staffUsers.filter(u => u.role === roleFilter);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast.error("Please login to access this page");
-      navigate("/");
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is now handled by ProtectedRoute wrapper
 
   const loadStaffUsers = useCallback(async () => {
     setIsLoading(true);

@@ -32,12 +32,7 @@ const ResidentMessages = () => {
   const [newContent, setNewContent] = useState("");
   const [isSending, setIsSending] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast.error("Please login to view messages");
-      navigate("/auth");
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is now handled by ResidentProtectedRoute wrapper
 
   useEffect(() => {
     if (isAuthenticated && user) {

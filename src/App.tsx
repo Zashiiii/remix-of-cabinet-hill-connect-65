@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import { StaffAuthProvider } from "@/context/StaffAuthContext";
+import { StaffProtectedRoute, ResidentProtectedRoute } from "@/components/ProtectedRoute";
 import DataPrivacyModal from "@/components/DataPrivacyModal";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -59,27 +60,76 @@ const AppContent = () => {
         onOpenChange={handlePrivacyNoticeClose}
       />
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/request-certificate" element={<RequestCertificate />} />
         <Route path="/track-request" element={<TrackRequest />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/staff-dashboard" element={<StaffDashboard />} />
-        {/* Resident Portal Routes */}
-        <Route path="/resident/dashboard" element={<ResidentDashboard />} />
-        <Route path="/resident/profile" element={<ResidentProfile />} />
-        <Route path="/resident/requests" element={<ResidentRequests />} />
-        <Route path="/resident/messages" element={<ResidentMessages />} />
-        {/* Staff Routes */}
-        <Route path="/staff/incidents" element={<StaffIncidents />} />
-        <Route path="/staff/residents" element={<StaffResidents />} />
-        <Route path="/staff/households" element={<StaffHouseholds />} />
-        {/* Admin Routes */}
-        <Route path="/admin/templates" element={<AdminTemplates />} />
-        <Route path="/admin/staff" element={<AdminStaffManagement />} />
-        <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        
+        {/* Staff Protected Routes */}
+        <Route path="/staff-dashboard" element={
+          <StaffProtectedRoute>
+            <StaffDashboard />
+          </StaffProtectedRoute>
+        } />
+        <Route path="/staff/incidents" element={
+          <StaffProtectedRoute>
+            <StaffIncidents />
+          </StaffProtectedRoute>
+        } />
+        <Route path="/staff/residents" element={
+          <StaffProtectedRoute>
+            <StaffResidents />
+          </StaffProtectedRoute>
+        } />
+        <Route path="/staff/households" element={
+          <StaffProtectedRoute>
+            <StaffHouseholds />
+          </StaffProtectedRoute>
+        } />
+        
+        {/* Admin Protected Routes */}
+        <Route path="/admin/templates" element={
+          <StaffProtectedRoute requiredRole="admin">
+            <AdminTemplates />
+          </StaffProtectedRoute>
+        } />
+        <Route path="/admin/staff" element={
+          <StaffProtectedRoute requiredRole="admin">
+            <AdminStaffManagement />
+          </StaffProtectedRoute>
+        } />
+        <Route path="/admin/audit-logs" element={
+          <StaffProtectedRoute requiredRole="admin">
+            <AdminAuditLogs />
+          </StaffProtectedRoute>
+        } />
+        
+        {/* Resident Protected Routes */}
+        <Route path="/resident/dashboard" element={
+          <ResidentProtectedRoute>
+            <ResidentDashboard />
+          </ResidentProtectedRoute>
+        } />
+        <Route path="/resident/profile" element={
+          <ResidentProtectedRoute>
+            <ResidentProfile />
+          </ResidentProtectedRoute>
+        } />
+        <Route path="/resident/requests" element={
+          <ResidentProtectedRoute>
+            <ResidentRequests />
+          </ResidentProtectedRoute>
+        } />
+        <Route path="/resident/messages" element={
+          <ResidentProtectedRoute>
+            <ResidentMessages />
+          </ResidentProtectedRoute>
+        } />
+        
+        {/* Catch-all */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

@@ -41,12 +41,7 @@ const AdminAuditLogs = () => {
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [actionFilter, setActionFilter] = useState<string>("all");
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast.error("Please login to access this page");
-      navigate("/");
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is now handled by ProtectedRoute wrapper
 
   const loadLogs = useCallback(async () => {
     setIsLoading(true);
