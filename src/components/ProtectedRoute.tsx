@@ -1,7 +1,7 @@
-import { ReactNode } from 'react';
+import { ReactNode, useContext, createContext } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useStaffAuthContext } from '@/context/StaffAuthContext';
 import { useResidentAuth } from '@/hooks/useResidentAuth';
+import { useStaffAuth } from '@/hooks/useStaffAuth';
 import { Loader2 } from 'lucide-react';
 
 interface StaffProtectedRouteProps {
@@ -15,16 +15,16 @@ interface ResidentProtectedRouteProps {
   redirectTo?: string;
 }
 
-// Protected route for staff/admin pages
+// Protected route for staff/admin pages - uses hook directly to avoid context issues
 export const StaffProtectedRoute = ({ 
   children, 
   requiredRole = 'any',
   redirectTo = '/' 
 }: StaffProtectedRouteProps) => {
-  const { isAuthenticated, isLoading, user } = useStaffAuthContext();
+  const { isAuthenticated, isLoading, user } = useStaffAuth();
   const location = useLocation();
 
-  // Show loading only if actually loading (shouldn't happen with sync init)
+  // Show loading only if actually loading
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
