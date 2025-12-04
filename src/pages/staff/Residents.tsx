@@ -22,6 +22,8 @@ import {
   Trash2,
   Wifi,
   Car,
+  Save,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,11 +43,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
@@ -107,6 +118,31 @@ interface Resident {
   households: Household | null;
 }
 
+interface EditFormData {
+  first_name: string;
+  middle_name: string;
+  last_name: string;
+  suffix: string;
+  birth_date: string;
+  gender: string;
+  civil_status: string;
+  contact_number: string;
+  email: string;
+  religion: string;
+  ethnic_group: string;
+  place_of_origin: string;
+  schooling_status: string;
+  education_attainment: string;
+  employment_status: string;
+  employment_category: string;
+  occupation: string;
+  monthly_income_cash: string;
+  monthly_income_kind: string;
+  livelihood_training: string;
+  relation_to_head: string;
+  is_head_of_household: boolean;
+}
+
 const ITEMS_PER_PAGE = 10;
 
 const StaffResidents = () => {
@@ -119,6 +155,33 @@ const StaffResidents = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedResident, setSelectedResident] = useState<Resident | null>(null);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingResident, setEditingResident] = useState<Resident | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editForm, setEditForm] = useState<EditFormData>({
+    first_name: "",
+    middle_name: "",
+    last_name: "",
+    suffix: "",
+    birth_date: "",
+    gender: "",
+    civil_status: "",
+    contact_number: "",
+    email: "",
+    religion: "",
+    ethnic_group: "",
+    place_of_origin: "",
+    schooling_status: "",
+    education_attainment: "",
+    employment_status: "",
+    employment_category: "",
+    occupation: "",
+    monthly_income_cash: "",
+    monthly_income_kind: "",
+    livelihood_training: "",
+    relation_to_head: "",
+    is_head_of_household: false,
+  });
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -197,6 +260,92 @@ const StaffResidents = () => {
   const handleViewProfile = (resident: Resident) => {
     setSelectedResident(resident);
     setShowProfileDialog(true);
+  };
+
+  const handleEditResident = (resident: Resident) => {
+    setEditingResident(resident);
+    setEditForm({
+      first_name: resident.first_name || "",
+      middle_name: resident.middle_name || "",
+      last_name: resident.last_name || "",
+      suffix: resident.suffix || "",
+      birth_date: resident.birth_date || "",
+      gender: resident.gender || "",
+      civil_status: resident.civil_status || "",
+      contact_number: resident.contact_number || "",
+      email: resident.email || "",
+      religion: resident.religion || "",
+      ethnic_group: resident.ethnic_group || "",
+      place_of_origin: resident.place_of_origin || "",
+      schooling_status: resident.schooling_status || "",
+      education_attainment: resident.education_attainment || "",
+      employment_status: resident.employment_status || "",
+      employment_category: resident.employment_category || "",
+      occupation: resident.occupation || "",
+      monthly_income_cash: resident.monthly_income_cash || "",
+      monthly_income_kind: resident.monthly_income_kind || "",
+      livelihood_training: resident.livelihood_training || "",
+      relation_to_head: resident.relation_to_head || "",
+      is_head_of_household: resident.is_head_of_household || false,
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateResident = async () => {
+    if (!editingResident) return;
+    
+    if (!editForm.first_name.trim() || !editForm.last_name.trim()) {
+      toast.error("First name and last name are required");
+      return;
+    }
+
+    if (editForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("residents")
+        .update({
+          first_name: editForm.first_name.trim(),
+          middle_name: editForm.middle_name.trim() || null,
+          last_name: editForm.last_name.trim(),
+          suffix: editForm.suffix.trim() || null,
+          birth_date: editForm.birth_date || null,
+          gender: editForm.gender || null,
+          civil_status: editForm.civil_status || null,
+          contact_number: editForm.contact_number.trim() || null,
+          email: editForm.email.trim() || null,
+          religion: editForm.religion.trim() || null,
+          ethnic_group: editForm.ethnic_group.trim() || null,
+          place_of_origin: editForm.place_of_origin.trim() || null,
+          schooling_status: editForm.schooling_status || null,
+          education_attainment: editForm.education_attainment || null,
+          employment_status: editForm.employment_status || null,
+          employment_category: editForm.employment_category.trim() || null,
+          occupation: editForm.occupation.trim() || null,
+          monthly_income_cash: editForm.monthly_income_cash.trim() || null,
+          monthly_income_kind: editForm.monthly_income_kind.trim() || null,
+          livelihood_training: editForm.livelihood_training.trim() || null,
+          relation_to_head: editForm.relation_to_head || null,
+          is_head_of_household: editForm.is_head_of_household,
+        })
+        .eq("id", editingResident.id);
+
+      if (error) throw error;
+
+      toast.success("Resident updated successfully");
+      setShowEditDialog(false);
+      setEditingResident(null);
+      loadResidents();
+    } catch (error) {
+      console.error("Error updating resident:", error);
+      toast.error("Failed to update resident");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const formatArrayField = (arr: unknown) => {
@@ -331,14 +480,24 @@ const StaffResidents = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewProfile(resident)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View Profile
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewProfile(resident)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditResident(resident)}
+                              title="Edit Resident"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -383,14 +542,29 @@ const StaffResidents = () => {
       {/* Full Census Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Resident Census Profile
-            </DialogTitle>
-            <DialogDescription>
-              Complete census information for {selectedResident && getFullName(selectedResident)}
-            </DialogDescription>
+          <DialogHeader className="flex flex-row items-start justify-between">
+            <div>
+              <DialogTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Resident Census Profile
+              </DialogTitle>
+              <DialogDescription>
+                Complete census information for {selectedResident && getFullName(selectedResident)}
+              </DialogDescription>
+            </div>
+            {selectedResident && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowProfileDialog(false);
+                  handleEditResident(selectedResident);
+                }}
+              >
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+            )}
           </DialogHeader>
 
           {selectedResident && (
@@ -581,6 +755,364 @@ const StaffResidents = () => {
               </Tabs>
             </ScrollArea>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Resident Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5" />
+              Edit Resident Information
+            </DialogTitle>
+            <DialogDescription>
+              Update the resident's personal, education, and employment information.
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <Tabs defaultValue="personal" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="personal">Personal Info</TabsTrigger>
+                <TabsTrigger value="education">Education & Employment</TabsTrigger>
+                <TabsTrigger value="household">Household Relation</TabsTrigger>
+              </TabsList>
+
+              {/* Personal Information Tab */}
+              <TabsContent value="personal" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">First Name *</Label>
+                    <Input
+                      id="first_name"
+                      value={editForm.first_name}
+                      onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                      placeholder="Enter first name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="middle_name">Middle Name</Label>
+                    <Input
+                      id="middle_name"
+                      value={editForm.middle_name}
+                      onChange={(e) => setEditForm({ ...editForm, middle_name: e.target.value })}
+                      placeholder="Enter middle name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">Last Name *</Label>
+                    <Input
+                      id="last_name"
+                      value={editForm.last_name}
+                      onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                      placeholder="Enter last name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="suffix">Suffix</Label>
+                    <Input
+                      id="suffix"
+                      value={editForm.suffix}
+                      onChange={(e) => setEditForm({ ...editForm, suffix: e.target.value })}
+                      placeholder="Jr., Sr., III"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="birth_date">Birth Date</Label>
+                    <Input
+                      id="birth_date"
+                      type="date"
+                      value={editForm.birth_date}
+                      onChange={(e) => setEditForm({ ...editForm, birth_date: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Gender</Label>
+                    <Select
+                      value={editForm.gender}
+                      onValueChange={(value) => setEditForm({ ...editForm, gender: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="civil_status">Civil Status</Label>
+                    <Select
+                      value={editForm.civil_status}
+                      onValueChange={(value) => setEditForm({ ...editForm, civil_status: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Single">Single</SelectItem>
+                        <SelectItem value="Married">Married</SelectItem>
+                        <SelectItem value="Widowed">Widowed</SelectItem>
+                        <SelectItem value="Separated">Separated</SelectItem>
+                        <SelectItem value="Divorced">Divorced</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="contact_number">Contact Number</Label>
+                    <Input
+                      id="contact_number"
+                      value={editForm.contact_number}
+                      onChange={(e) => setEditForm({ ...editForm, contact_number: e.target.value })}
+                      placeholder="09XX-XXX-XXXX"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      placeholder="email@example.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="religion">Religion</Label>
+                    <Input
+                      id="religion"
+                      value={editForm.religion}
+                      onChange={(e) => setEditForm({ ...editForm, religion: e.target.value })}
+                      placeholder="Enter religion"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ethnic_group">Ethnic Group</Label>
+                    <Input
+                      id="ethnic_group"
+                      value={editForm.ethnic_group}
+                      onChange={(e) => setEditForm({ ...editForm, ethnic_group: e.target.value })}
+                      placeholder="Enter ethnic group"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="place_of_origin">Place of Origin</Label>
+                    <Input
+                      id="place_of_origin"
+                      value={editForm.place_of_origin}
+                      onChange={(e) => setEditForm({ ...editForm, place_of_origin: e.target.value })}
+                      placeholder="Enter place of origin"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Education & Employment Tab */}
+              <TabsContent value="education" className="space-y-4 mt-4">
+                <div className="space-y-4">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4" />
+                    Education
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="schooling_status">Schooling Status</Label>
+                      <Select
+                        value={editForm.schooling_status}
+                        onValueChange={(value) => setEditForm({ ...editForm, schooling_status: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="In-school">In-school</SelectItem>
+                          <SelectItem value="Out-of-school">Out-of-school</SelectItem>
+                          <SelectItem value="Not Applicable">Not Applicable</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="education_attainment">Education Attainment</Label>
+                      <Select
+                        value={editForm.education_attainment}
+                        onValueChange={(value) => setEditForm({ ...editForm, education_attainment: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select attainment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="No Formal Education">No Formal Education</SelectItem>
+                          <SelectItem value="Elementary">Elementary</SelectItem>
+                          <SelectItem value="High School">High School</SelectItem>
+                          <SelectItem value="Vocational">Vocational</SelectItem>
+                          <SelectItem value="College">College</SelectItem>
+                          <SelectItem value="Graduate">Graduate</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    Employment
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="employment_status">Employment Status</Label>
+                      <Select
+                        value={editForm.employment_status}
+                        onValueChange={(value) => setEditForm({ ...editForm, employment_status: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Employed">Employed</SelectItem>
+                          <SelectItem value="Unemployed">Unemployed</SelectItem>
+                          <SelectItem value="Self-employed">Self-employed</SelectItem>
+                          <SelectItem value="Student">Student</SelectItem>
+                          <SelectItem value="Retired">Retired</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="employment_category">Employment Category</Label>
+                      <Input
+                        id="employment_category"
+                        value={editForm.employment_category}
+                        onChange={(e) => setEditForm({ ...editForm, employment_category: e.target.value })}
+                        placeholder="e.g., Private, Government"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="occupation">Occupation</Label>
+                      <Input
+                        id="occupation"
+                        value={editForm.occupation}
+                        onChange={(e) => setEditForm({ ...editForm, occupation: e.target.value })}
+                        placeholder="Enter occupation"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="livelihood_training">Livelihood Training</Label>
+                      <Input
+                        id="livelihood_training"
+                        value={editForm.livelihood_training}
+                        onChange={(e) => setEditForm({ ...editForm, livelihood_training: e.target.value })}
+                        placeholder="Training received"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="monthly_income_cash">Monthly Income (Cash)</Label>
+                      <Input
+                        id="monthly_income_cash"
+                        value={editForm.monthly_income_cash}
+                        onChange={(e) => setEditForm({ ...editForm, monthly_income_cash: e.target.value })}
+                        placeholder="e.g., 15000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="monthly_income_kind">Monthly Income (Kind)</Label>
+                      <Input
+                        id="monthly_income_kind"
+                        value={editForm.monthly_income_kind}
+                        onChange={(e) => setEditForm({ ...editForm, monthly_income_kind: e.target.value })}
+                        placeholder="e.g., Rice, Vegetables"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Household Relation Tab */}
+              <TabsContent value="household" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="relation_to_head">Relation to Head</Label>
+                    <Select
+                      value={editForm.relation_to_head}
+                      onValueChange={(value) => setEditForm({ ...editForm, relation_to_head: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select relation" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Head">Head</SelectItem>
+                        <SelectItem value="Spouse">Spouse</SelectItem>
+                        <SelectItem value="Child">Child</SelectItem>
+                        <SelectItem value="Parent">Parent</SelectItem>
+                        <SelectItem value="Sibling">Sibling</SelectItem>
+                        <SelectItem value="Grandparent">Grandparent</SelectItem>
+                        <SelectItem value="Grandchild">Grandchild</SelectItem>
+                        <SelectItem value="In-law">In-law</SelectItem>
+                        <SelectItem value="Relative">Relative</SelectItem>
+                        <SelectItem value="Boarder">Boarder</SelectItem>
+                        <SelectItem value="Helper">Helper</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 flex items-end">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="is_head_of_household"
+                        checked={editForm.is_head_of_household}
+                        onCheckedChange={(checked) => 
+                          setEditForm({ ...editForm, is_head_of_household: checked as boolean })
+                        }
+                      />
+                      <Label htmlFor="is_head_of_household" className="cursor-pointer">
+                        Is Head of Household
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </ScrollArea>
+
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditDialog(false);
+                setEditingResident(null);
+              }}
+              disabled={isSaving}
+            >
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateResident} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

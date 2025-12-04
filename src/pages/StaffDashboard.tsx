@@ -27,6 +27,7 @@ import {
   Settings,
   History,
   Shield,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,6 +84,7 @@ import {
   fetchAllRequests,
   fetchRecentProcessedRequests,
 } from "@/utils/api";
+import { downloadCertificatePdf, logCertificateGeneration } from "@/utils/certificatePdf";
 
 interface PendingRequest {
   id: string;
@@ -512,32 +514,77 @@ const StaffDashboard = () => {
     }
   };
 
-  // Create demo request for testing
-  const createDemoRequest = async () => {
-    const demoControlNumber = `DEMO-${Date.now().toString().slice(-8)}`;
-    
+  // Download certificate for approved request
+  const handleDownloadCertificate = async (request: PendingRequest) => {
     try {
-      const { error } = await supabase.from('certificate_requests').insert({
-        control_number: demoControlNumber,
-        certificate_type: 'Barangay Clearance',
-        full_name: 'Juan Dela Cruz',
-        contact_number: '09123456789',
-        email: 'juan.delacruz@email.com',
-        purpose: 'Employment requirement for job application at ABC Company',
-        priority: 'Normal',
-        status: 'Pending',
-        household_number: 'A-01',
-        birth_date: '1990-05-15',
-        preferred_pickup_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      // Fetch full request data including resident info
+      const { data: requestData, error } = await supabase
+        .from('certificate_requests')
+        .select(`
+          *,
+          residents (
+            *,
+            households (*)
+          )
+        `)
+        .eq('control_number', request.id)
+        .single();
+
+      if (error || !requestData) {
+        toast.error("Failed to fetch certificate data");
+        return;
+      }
+
+      // Calculate age from birth_date
+      let age: number | undefined;
+      if (requestData.birth_date) {
+        const today = new Date();
+        const birth = new Date(requestData.birth_date);
+        age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+          age--;
+        }
+      }
+
+      // Build address from resident data
+      let address = "";
+      if (requestData.residents?.households) {
+        const h = requestData.residents.households;
+        address = [h.address, h.barangay, h.city, h.province]
+          .filter(Boolean)
+          .join(", ");
+      }
+
+      // Get civil status and years of residency
+      const civilStatus = requestData.residents?.civil_status || undefined;
+      const yearsOfResidency = requestData.residents?.households?.years_staying || undefined;
+
+      const success = await downloadCertificatePdf(requestData.certificate_type, {
+        fullName: requestData.full_name,
+        address,
+        civilStatus,
+        age,
+        birthDate: requestData.birth_date ? new Date(requestData.birth_date).toLocaleDateString() : undefined,
+        purpose: requestData.purpose || undefined,
+        controlNumber: requestData.control_number,
+        yearsOfResidency,
       });
 
-      if (error) throw error;
-
-      toast.success(`Demo request created: ${demoControlNumber}`);
-      loadRequests();
-    } catch (error: any) {
-      console.error("Error creating demo request:", error);
-      toast.error(`Failed to create demo request: ${error.message}`);
+      if (success) {
+        // Log the certificate generation
+        await logCertificateGeneration(
+          requestData.control_number,
+          requestData.certificate_type,
+          user?.fullName || "Staff Admin"
+        );
+        toast.success("Certificate generated successfully");
+      } else {
+        toast.error("Failed to generate certificate. Template may not be configured.");
+      }
+    } catch (error) {
+      console.error("Error downloading certificate:", error);
+      toast.error("Failed to download certificate");
     }
   };
 
@@ -1018,6 +1065,17 @@ const StaffDashboard = () => {
                                         <Eye className="h-4 w-4 mr-1" />
                                         View
                                       </Button>
+                                      {request.status === "approved" && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleDownloadCertificate(request)}
+                                          className="text-blue-600 hover:bg-blue-50"
+                                          title="Download Certificate"
+                                        >
+                                          <Download className="h-4 w-4" />
+                                        </Button>
+                                      )}
                                       {(request.status === "pending" || request.status === "verifying") && (
                                         <>
                                           <Button
@@ -1386,6 +1444,16 @@ const StaffDashboard = () => {
             <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
               Close
             </Button>
+            {detailsRequest && detailsRequest.status === "approved" && (
+              <Button
+                variant="default"
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => handleDownloadCertificate(detailsRequest)}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Certificate
+              </Button>
+            )}
             {detailsRequest && (detailsRequest.status === "pending" || detailsRequest.status === "verifying") && (
               <>
                 <Button 
