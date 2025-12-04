@@ -53,6 +53,42 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          performed_by: string
+          performed_by_type: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          performed_by: string
+          performed_by_type: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          performed_by?: string
+          performed_by_type?: string
+        }
+        Relationships: []
+      }
       certificate_audit_trail: {
         Row: {
           action: string
@@ -104,8 +140,11 @@ export type Database = {
           priority: string | null
           processed_by: string | null
           purpose: string | null
+          rejection_reason: string | null
+          resident_id: string | null
           status: string | null
           updated_at: string | null
+          uploaded_id_url: string | null
         }
         Insert: {
           birth_date?: string | null
@@ -122,8 +161,11 @@ export type Database = {
           priority?: string | null
           processed_by?: string | null
           purpose?: string | null
+          rejection_reason?: string | null
+          resident_id?: string | null
           status?: string | null
           updated_at?: string | null
+          uploaded_id_url?: string | null
         }
         Update: {
           birth_date?: string | null
@@ -140,7 +182,54 @@ export type Database = {
           priority?: string | null
           processed_by?: string | null
           purpose?: string | null
+          rejection_reason?: string | null
+          resident_id?: string | null
           status?: string | null
+          updated_at?: string | null
+          uploaded_id_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_requests_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certificate_templates: {
+        Row: {
+          certificate_type: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          placeholders: Json | null
+          template_content: string
+          updated_at: string | null
+        }
+        Insert: {
+          certificate_type: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          placeholders?: Json | null
+          template_content: string
+          updated_at?: string | null
+        }
+        Update: {
+          certificate_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          placeholders?: Json | null
+          template_content?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -191,31 +280,97 @@ export type Database = {
           address: string | null
           barangay: string | null
           city: string | null
+          communication_services: Json | null
           created_at: string | null
+          district: string | null
+          drainage_facilities: Json | null
+          dwelling_type: string | null
+          ethnic_group: string | null
+          food_service: Json | null
+          food_storage_type: Json | null
+          garbage_disposal: Json | null
+          house_number: string | null
+          house_ownership: string | null
           household_number: string
+          household_storage: Json | null
           id: string
+          info_sources: Json | null
+          interview_date: string | null
+          lighting_source: string | null
+          lot_ownership: string | null
+          means_of_transport: Json | null
+          place_of_origin: string | null
           province: string | null
+          street_purok: string | null
+          toilet_facilities: Json | null
           updated_at: string | null
+          water_storage: Json | null
+          water_supply_level: string | null
+          years_staying: number | null
         }
         Insert: {
           address?: string | null
           barangay?: string | null
           city?: string | null
+          communication_services?: Json | null
           created_at?: string | null
+          district?: string | null
+          drainage_facilities?: Json | null
+          dwelling_type?: string | null
+          ethnic_group?: string | null
+          food_service?: Json | null
+          food_storage_type?: Json | null
+          garbage_disposal?: Json | null
+          house_number?: string | null
+          house_ownership?: string | null
           household_number: string
+          household_storage?: Json | null
           id?: string
+          info_sources?: Json | null
+          interview_date?: string | null
+          lighting_source?: string | null
+          lot_ownership?: string | null
+          means_of_transport?: Json | null
+          place_of_origin?: string | null
           province?: string | null
+          street_purok?: string | null
+          toilet_facilities?: Json | null
           updated_at?: string | null
+          water_storage?: Json | null
+          water_supply_level?: string | null
+          years_staying?: number | null
         }
         Update: {
           address?: string | null
           barangay?: string | null
           city?: string | null
+          communication_services?: Json | null
           created_at?: string | null
+          district?: string | null
+          drainage_facilities?: Json | null
+          dwelling_type?: string | null
+          ethnic_group?: string | null
+          food_service?: Json | null
+          food_storage_type?: Json | null
+          garbage_disposal?: Json | null
+          house_number?: string | null
+          house_ownership?: string | null
           household_number?: string
+          household_storage?: Json | null
           id?: string
+          info_sources?: Json | null
+          interview_date?: string | null
+          lighting_source?: string | null
+          lot_ownership?: string | null
+          means_of_transport?: Json | null
+          place_of_origin?: string | null
           province?: string | null
+          street_purok?: string | null
+          toilet_facilities?: Json | null
           updated_at?: string | null
+          water_storage?: Json | null
+          water_supply_level?: string | null
+          years_staying?: number | null
         }
         Relationships: []
       }
@@ -263,57 +418,209 @@ export type Database = {
           },
         ]
       }
+      incidents: {
+        Row: {
+          action_taken: string | null
+          complainant_address: string | null
+          complainant_contact: string | null
+          complainant_name: string
+          created_at: string | null
+          handled_by: string | null
+          id: string
+          incident_date: string
+          incident_description: string
+          incident_location: string | null
+          incident_number: string
+          incident_type: string
+          reported_by: string | null
+          resolution_date: string | null
+          resolution_notes: string | null
+          respondent_address: string | null
+          respondent_name: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          complainant_address?: string | null
+          complainant_contact?: string | null
+          complainant_name: string
+          created_at?: string | null
+          handled_by?: string | null
+          id?: string
+          incident_date: string
+          incident_description: string
+          incident_location?: string | null
+          incident_number: string
+          incident_type: string
+          reported_by?: string | null
+          resolution_date?: string | null
+          resolution_notes?: string | null
+          respondent_address?: string | null
+          respondent_name?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          complainant_address?: string | null
+          complainant_contact?: string | null
+          complainant_name?: string
+          created_at?: string | null
+          handled_by?: string | null
+          id?: string
+          incident_date?: string
+          incident_description?: string
+          incident_location?: string | null
+          incident_number?: string
+          incident_type?: string
+          reported_by?: string | null
+          resolution_date?: string | null
+          resolution_notes?: string | null
+          respondent_address?: string | null
+          respondent_name?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          parent_message_id: string | null
+          recipient_id: string
+          recipient_type: string
+          sender_id: string
+          sender_type: string
+          subject: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          parent_message_id?: string | null
+          recipient_id: string
+          recipient_type: string
+          sender_id: string
+          sender_type: string
+          subject?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          parent_message_id?: string | null
+          recipient_id?: string
+          recipient_type?: string
+          sender_id?: string
+          sender_type?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       residents: {
         Row: {
           birth_date: string | null
           civil_status: string | null
           contact_number: string | null
           created_at: string | null
+          dialects_spoken: Json | null
+          education_attainment: string | null
           email: string | null
+          employment_category: string | null
+          employment_status: string | null
+          ethnic_group: string | null
           first_name: string
           gender: string | null
           household_id: string | null
           id: string
           is_head_of_household: boolean | null
           last_name: string
+          livelihood_training: string | null
           middle_name: string | null
+          monthly_income_cash: string | null
+          monthly_income_kind: string | null
           occupation: string | null
+          place_of_origin: string | null
+          relation_to_head: string | null
+          religion: string | null
+          schooling_status: string | null
           suffix: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           birth_date?: string | null
           civil_status?: string | null
           contact_number?: string | null
           created_at?: string | null
+          dialects_spoken?: Json | null
+          education_attainment?: string | null
           email?: string | null
+          employment_category?: string | null
+          employment_status?: string | null
+          ethnic_group?: string | null
           first_name: string
           gender?: string | null
           household_id?: string | null
           id?: string
           is_head_of_household?: boolean | null
           last_name: string
+          livelihood_training?: string | null
           middle_name?: string | null
+          monthly_income_cash?: string | null
+          monthly_income_kind?: string | null
           occupation?: string | null
+          place_of_origin?: string | null
+          relation_to_head?: string | null
+          religion?: string | null
+          schooling_status?: string | null
           suffix?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           birth_date?: string | null
           civil_status?: string | null
           contact_number?: string | null
           created_at?: string | null
+          dialects_spoken?: Json | null
+          education_attainment?: string | null
           email?: string | null
+          employment_category?: string | null
+          employment_status?: string | null
+          ethnic_group?: string | null
           first_name?: string
           gender?: string | null
           household_id?: string | null
           id?: string
           is_head_of_household?: boolean | null
           last_name?: string
+          livelihood_training?: string | null
           middle_name?: string | null
+          monthly_income_cash?: string | null
+          monthly_income_kind?: string | null
           occupation?: string | null
+          place_of_origin?: string | null
+          relation_to_head?: string | null
+          religion?: string | null
+          schooling_status?: string | null
           suffix?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -454,8 +761,11 @@ export type Database = {
           priority: string | null
           processed_by: string | null
           purpose: string | null
+          rejection_reason: string | null
+          resident_id: string | null
           status: string | null
           updated_at: string | null
+          uploaded_id_url: string | null
         }[]
         SetofOptions: {
           from: "*"
