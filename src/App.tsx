@@ -17,6 +17,9 @@ import ResidentProfile from "./pages/resident/Profile";
 import ResidentRequests from "./pages/resident/Requests";
 import ResidentMessages from "./pages/resident/Messages";
 import StaffIncidents from "./pages/staff/Incidents";
+import AdminTemplates from "./pages/admin/Templates";
+import AdminStaffManagement from "./pages/admin/StaffManagement";
+import AdminAuditLogs from "./pages/admin/AuditLogs";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +45,10 @@ const App = () => (
               <Route path="/resident/messages" element={<ResidentMessages />} />
               {/* Staff Routes */}
               <Route path="/staff/incidents" element={<StaffIncidents />} />
+              {/* Admin Routes */}
+              <Route path="/admin/templates" element={<AdminTemplates />} />
+              <Route path="/admin/staff" element={<AdminStaffManagement />} />
+              <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
