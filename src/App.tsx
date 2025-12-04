@@ -17,6 +17,7 @@ import ResidentProfile from "./pages/resident/Profile";
 import ResidentRequests from "./pages/resident/Requests";
 import ResidentMessages from "./pages/resident/Messages";
 import StaffIncidents from "./pages/staff/Incidents";
+import StaffResidents from "./pages/staff/Residents";
 import AdminTemplates from "./pages/admin/Templates";
 import AdminStaffManagement from "./pages/admin/StaffManagement";
 import AdminAuditLogs from "./pages/admin/AuditLogs";
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/resident/messages" element={<ResidentMessages />} />
               {/* Staff Routes */}
               <Route path="/staff/incidents" element={<StaffIncidents />} />
+              <Route path="/staff/residents" element={<StaffResidents />} />
               {/* Admin Routes */}
               <Route path="/admin/templates" element={<AdminTemplates />} />
               <Route path="/admin/staff" element={<AdminStaffManagement />} />

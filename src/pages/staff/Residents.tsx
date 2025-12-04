@@ -68,14 +68,14 @@ interface Household {
   lighting_source: string | null;
   water_supply_level: string | null;
   years_staying: number | null;
-  toilet_facilities: string[] | null;
-  drainage_facilities: string[] | null;
-  garbage_disposal: string[] | null;
-  water_storage: string[] | null;
-  food_storage_type: string[] | null;
-  communication_services: string[] | null;
-  means_of_transport: string[] | null;
-  info_sources: string[] | null;
+  toilet_facilities: unknown;
+  drainage_facilities: unknown;
+  garbage_disposal: unknown;
+  water_storage: unknown;
+  food_storage_type: unknown;
+  communication_services: unknown;
+  means_of_transport: unknown;
+  info_sources: unknown;
 }
 
 interface Resident {
@@ -92,7 +92,7 @@ interface Resident {
   religion: string | null;
   ethnic_group: string | null;
   place_of_origin: string | null;
-  dialects_spoken: string[] | null;
+  dialects_spoken: unknown;
   schooling_status: string | null;
   education_attainment: string | null;
   employment_status: string | null;
@@ -199,9 +199,12 @@ const StaffResidents = () => {
     setShowProfileDialog(true);
   };
 
-  const formatArrayField = (arr: string[] | null) => {
-    if (!arr || arr.length === 0) return "Not specified";
-    return arr.join(", ");
+  const formatArrayField = (arr: unknown) => {
+    if (!arr) return "Not specified";
+    if (Array.isArray(arr) && arr.length > 0) {
+      return arr.join(", ");
+    }
+    return "Not specified";
   };
 
   if (authLoading) {
@@ -434,7 +437,7 @@ const StaffResidents = () => {
                     <InfoField
                       icon={User}
                       label="Dialects Spoken"
-                      value={formatArrayField(selectedResident.dialects_spoken as string[] | null)}
+                      value={formatArrayField(selectedResident.dialects_spoken)}
                       className="col-span-2"
                     />
                   </div>
@@ -517,22 +520,22 @@ const StaffResidents = () => {
                           <InfoField
                             icon={Droplets}
                             label="Water Storage"
-                            value={formatArrayField(selectedResident.households.water_storage as string[] | null)}
+                            value={formatArrayField(selectedResident.households.water_storage)}
                           />
                           <InfoField
                             icon={Trash2}
                             label="Garbage Disposal"
-                            value={formatArrayField(selectedResident.households.garbage_disposal as string[] | null)}
+                            value={formatArrayField(selectedResident.households.garbage_disposal)}
                           />
                           <InfoField
                             icon={Building}
                             label="Toilet Facilities"
-                            value={formatArrayField(selectedResident.households.toilet_facilities as string[] | null)}
+                            value={formatArrayField(selectedResident.households.toilet_facilities)}
                           />
                           <InfoField
                             icon={Droplets}
                             label="Drainage Facilities"
-                            value={formatArrayField(selectedResident.households.drainage_facilities as string[] | null)}
+                            value={formatArrayField(selectedResident.households.drainage_facilities)}
                           />
                         </div>
                       </div>
@@ -548,22 +551,22 @@ const StaffResidents = () => {
                           <InfoField
                             icon={Wifi}
                             label="Communication Services"
-                            value={formatArrayField(selectedResident.households.communication_services as string[] | null)}
+                            value={formatArrayField(selectedResident.households.communication_services)}
                           />
                           <InfoField
                             icon={Car}
                             label="Means of Transport"
-                            value={formatArrayField(selectedResident.households.means_of_transport as string[] | null)}
+                            value={formatArrayField(selectedResident.households.means_of_transport)}
                           />
                           <InfoField
                             icon={Building}
                             label="Food Storage"
-                            value={formatArrayField(selectedResident.households.food_storage_type as string[] | null)}
+                            value={formatArrayField(selectedResident.households.food_storage_type)}
                           />
                           <InfoField
                             icon={Wifi}
                             label="Information Sources"
-                            value={formatArrayField(selectedResident.households.info_sources as string[] | null)}
+                            value={formatArrayField(selectedResident.households.info_sources)}
                           />
                         </div>
                       </div>

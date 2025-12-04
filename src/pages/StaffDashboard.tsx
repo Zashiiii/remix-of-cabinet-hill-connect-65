@@ -891,10 +891,6 @@ const StaffDashboard = () => {
                       <FileText className="h-4 w-4 mr-2" />
                       View Certificate Requests
                     </Button>
-                    <Button variant="secondary" onClick={createDemoRequest}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Demo Request
-                    </Button>
                   </div>
                 </div>
 
@@ -943,10 +939,6 @@ const StaffDashboard = () => {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">Certificate Requests</h2>
-                  <Button variant="secondary" onClick={createDemoRequest}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Demo Request
-                  </Button>
                 </div>
 
                 {/* Status Filter Buttons */}
