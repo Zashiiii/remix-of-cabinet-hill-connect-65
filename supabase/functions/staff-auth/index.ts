@@ -84,6 +84,55 @@ serve(async (req) => {
       );
     }
 
+    // ========== EXTEND SESSION ==========
+    if (action === 'extend') {
+      const token = body?.token;
+      console.log('Processing EXTEND - token present:', !!token);
+
+      if (!token) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'No token provided' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validate current session first
+      const { data: sessionData, error: sessionError } = await supabase.rpc('validate_session', { session_token: token });
+
+      if (sessionError || !sessionData || sessionData.length === 0) {
+        console.log('Invalid session for extension');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Extend session by 8 hours
+      const newExpiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      
+      const { error: updateError } = await supabase
+        .from('sessions')
+        .update({ expires_at: newExpiresAt.toISOString() })
+        .eq('token', token);
+
+      if (updateError) {
+        console.error('Session extension error:', updateError.message);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to extend session' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Session extended successfully until:', newExpiresAt.toISOString());
+      return new Response(
+        JSON.stringify({
+          success: true,
+          expiresAt: newExpiresAt.toISOString(),
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== VALIDATE ==========
     if (action === 'validate') {
       const authHeader = req.headers.get('Authorization');

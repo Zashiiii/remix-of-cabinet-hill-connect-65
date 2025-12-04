@@ -13,8 +13,10 @@ interface StaffAuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  expiresAt: Date | null;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string; code?: string }>;
   logout: () => Promise<void>;
+  extendSession: () => Promise<void>;
 }
 
 const StaffAuthContext = createContext<StaffAuthContextType | undefined>(undefined);
