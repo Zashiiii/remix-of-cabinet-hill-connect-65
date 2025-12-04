@@ -15,9 +15,10 @@ interface SuccessModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   controlNumber: string;
+  onReset?: () => void;
 }
 
-const SuccessModal = ({ open, onOpenChange, controlNumber }: SuccessModalProps) => {
+const SuccessModal = ({ open, onOpenChange, controlNumber, onReset }: SuccessModalProps) => {
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
 
@@ -35,8 +36,9 @@ const SuccessModal = ({ open, onOpenChange, controlNumber }: SuccessModalProps) 
 
   const handleNewRequest = () => {
     onOpenChange(false);
-    // Reset form by reloading the page
-    window.location.reload();
+    if (onReset) {
+      onReset();
+    }
   };
 
   return (

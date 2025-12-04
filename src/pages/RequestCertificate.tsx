@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -9,11 +9,16 @@ import { Card, CardContent } from "@/components/ui/card";
 const RequestCertificate = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [controlNumber, setControlNumber] = useState("");
+  const [formKey, setFormKey] = useState(0);
 
   const handleSuccess = (generatedControlNumber: string) => {
     setControlNumber(generatedControlNumber);
     setShowSuccess(true);
   };
+
+  const handleFormReset = useCallback(() => {
+    setFormKey(prev => prev + 1);
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -39,7 +44,7 @@ const RequestCertificate = () => {
 
             <Card className="shadow-medium">
               <CardContent className="p-6 sm:p-8">
-                <CertificateRequestForm onSuccess={handleSuccess} />
+                <CertificateRequestForm key={formKey} onSuccess={handleSuccess} />
               </CardContent>
             </Card>
           </div>
@@ -51,6 +56,7 @@ const RequestCertificate = () => {
         open={showSuccess}
         onOpenChange={setShowSuccess}
         controlNumber={controlNumber}
+        onReset={handleFormReset}
       />
     </div>
   );

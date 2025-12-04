@@ -46,6 +46,31 @@ const ResidentMessages = () => {
     if (isAuthenticated && user) {
       loadMessages();
       loadStaffUsers();
+      
+      // Set up realtime subscription
+      const channel = supabase
+        .channel('resident-messages')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        }, (payload) => {
+          console.log('New message received:', payload);
+          loadMessages();
+          toast.info("New message received");
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages'
+        }, () => {
+          loadMessages();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [isAuthenticated, user]);
 
