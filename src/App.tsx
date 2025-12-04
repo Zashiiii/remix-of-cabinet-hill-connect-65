@@ -20,6 +20,7 @@ import ResidentRequests from "./pages/resident/Requests";
 import ResidentMessages from "./pages/resident/Messages";
 import StaffIncidents from "./pages/staff/Incidents";
 import StaffResidents from "./pages/staff/Residents";
+import StaffHouseholds from "./pages/staff/Households";
 import AdminTemplates from "./pages/admin/Templates";
 import AdminStaffManagement from "./pages/admin/StaffManagement";
 import AdminAuditLogs from "./pages/admin/AuditLogs";
@@ -73,6 +74,7 @@ const AppContent = () => {
         {/* Staff Routes */}
         <Route path="/staff/incidents" element={<StaffIncidents />} />
         <Route path="/staff/residents" element={<StaffResidents />} />
+        <Route path="/staff/households" element={<StaffHouseholds />} />
         {/* Admin Routes */}
         <Route path="/admin/templates" element={<AdminTemplates />} />
         <Route path="/admin/staff" element={<AdminStaffManagement />} />
