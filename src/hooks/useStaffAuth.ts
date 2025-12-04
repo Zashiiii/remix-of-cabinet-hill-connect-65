@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface StaffUser {
   id: string;
@@ -13,9 +14,11 @@ interface StaffAuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  expiresAt: Date | null;
 }
 
 const STORAGE_KEY = 'bris_staff_session';
+const WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before expiry
 
 // Synchronous initial state check - prevents race conditions
 const getInitialState = (): StaffAuthState => {
@@ -30,6 +33,7 @@ const getInitialState = (): StaffAuthState => {
           token: session.token,
           isAuthenticated: true,
           isLoading: false,
+          expiresAt: new Date(session.expiresAt),
         };
       }
       // Session expired - clean up
@@ -43,6 +47,7 @@ const getInitialState = (): StaffAuthState => {
     token: null,
     isAuthenticated: false,
     isLoading: false,
+    expiresAt: null,
   };
 };
 
@@ -54,6 +59,114 @@ export const useStaffAuth = () => {
   const initializedRef = useRef(false);
   // Ref to track ongoing validation
   const validatingRef = useRef(false);
+  // Ref for warning toast shown
+  const warningShownRef = useRef(false);
+  // Ref to store timer
+  const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Set up session expiration warning
+  useEffect(() => {
+    if (!authState.isAuthenticated || !authState.expiresAt) {
+      // Clear any existing timer
+      if (warningTimerRef.current) {
+        clearTimeout(warningTimerRef.current);
+        warningTimerRef.current = null;
+      }
+      warningShownRef.current = false;
+      return;
+    }
+
+    const checkExpiration = () => {
+      if (!authState.expiresAt) return;
+      
+      const now = new Date();
+      const timeUntilExpiry = authState.expiresAt.getTime() - now.getTime();
+
+      // Session already expired
+      if (timeUntilExpiry <= 0) {
+        toast.error('Your session has expired. Please login again.', {
+          duration: 5000,
+        });
+        localStorage.removeItem(STORAGE_KEY);
+        setAuthState({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+          expiresAt: null,
+        });
+        return;
+      }
+
+      // Show warning if within threshold and not already shown
+      if (timeUntilExpiry <= WARNING_THRESHOLD_MS && !warningShownRef.current) {
+        warningShownRef.current = true;
+        const minutesLeft = Math.ceil(timeUntilExpiry / 60000);
+        
+        toast.warning(`Your session will expire in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}`, {
+          duration: 10000,
+          action: {
+            label: 'Extend Session',
+            onClick: () => extendSession(),
+          },
+        });
+      }
+
+      // Schedule next check
+      const nextCheckIn = Math.min(timeUntilExpiry - WARNING_THRESHOLD_MS, 60000);
+      if (nextCheckIn > 0) {
+        warningTimerRef.current = setTimeout(checkExpiration, nextCheckIn);
+      } else {
+        // Check more frequently when close to expiry
+        warningTimerRef.current = setTimeout(checkExpiration, 30000);
+      }
+    };
+
+    checkExpiration();
+
+    return () => {
+      if (warningTimerRef.current) {
+        clearTimeout(warningTimerRef.current);
+      }
+    };
+  }, [authState.isAuthenticated, authState.expiresAt]);
+
+  // Extend session by re-validating
+  const extendSession = useCallback(async () => {
+    if (!authState.token) return;
+
+    try {
+      const response = await supabase.functions.invoke('staff-auth', {
+        body: { action: 'extend', token: authState.token },
+      });
+
+      if (response.data?.success && response.data?.expiresAt) {
+        const newExpiresAt = new Date(response.data.expiresAt);
+        
+        // Update localStorage
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const session = JSON.parse(stored);
+          session.expiresAt = response.data.expiresAt;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+        }
+
+        // Update state
+        setAuthState(prev => ({
+          ...prev,
+          expiresAt: newExpiresAt,
+        }));
+
+        warningShownRef.current = false;
+        toast.success('Session extended successfully');
+      } else {
+        toast.error('Failed to extend session. Please login again.');
+      }
+    } catch (error) {
+      console.error('Error extending session:', error);
+      toast.error('Failed to extend session');
+    }
+  }, [authState.token]);
 
   // Set up storage listener for multi-tab support
   useEffect(() => {
@@ -71,7 +184,9 @@ export const useStaffAuth = () => {
                 token: session.token,
                 isAuthenticated: true,
                 isLoading: false,
+                expiresAt: new Date(session.expiresAt),
               });
+              warningShownRef.current = false;
             }
           } catch {
             // Invalid session
@@ -83,6 +198,7 @@ export const useStaffAuth = () => {
             token: null,
             isAuthenticated: false,
             isLoading: false,
+            expiresAt: null,
           });
         }
       }
@@ -155,8 +271,10 @@ export const useStaffAuth = () => {
         token: data.token,
         isAuthenticated: true,
         isLoading: false,
+        expiresAt: new Date(data.expiresAt),
       });
 
+      warningShownRef.current = false;
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
@@ -168,7 +286,6 @@ export const useStaffAuth = () => {
     try {
       if (authState.token) {
         console.log('Logging out with token...');
-        // Pass action as URL param for reliability
         await supabase.functions.invoke('staff-auth?action=logout', {
           body: { action: 'logout', token: authState.token },
         });
@@ -177,11 +294,15 @@ export const useStaffAuth = () => {
       console.error('Logout error:', error);
     } finally {
       localStorage.removeItem(STORAGE_KEY);
+      if (warningTimerRef.current) {
+        clearTimeout(warningTimerRef.current);
+      }
       setAuthState({
         user: null,
         token: null,
         isAuthenticated: false,
         isLoading: false,
+        expiresAt: null,
       });
     }
   }, [authState.token]);
@@ -191,5 +312,6 @@ export const useStaffAuth = () => {
     login,
     logout,
     validateSession,
+    extendSession,
   };
 };
