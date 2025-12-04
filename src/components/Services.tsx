@@ -12,8 +12,8 @@ const services = [
   {
     icon: UserPlus,
     title: "Resident Registration",
-    description: "Register or update your information at the barangay hall",
-    path: "/register",
+    description: "Register or update your information at the barangay",
+    path: "/auth",
   },
   {
     icon: Search,

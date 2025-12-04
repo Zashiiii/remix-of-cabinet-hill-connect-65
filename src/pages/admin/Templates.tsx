@@ -382,8 +382,9 @@ const AdminTemplates = () => {
               </TabsContent>
 
               <TabsContent value="preview" className="mt-4">
-                <div className="border rounded-lg p-6 bg-white min-h-[400px]">
+                <div className="border rounded-lg p-6 bg-white min-h-[400px]" style={{ color: '#000' }}>
                   <div
+                    className="text-black"
                     dangerouslySetInnerHTML={{ __html: renderPreview(formData.templateContent) }}
                   />
                 </div>
@@ -430,8 +431,9 @@ const AdminTemplates = () => {
             <DialogHeader>
               <DialogTitle>Template Preview: {selectedTemplate?.name}</DialogTitle>
             </DialogHeader>
-            <div className="border rounded-lg p-6 bg-white">
+            <div className="border rounded-lg p-6 bg-white" style={{ color: '#000' }}>
               <div
+                className="text-black"
                 dangerouslySetInnerHTML={{ 
                   __html: renderPreview(selectedTemplate?.templateContent || "") 
                 }}

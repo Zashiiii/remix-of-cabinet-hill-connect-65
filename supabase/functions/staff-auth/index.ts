@@ -150,7 +150,7 @@ serve(async (req) => {
     if (userError || !user) {
       console.log('User not found:', username);
       return new Response(
-        JSON.stringify({ error: 'Invalid username or password' }),
+        JSON.stringify({ error: 'User not found', code: 'USER_NOT_FOUND' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -160,7 +160,7 @@ serve(async (req) => {
     if (!user.is_active) {
       console.log('Account deactivated:', username);
       return new Response(
-        JSON.stringify({ error: 'Account is deactivated' }),
+        JSON.stringify({ error: 'Account is deactivated', code: 'ACCOUNT_INACTIVE' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -169,7 +169,7 @@ serve(async (req) => {
     if (user.password_hash !== password) {
       console.log('Invalid password for user:', username);
       return new Response(
-        JSON.stringify({ error: 'Invalid username or password' }),
+        JSON.stringify({ error: 'Incorrect password', code: 'INVALID_PASSWORD' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

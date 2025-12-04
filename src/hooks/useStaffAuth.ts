@@ -132,7 +132,7 @@ export const useStaffAuth = () => {
     }
   }, []);
 
-  const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string; code?: string }> => {
     try {
       console.log('Attempting login for:', username);
       
@@ -148,7 +148,7 @@ export const useStaffAuth = () => {
       }
 
       if (data?.error) {
-        return { success: false, error: data.error };
+        return { success: false, error: data.error, code: data.code };
       }
 
       if (!data?.success || !data?.token || !data?.user) {
