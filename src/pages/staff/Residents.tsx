@@ -150,7 +150,7 @@ const StaffResidents = () => {
 
       if (error) throw error;
 
-      setResidents(data || []);
+      setResidents((data as Resident[]) || []);
       setTotalCount(count || 0);
     } catch (error) {
       console.error("Error loading residents:", error);
