@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useResidentAuth } from "@/hooks/useResidentAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,8 +18,15 @@ interface Message {
   subject: string;
   content: string;
   senderType: string;
+  senderName?: string;
   isRead: boolean;
   createdAt: string;
+}
+
+interface StaffUser {
+  id: string;
+  full_name: string;
+  role: string;
 }
 
 const ResidentMessages = () => {
@@ -30,15 +38,40 @@ const ResidentMessages = () => {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [newSubject, setNewSubject] = useState("");
   const [newContent, setNewContent] = useState("");
+  const [selectedRecipient, setSelectedRecipient] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
-
-  // Auth is now handled by ResidentProtectedRoute wrapper
+  const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
       loadMessages();
+      loadStaffUsers();
     }
   }, [isAuthenticated, user]);
+
+  const loadStaffUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("staff_users")
+        .select("id, full_name, role")
+        .eq("is_active", true)
+        .in("role", ["admin", "secretary"]);
+
+      if (error) throw error;
+      if (data) {
+        setStaffUsers(data);
+        // Default to first admin if available
+        const defaultAdmin = data.find(s => s.role === "admin");
+        if (defaultAdmin) {
+          setSelectedRecipient(defaultAdmin.id);
+        } else if (data.length > 0) {
+          setSelectedRecipient(data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading staff users:", error);
+    }
+  };
 
   const loadMessages = async () => {
     setIsLoading(true);
@@ -52,11 +85,27 @@ const ResidentMessages = () => {
       if (error) throw error;
 
       if (data) {
+        // Fetch staff names for messages from staff
+        const staffIds = [...new Set(data.filter(m => m.sender_type === "staff").map(m => m.sender_id))];
+        let staffMap: Record<string, string> = {};
+        
+        if (staffIds.length > 0) {
+          const { data: staffData } = await supabase
+            .from("staff_users")
+            .select("id, full_name")
+            .in("id", staffIds);
+          
+          if (staffData) {
+            staffMap = Object.fromEntries(staffData.map(s => [s.id, s.full_name]));
+          }
+        }
+
         setMessages(data.map(m => ({
           id: m.id,
           subject: m.subject || "No Subject",
           content: m.content,
           senderType: m.sender_type,
+          senderName: m.sender_type === "staff" ? staffMap[m.sender_id] : undefined,
           isRead: m.is_read || false,
           createdAt: new Date(m.created_at || "").toLocaleDateString(),
         })));
@@ -74,13 +123,18 @@ const ResidentMessages = () => {
       return;
     }
 
+    if (!selectedRecipient) {
+      toast.error("Please select a recipient");
+      return;
+    }
+
     setIsSending(true);
     try {
       const { error } = await supabase.from("messages").insert({
         sender_type: "resident",
         sender_id: user?.id,
         recipient_type: "staff",
-        recipient_id: "barangay-staff",
+        recipient_id: selectedRecipient,
         subject: newSubject,
         content: newContent,
       });
@@ -185,8 +239,8 @@ const ResidentMessages = () => {
                           <h3 className={`font-medium ${!message.isRead && message.senderType !== "resident" ? "font-semibold" : ""}`}>
                             {message.subject}
                           </h3>
-                          <Badge variant={message.senderType === "resident" ? "outline" : "secondary"}>
-                            {message.senderType === "resident" ? "Sent" : "Received"}
+                        <Badge variant={message.senderType === "resident" ? "outline" : "secondary"}>
+                            {message.senderType === "resident" ? "Sent" : `From ${message.senderName || "Staff"}`}
                           </Badge>
                           {!message.isRead && message.senderType !== "resident" && (
                             <Badge variant="default" className="bg-primary">New</Badge>
@@ -217,6 +271,21 @@ const ResidentMessages = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="recipient">Send To</Label>
+                <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select recipient" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffUsers.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id}>
+                        {staff.full_name} ({staff.role === "admin" ? "Admin" : "Secretary"})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="subject">Subject</Label>
                 <Input
@@ -258,9 +327,9 @@ const ResidentMessages = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{selectedMessage?.subject}</DialogTitle>
-              <DialogDescription>
-                {selectedMessage?.senderType === "resident" ? "Sent" : "From Barangay Staff"} • {selectedMessage?.createdAt}
-              </DialogDescription>
+            <DialogDescription>
+              {selectedMessage?.senderType === "resident" ? "Sent" : `From ${selectedMessage?.senderName || "Staff"}`} • {selectedMessage?.createdAt}
+            </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <p className="whitespace-pre-wrap">{selectedMessage?.content}</p>
