@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
@@ -13,7 +13,8 @@ interface StaffLoginModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
+// Inner component that uses the context - only rendered when modal is open
+const StaffLoginForm = ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => {
   const navigate = useNavigate();
   const { login } = useStaffAuthContext();
   const [username, setUsername] = useState("");
@@ -38,7 +39,6 @@ const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
         setPassword("");
         navigate("/staff-dashboard");
       } else {
-        // Handle distinct error codes
         let errorMessage = result.error || "Invalid credentials";
         let toastDescription = "Please check your credentials";
         
@@ -70,6 +70,52 @@ const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
   };
 
   return (
+    <form onSubmit={handleLogin} className="space-y-4">
+      {error && (
+        <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+          {error}
+        </div>
+      )}
+      <div className="space-y-2">
+        <Label htmlFor="username">Username</Label>
+        <Input
+          id="username"
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Enter your username"
+          required
+          disabled={isLoading}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Enter your password"
+          required
+          disabled={isLoading}
+        />
+      </div>
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Logging in...
+          </>
+        ) : (
+          "Login"
+        )}
+      </Button>
+    </form>
+  );
+};
+
+const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -78,47 +124,7 @@ const StaffLoginModal = ({ open, onOpenChange }: StaffLoginModalProps) => {
             Enter your credentials to access the staff portal
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleLogin} className="space-y-4">
-          {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-              {error}
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Logging in...
-              </>
-            ) : (
-              "Login"
-            )}
-          </Button>
-        </form>
+        {open && <StaffLoginForm onOpenChange={onOpenChange} />}
       </DialogContent>
     </Dialog>
   );
