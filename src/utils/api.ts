@@ -305,7 +305,7 @@ export const fetchRecentProcessedRequests = async () => {
 };
 
 /**
- * Update certificate request status
+ * Update certificate request status and send email notification
  */
 export const updateRequestStatus = async (
   id: string, 
@@ -325,6 +325,17 @@ export const updateRequestStatus = async (
     updateData.notes = notes;
   }
 
+  // First fetch the request to get email and other details
+  const { data: requestData, error: fetchError } = await supabase
+    .from('certificate_requests')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching request for notification:', fetchError);
+  }
+
   // Update the request status
   const { error } = await supabase
     .from('certificate_requests')
@@ -340,6 +351,33 @@ export const updateRequestStatus = async (
     }
     
     throw error;
+  }
+
+  // Send email notification for approved/rejected status
+  if (requestData?.email && (normalizedStatus === 'Approved' || normalizedStatus === 'Rejected')) {
+    try {
+      console.log('Sending notification email to:', requestData.email);
+      const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
+        body: {
+          recipientEmail: requestData.email,
+          residentName: requestData.full_name,
+          certificateType: requestData.certificate_type,
+          status: normalizedStatus,
+          controlNumber: requestData.control_number,
+          notes: notes || requestData.rejection_reason,
+        },
+      });
+
+      if (emailError) {
+        console.error('Failed to send notification email:', emailError);
+        // Don't throw - email failure shouldn't fail the status update
+      } else {
+        console.log('Notification email sent successfully');
+      }
+    } catch (emailError) {
+      console.error('Error invoking email function:', emailError);
+      // Don't throw - email failure shouldn't fail the status update
+    }
   }
 };
 
