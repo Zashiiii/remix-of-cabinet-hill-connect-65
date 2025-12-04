@@ -247,13 +247,7 @@ const StaffDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isDataLoading, setIsDataLoading] = useState(true);
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast.error("Please login to access the dashboard");
-      navigate("/");
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is now handled by ProtectedRoute wrapper
 
   useEffect(() => {
     const timer = setInterval(() => {

@@ -17,62 +17,49 @@ interface StaffAuthState {
 
 const STORAGE_KEY = 'bris_staff_session';
 
-export const useStaffAuth = () => {
-  const [authState, setAuthState] = useState<StaffAuthState>({
+// Synchronous initial state check - prevents race conditions
+const getInitialState = (): StaffAuthState => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const session = JSON.parse(stored);
+      if (session.expiresAt && new Date(session.expiresAt) > new Date()) {
+        console.log('Initial session loaded from localStorage, user:', session.user?.username);
+        return {
+          user: session.user,
+          token: session.token,
+          isAuthenticated: true,
+          isLoading: false,
+        };
+      }
+      // Session expired - clean up
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch (error) {
+    console.error('Error reading initial session:', error);
+  }
+  return {
     user: null,
     token: null,
     isAuthenticated: false,
-    isLoading: true,
-  });
+    isLoading: false,
+  };
+};
 
-  // Ref to track if we've already initialized
+export const useStaffAuth = () => {
+  // Initialize with synchronous check - no loading state flicker
+  const [authState, setAuthState] = useState<StaffAuthState>(getInitialState);
+
+  // Ref to track if we've already initialized listeners
   const initializedRef = useRef(false);
   // Ref to track ongoing validation
   const validatingRef = useRef(false);
 
-  // Load session from localStorage on mount - no validation needed for navigation
+  // Set up storage listener for multi-tab support
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    const loadSession = () => {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const session = JSON.parse(stored);
-          
-          // Check if session has expired locally
-          if (session.expiresAt && new Date(session.expiresAt) > new Date()) {
-            console.log('Session loaded from localStorage, user:', session.user?.username);
-            setAuthState({
-              user: session.user,
-              token: session.token,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-          } else {
-            // Session expired
-            console.log('Session expired, clearing...');
-            localStorage.removeItem(STORAGE_KEY);
-            setAuthState({
-              user: null,
-              token: null,
-              isAuthenticated: false,
-              isLoading: false,
-            });
-          }
-        } else {
-          setAuthState(prev => ({ ...prev, isLoading: false }));
-        }
-      } catch (error) {
-        console.error('Error loading session:', error);
-        setAuthState(prev => ({ ...prev, isLoading: false }));
-      }
-    };
-
-    loadSession();
-
-    // Listen for storage events (for multi-tab support)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) {
         if (e.newValue) {

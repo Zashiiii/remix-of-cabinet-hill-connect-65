@@ -55,12 +55,7 @@ const ResidentProfile = () => {
   // Household data (read-only from census)
   const [householdData, setHouseholdData] = useState<any>(null);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast.error("Please login to access your profile");
-      navigate("/auth");
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is now handled by ResidentProtectedRoute wrapper
 
   useEffect(() => {
     if (isAuthenticated && user) {

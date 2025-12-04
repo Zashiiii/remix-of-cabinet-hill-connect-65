@@ -86,12 +86,7 @@ const StaffIncidents = () => {
     actionTaken: "",
   });
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast.error("Please login to access this page");
-      navigate("/");
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is now handled by ProtectedRoute wrapper
 
   const loadIncidents = useCallback(async () => {
     setIsLoading(true);

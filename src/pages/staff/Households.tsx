@@ -221,12 +221,7 @@ const StaffHouseholds = () => {
   const [residentSearchQuery, setResidentSearchQuery] = useState("");
   const [selectedResidentToLink, setSelectedResidentToLink] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast.error("Please login to access this page");
-      navigate("/");
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is now handled by ProtectedRoute wrapper
 
   const loadHouseholds = useCallback(async () => {
     setIsLoading(true);

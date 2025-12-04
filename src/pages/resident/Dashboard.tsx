@@ -126,12 +126,7 @@ const ResidentDashboard = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast.error("Please login to access your dashboard");
-      navigate("/auth");
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is now handled by ResidentProtectedRoute wrapper
 
   useEffect(() => {
     if (isAuthenticated && user) {
