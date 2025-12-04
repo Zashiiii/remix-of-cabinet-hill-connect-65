@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Menu, X, Moon, Sun } from "lucide-react";
+import { Menu, X, Moon, Sun, User } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/logo.png";
@@ -14,7 +14,7 @@ const Header = () => {
   
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
-    return location.pathname === path;
+    return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
   return (
@@ -41,7 +41,7 @@ const Header = () => {
             <Link 
               to="/" 
               className={`text-sm font-medium transition-colors px-3 py-2 rounded-md ${
-                isActive('/') 
+                isActive('/') && !isActive('/resident') && !isActive('/auth')
                   ? 'bg-active-nav text-active-nav-foreground' 
                   : 'text-foreground hover:text-primary'
               }`}
@@ -90,6 +90,12 @@ const Header = () => {
                 <Moon className="h-5 w-5" />
               )}
             </Button>
+            <Link to="/auth">
+              <Button variant="default" size="sm" className="gap-2">
+                <User className="h-4 w-4" />
+                Resident Portal
+              </Button>
+            </Link>
             <Button 
               variant="outline" 
               size="sm"
@@ -116,7 +122,7 @@ const Header = () => {
               <Link 
                 to="/" 
                 className={`text-sm font-medium transition-colors py-2 px-3 rounded-md ${
-                  isActive('/') 
+                  isActive('/') && !isActive('/resident') && !isActive('/auth')
                     ? 'bg-active-nav text-active-nav-foreground' 
                     : 'text-foreground hover:text-primary'
                 }`}
@@ -157,33 +163,43 @@ const Header = () => {
               >
                 Contact
               </Link>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={() => {
-                    setTheme(theme === "dark" ? "light" : "dark");
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex-1"
+              <div className="flex flex-col gap-2 pt-2 border-t border-border">
+                <Link 
+                  to="/auth"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
-                  {theme === "dark" ? (
-                    <Sun className="h-5 w-5" />
-                  ) : (
-                    <Moon className="h-5 w-5" />
-                  )}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-[3]"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setStaffLoginOpen(true);
-                  }}
-                >
-                  Staff Login
-                </Button>
+                  <Button variant="default" size="sm" className="w-full gap-2">
+                    <User className="h-4 w-4" />
+                    Resident Portal
+                  </Button>
+                </Link>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => {
+                      setTheme(theme === "dark" ? "light" : "dark");
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    {theme === "dark" ? (
+                      <Sun className="h-5 w-5" />
+                    ) : (
+                      <Moon className="h-5 w-5" />
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setStaffLoginOpen(true);
+                    }}
+                  >
+                    Staff Login
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

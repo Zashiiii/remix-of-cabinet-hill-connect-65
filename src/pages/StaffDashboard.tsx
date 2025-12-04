@@ -23,6 +23,10 @@ import {
   Calendar,
   User,
   AlertCircle,
+  AlertTriangle,
+  Settings,
+  History,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -113,23 +117,42 @@ interface Announcement {
 const StaffSidebar = ({ 
   activeTab, 
   setActiveTab, 
-  onLogout 
+  onLogout,
+  userRole,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
   onLogout: () => void;
+  userRole?: string;
 }) => {
   const { state } = useSidebar();
+  const navigate = useNavigate();
 
-  const menuItems = [
+  const mainMenuItems = [
     { title: "Home", icon: Home, tab: "home" },
     { title: "Certificate Requests", icon: FileText, tab: "certificate-requests" },
+    { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", route: "/staff/incidents" },
     { title: "Manage Announcements", icon: Bell, tab: "announcements" },
     { title: "Manage Residents", icon: Users, tab: "manage-residents" },
     { title: "View Reports", icon: BarChart3, tab: "view-reports" },
   ];
 
+  const adminMenuItems = [
+    { title: "Certificate Templates", icon: FileText, route: "/admin/templates" },
+    { title: "Staff Management", icon: Shield, route: "/admin/staff" },
+    { title: "Audit Logs", icon: History, route: "/admin/audit-logs" },
+  ];
+
   const isCollapsed = state === "collapsed";
+  const isAdmin = userRole === "admin";
+
+  const handleMenuClick = (item: { tab?: string; route?: string }) => {
+    if (item.route) {
+      navigate(item.route);
+    } else if (item.tab) {
+      setActiveTab(item.tab);
+    }
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -146,10 +169,10 @@ const StaffSidebar = ({
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    onClick={() => setActiveTab(item.tab)}
+                    onClick={() => handleMenuClick(item)}
                     className={`hover:bg-muted/50 ${activeTab === item.tab ? "bg-muted text-primary font-medium" : ""}`}
                   >
                     <item.icon className="h-4 w-4" />
@@ -157,6 +180,36 @@ const StaffSidebar = ({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className={isCollapsed ? "hidden" : "block"}>
+              Admin
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      onClick={() => handleMenuClick(item)}
+                      className="hover:bg-muted/50"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={onLogout}
@@ -735,7 +788,7 @@ const StaffDashboard = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
+        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} />
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}
