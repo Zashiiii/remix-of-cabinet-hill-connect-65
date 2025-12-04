@@ -555,6 +555,7 @@ export type Database = {
           monthly_income_kind: string | null
           occupation: string | null
           place_of_origin: string | null
+          privacy_consent_given_at: string | null
           relation_to_head: string | null
           religion: string | null
           schooling_status: string | null
@@ -585,6 +586,7 @@ export type Database = {
           monthly_income_kind?: string | null
           occupation?: string | null
           place_of_origin?: string | null
+          privacy_consent_given_at?: string | null
           relation_to_head?: string | null
           religion?: string | null
           schooling_status?: string | null
@@ -615,6 +617,7 @@ export type Database = {
           monthly_income_kind?: string | null
           occupation?: string | null
           place_of_origin?: string | null
+          privacy_consent_given_at?: string | null
           relation_to_head?: string | null
           religion?: string | null
           schooling_status?: string | null

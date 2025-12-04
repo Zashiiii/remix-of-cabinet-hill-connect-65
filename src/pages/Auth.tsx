@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { User, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
 import { z } from "zod";
+import DataPrivacyModal from "@/components/DataPrivacyModal";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -20,6 +22,9 @@ const signupSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
   fullName: z.string().min(2, "Full name is required"),
+  privacyConsent: z.literal(true, {
+    errorMap: () => ({ message: "You must agree to the Privacy Policy to create an account" }),
+  }),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -30,6 +35,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -40,6 +46,7 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
   const [signupFullName, setSignupFullName] = useState("");
+  const [privacyConsent, setPrivacyConsent] = useState(false);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -109,6 +116,7 @@ const Auth = () => {
         password: signupPassword,
         confirmPassword: signupConfirmPassword,
         fullName: signupFullName,
+        privacyConsent: privacyConsent,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -129,6 +137,7 @@ const Auth = () => {
           emailRedirectTo: redirectUrl,
           data: {
             full_name: signupFullName,
+            privacy_consent_given_at: new Date().toISOString(),
           },
         },
       });
@@ -158,6 +167,16 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+      <DataPrivacyModal 
+        open={showPrivacyModal} 
+        onOpenChange={setShowPrivacyModal}
+        showAcceptButton={!privacyConsent}
+        onAccept={() => {
+          setPrivacyConsent(true);
+          setShowPrivacyModal(false);
+        }}
+      />
+
       <div className="w-full max-w-md">
         <Button
           variant="ghost"
@@ -314,7 +333,38 @@ const Auth = () => {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  {/* Privacy Consent Checkbox */}
+                  <div className="flex items-start space-x-3 p-3 bg-muted/50 rounded-lg border">
+                    <Checkbox
+                      id="privacy-consent"
+                      checked={privacyConsent}
+                      onCheckedChange={(checked) => setPrivacyConsent(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="privacy-consent"
+                        className="text-sm font-medium leading-snug cursor-pointer"
+                      >
+                        I agree to the Data Privacy Policy
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        By checking this box, I consent to the collection and processing of my 
+                        personal data as described in the{" "}
+                        <button
+                          type="button"
+                          onClick={() => setShowPrivacyModal(true)}
+                          className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                        >
+                          <Shield className="h-3 w-3" />
+                          Privacy Policy
+                        </button>
+                        .
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={isLoading || !privacyConsent}>
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -330,16 +380,25 @@ const Auth = () => {
           </CardContent>
         </Card>
 
-        <p className="text-center mt-4 text-sm text-muted-foreground">
-          Staff members?{" "}
-          <Button
-            variant="link"
-            className="p-0 h-auto text-primary"
-            onClick={() => navigate("/")}
+        <div className="text-center mt-4 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Staff members?{" "}
+            <Button
+              variant="link"
+              className="p-0 h-auto text-primary"
+              onClick={() => navigate("/")}
+            >
+              Login through the main site
+            </Button>
+          </p>
+          <Link 
+            to="/privacy" 
+            className="text-xs text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
           >
-            Login through the main site
-          </Button>
-        </p>
+            <Shield className="h-3 w-3" />
+            View Privacy Policy
+          </Link>
+        </div>
       </div>
     </div>
   );
