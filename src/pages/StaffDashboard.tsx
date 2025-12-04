@@ -133,7 +133,7 @@ const StaffSidebar = ({
     { title: "Certificate Requests", icon: FileText, tab: "certificate-requests" },
     { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", route: "/staff/incidents" },
     { title: "Manage Announcements", icon: Bell, tab: "announcements" },
-    { title: "Manage Residents", icon: Users, tab: "manage-residents" },
+    { title: "Manage Residents", icon: Users, route: "/staff/residents" },
     { title: "View Reports", icon: BarChart3, tab: "view-reports" },
   ];
 
