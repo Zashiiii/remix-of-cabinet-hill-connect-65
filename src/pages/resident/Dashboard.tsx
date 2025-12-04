@@ -70,7 +70,6 @@ const ResidentSidebar = ({
     { title: "My Profile", icon: User, tab: "profile" },
     { title: "Request Certificate", icon: FileText, tab: "request" },
     { title: "My Requests", icon: Clock, tab: "requests" },
-    { title: "Announcements", icon: Bell, tab: "announcements" },
     { title: "Messages", icon: MessageSquare, tab: "messages" },
     { title: "Settings", icon: Settings, tab: "settings" },
   ];
@@ -189,6 +188,8 @@ const ResidentDashboard = () => {
       navigate("/resident/requests");
     } else if (tab === "messages") {
       navigate("/resident/messages");
+    } else if (tab === "settings") {
+      navigate("/resident/settings");
     } else {
       setActiveTab(tab);
     }

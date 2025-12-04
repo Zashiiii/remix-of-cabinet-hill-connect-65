@@ -19,7 +19,9 @@ import ResidentDashboard from "./pages/resident/Dashboard";
 import ResidentProfile from "./pages/resident/Profile";
 import ResidentRequests from "./pages/resident/Requests";
 import ResidentMessages from "./pages/resident/Messages";
+import ResidentSettings from "./pages/resident/Settings";
 import StaffIncidents from "./pages/staff/Incidents";
+import StaffSettings from "./pages/staff/Settings";
 import StaffResidents from "./pages/staff/Residents";
 import StaffHouseholds from "./pages/staff/Households";
 import AdminTemplates from "./pages/admin/Templates";
@@ -127,6 +129,18 @@ const AppContent = () => {
           <ResidentProtectedRoute>
             <ResidentMessages />
           </ResidentProtectedRoute>
+        } />
+        <Route path="/resident/settings" element={
+          <ResidentProtectedRoute>
+            <ResidentSettings />
+          </ResidentProtectedRoute>
+        } />
+        
+        {/* Staff Settings */}
+        <Route path="/staff/settings" element={
+          <StaffProtectedRoute>
+            <StaffSettings />
+          </StaffProtectedRoute>
         } />
         
         {/* Catch-all */}

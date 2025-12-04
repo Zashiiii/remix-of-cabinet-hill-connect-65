@@ -148,6 +148,7 @@ const StaffSidebar = ({
     { title: "Manage Residents", icon: Users, route: "/staff/residents" },
     { title: "Manage Households", icon: Home, route: "/staff/households" },
     { title: "View Reports", icon: BarChart3, tab: "view-reports" },
+    { title: "Settings", icon: Settings, route: "/staff/settings" },
   ];
 
   const adminMenuItems = [
