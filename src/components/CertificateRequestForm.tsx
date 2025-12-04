@@ -270,7 +270,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                     </PopoverContent>
                   </Popover>
                   <FormDescription>
-                    This information will be verified against our records
+                    Make sure your birth date is correct for faster processing.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

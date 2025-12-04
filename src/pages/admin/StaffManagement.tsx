@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { useStaffAuthContext } from "@/context/StaffAuthContext";
+import { useStaffAuth } from "@/hooks/useStaffAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 interface StaffUser {
@@ -26,13 +26,14 @@ interface StaffUser {
 const ROLES = [
   { value: "staff", label: "Staff" },
   { value: "admin", label: "Admin" },
+  { value: "secretary", label: "Secretary" },
   { value: "barangay_official", label: "Barangay Official" },
   { value: "sk_chairman", label: "SK Chairman" },
 ];
 
 const AdminStaffManagement = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading: authLoading } = useStaffAuthContext();
+  const { user, isAuthenticated, isLoading: authLoading } = useStaffAuth();
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
