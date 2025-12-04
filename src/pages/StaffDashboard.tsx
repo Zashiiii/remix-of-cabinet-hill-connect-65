@@ -28,6 +28,9 @@ import {
   History,
   Shield,
   Download,
+  Package,
+  Square,
+  CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +74,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,14 +88,20 @@ import {
   fetchAllRequests,
   fetchRecentProcessedRequests,
 } from "@/utils/api";
-import { downloadCertificatePdf, logCertificateGeneration } from "@/utils/certificatePdf";
+import { 
+  downloadCertificatePdf, 
+  logCertificateGeneration,
+  bulkDownloadCertificates,
+  logBulkCertificateDownload,
+  logBatchStatusUpdate,
+} from "@/utils/certificatePdf";
 
 interface PendingRequest {
   id: string;
   residentName: string;
   certificateType: string;
   dateSubmitted: string;
-  status: "pending" | "processing" | "approved" | "rejected" | "verifying";
+  status: "pending" | "processing" | "approved" | "rejected" | "verifying" | "released";
   verificationStatus?: "verified" | "not-verified" | "checking";
   processedBy?: string;
   processedDate?: string;
@@ -268,6 +278,12 @@ const StaffDashboard = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [requestToReject, setRequestToReject] = useState<PendingRequest | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Bulk selection state
+  const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
 
   // Load certificate requests from Supabase
   const loadRequests = useCallback(async () => {
@@ -596,6 +612,7 @@ const StaffDashboard = () => {
       verifying: "default",
       approved: "outline",
       rejected: "destructive",
+      released: "default",
     };
     
     const labels: Record<string, string> = {
@@ -604,6 +621,7 @@ const StaffDashboard = () => {
       verifying: "Under Verification",
       approved: "Approved",
       rejected: "Rejected",
+      released: "Released",
     };
 
     const colors: Record<string, string> = {
@@ -612,6 +630,7 @@ const StaffDashboard = () => {
       verifying: "bg-purple-100 text-purple-800 border-purple-200",
       approved: "bg-green-100 text-green-800 border-green-200",
       rejected: "bg-red-100 text-red-800 border-red-200",
+      released: "bg-emerald-100 text-emerald-800 border-emerald-200",
     };
     
     return (
@@ -622,6 +641,138 @@ const StaffDashboard = () => {
         {labels[status] || status}
       </Badge>
     );
+  };
+
+  // Bulk selection handlers
+  const approvedRequests = requests.filter(r => r.status === "approved");
+  
+  const toggleRequestSelection = (requestId: string) => {
+    setSelectedRequests(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(requestId)) {
+        newSet.delete(requestId);
+      } else {
+        newSet.add(requestId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAllApproved = () => {
+    if (selectedRequests.size === approvedRequests.length && approvedRequests.length > 0) {
+      setSelectedRequests(new Set());
+    } else {
+      setSelectedRequests(new Set(approvedRequests.map(r => r.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedRequests(new Set());
+  };
+
+  // Bulk download handler
+  const handleBulkDownload = async () => {
+    if (selectedRequests.size === 0) {
+      toast.error("No requests selected");
+      return;
+    }
+
+    setIsDownloading(true);
+    setDownloadProgress({ current: 0, total: selectedRequests.size });
+
+    try {
+      const selectedControlNumbers = Array.from(selectedRequests);
+      const certificateTypes: Record<string, string> = {};
+      
+      // Map control numbers to certificate types
+      selectedControlNumbers.forEach(controlNumber => {
+        const request = requests.find(r => r.id === controlNumber);
+        if (request) {
+          certificateTypes[controlNumber] = request.certificateType;
+        }
+      });
+
+      const success = await bulkDownloadCertificates(
+        selectedControlNumbers,
+        certificateTypes,
+        (current, total) => setDownloadProgress({ current, total })
+      );
+
+      if (success) {
+        // Log the bulk download
+        await logBulkCertificateDownload(
+          selectedControlNumbers,
+          user?.fullName || "Staff Admin"
+        );
+        toast.success(`Successfully downloaded ${selectedRequests.size} certificates as ZIP`);
+      } else {
+        toast.error("Failed to download certificates");
+      }
+    } catch (error) {
+      console.error("Error in bulk download:", error);
+      toast.error("Failed to download certificates");
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress({ current: 0, total: 0 });
+    }
+  };
+
+  // Batch status update handler (Mark as Released)
+  const handleMarkAsReleased = async () => {
+    if (selectedRequests.size === 0) {
+      toast.error("No requests selected");
+      return;
+    }
+
+    setIsBatchUpdating(true);
+    const staffName = user?.fullName || "Staff Admin";
+    const selectedControlNumbers = Array.from(selectedRequests);
+    let successCount = 0;
+
+    try {
+      for (const controlNumber of selectedControlNumbers) {
+        // Get database record by control number
+        const { data: dbRequest, error: fetchError } = await supabase
+          .from('certificate_requests')
+          .select('id')
+          .eq('control_number', controlNumber)
+          .single();
+
+        if (fetchError || !dbRequest) {
+          console.warn(`Could not find request ${controlNumber}`);
+          continue;
+        }
+
+        // Update status to Released
+        await updateRequestStatus(
+          dbRequest.id,
+          'Released',
+          staffName,
+          'Certificate released to resident'
+        );
+        successCount++;
+      }
+
+      if (successCount > 0) {
+        // Log the batch status update
+        await logBatchStatusUpdate(
+          selectedControlNumbers,
+          'Released',
+          staffName
+        );
+
+        toast.success(`${successCount} certificate(s) marked as Released`);
+        clearSelection();
+        loadRequests();
+      } else {
+        toast.error("Failed to update any requests");
+      }
+    } catch (error) {
+      console.error("Error in batch status update:", error);
+      toast.error("Failed to update request statuses");
+    } finally {
+      setIsBatchUpdating(false);
+    }
   };
 
   // Announcement Management
@@ -991,7 +1142,7 @@ const StaffDashboard = () => {
 
                 {/* Status Filter Buttons */}
                 <div className="flex gap-2 flex-wrap">
-                  {["All", "Pending", "Verifying", "Approved", "Rejected"].map((status) => (
+                  {["All", "Pending", "Verifying", "Approved", "Released", "Rejected"].map((status) => (
                     <Button
                       key={status}
                       variant={statusFilter === status ? "default" : "outline"}
@@ -1012,10 +1163,25 @@ const StaffDashboard = () => {
                   <>
                     {/* Pending/Filtered Certificate Requests Section */}
                     <Card>
-                      <CardHeader>
+                      <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>
                           {statusFilter === "All" ? "All Certificate Requests" : `${statusFilter} Requests`}
                         </CardTitle>
+                        {approvedRequests.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={toggleSelectAllApproved}
+                              className="text-xs"
+                            >
+                              {selectedRequests.size === approvedRequests.length && approvedRequests.length > 0 
+                                ? <><CheckSquare className="h-4 w-4 mr-1" /> Deselect All</>
+                                : <><Square className="h-4 w-4 mr-1" /> Select All Approved ({approvedRequests.length})</>
+                              }
+                            </Button>
+                          </div>
+                        )}
                       </CardHeader>
                       <CardContent>
                         {requests.length === 0 ? (
@@ -1028,6 +1194,14 @@ const StaffDashboard = () => {
                           <Table>
                             <TableHeader>
                               <TableRow>
+                                <TableHead className="w-12">
+                                  <Checkbox
+                                    checked={selectedRequests.size === approvedRequests.length && approvedRequests.length > 0}
+                                    onCheckedChange={toggleSelectAllApproved}
+                                    disabled={approvedRequests.length === 0}
+                                    aria-label="Select all approved"
+                                  />
+                                </TableHead>
                                 <TableHead>Control Number</TableHead>
                                 <TableHead>Resident Name</TableHead>
                                 <TableHead>Certificate Type</TableHead>
@@ -1038,7 +1212,15 @@ const StaffDashboard = () => {
                             </TableHeader>
                             <TableBody>
                               {requests.map((request) => (
-                                <TableRow key={request.id}>
+                                <TableRow key={request.id} className={selectedRequests.has(request.id) ? "bg-muted/50" : ""}>
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={selectedRequests.has(request.id)}
+                                      onCheckedChange={() => toggleRequestSelection(request.id)}
+                                      disabled={request.status !== "approved"}
+                                      aria-label={`Select ${request.residentName}`}
+                                    />
+                                  </TableCell>
                                   <TableCell className="font-medium font-mono text-xs">{request.id}</TableCell>
                                   <TableCell>{request.residentName}</TableCell>
                                   <TableCell>{request.certificateType}</TableCell>
@@ -1165,6 +1347,66 @@ const StaffDashboard = () => {
                       </CardContent>
                     </Card>
                   </>
+                )}
+
+                {/* Floating Bulk Action Toolbar */}
+                {selectedRequests.size > 0 && (
+                  <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-card shadow-lg rounded-lg border p-4 flex flex-wrap items-center gap-4 z-50 max-w-[90vw]">
+                    <span className="text-sm font-medium">
+                      {selectedRequests.size} certificate(s) selected
+                    </span>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={handleBulkDownload}
+                        disabled={isDownloading || isBatchUpdating}
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isDownloading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Downloading ({downloadProgress.current}/{downloadProgress.total})
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download ZIP
+                          </>
+                        )}
+                      </Button>
+                      
+                      <Button
+                        onClick={handleMarkAsReleased}
+                        disabled={isDownloading || isBatchUpdating}
+                        variant="outline"
+                        size="sm"
+                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      >
+                        {isBatchUpdating ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Updating...
+                          </>
+                        ) : (
+                          <>
+                            <Package className="h-4 w-4 mr-2" />
+                            Mark as Released
+                          </>
+                        )}
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearSelection}
+                        disabled={isDownloading || isBatchUpdating}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
