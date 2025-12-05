@@ -184,18 +184,18 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
 
 /**
  * Track a certificate request by control number
+ * Uses the secure RPC function that only returns limited public data
  * @param controlNumber - The control number to track
  * @returns Request status information
  */
 export const trackRequest = async (controlNumber: string): Promise<RequestStatus | null> => {
-  // First try to fetch from Supabase
+  // Use the secure RPC function for public tracking
   const { data, error } = await supabase
-    .from('certificate_requests')
-    .select('*')
-    .eq('control_number', controlNumber)
-    .maybeSingle();
+    .rpc('track_certificate_request', { p_control_number: controlNumber });
 
-  if (data && !error) {
+  if (data && data.length > 0 && !error) {
+    const request = data[0];
+    
     // Map database status to our status type
     const statusMap: Record<string, RequestStatus['status']> = {
       'Pending': 'pending',
@@ -208,17 +208,17 @@ export const trackRequest = async (controlNumber: string): Promise<RequestStatus
     };
 
     return {
-      controlNumber: data.control_number,
-      certificateType: data.certificate_type,
-      residentName: data.full_name,
-      dateRequested: new Date(data.created_at || Date.now()),
-      status: statusMap[data.status || 'Pending'] || 'pending',
-      purpose: data.purpose || '',
-      remarks: data.notes || undefined,
+      controlNumber: request.control_number,
+      certificateType: request.certificate_type,
+      residentName: request.full_name,
+      dateRequested: new Date(request.created_at || Date.now()),
+      status: statusMap[request.status || 'Pending'] || 'pending',
+      purpose: '', // Not returned by RPC for privacy
+      remarks: undefined,
     };
   }
 
-  // Fallback to localStorage check
+  // Fallback to localStorage check for offline tracking
   try {
     const requests = JSON.parse(localStorage.getItem('certificateRequests') || '[]');
     if (Array.isArray(requests)) {

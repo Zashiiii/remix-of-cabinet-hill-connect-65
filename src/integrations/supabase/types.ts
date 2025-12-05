@@ -784,6 +784,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      track_certificate_request: {
+        Args: { p_control_number: string }
+        Returns: {
+          certificate_type: string
+          control_number: string
+          created_at: string
+          full_name: string
+          id: string
+          status: string
+          updated_at: string
+        }[]
+      }
       validate_session: {
         Args: { session_token: string }
         Returns: {
