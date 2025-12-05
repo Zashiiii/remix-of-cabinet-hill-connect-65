@@ -71,17 +71,18 @@ const StaffSettings = () => {
 
     setIsChangingPassword(true);
     try {
-      // For staff users, we update the password_hash directly
-      // Note: In production, this should be hashed properly
-      const { error } = await supabase
-        .from("staff_users")
-        .update({ 
-          password_hash: newPassword,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", user.id);
+      // Use edge function to securely hash and update password
+      const { data, error } = await supabase.functions.invoke("staff-auth", {
+        body: { 
+          action: "change-password", 
+          userId: user.id,
+          newPassword: newPassword 
+        },
+      });
 
-      if (error) throw error;
+      if (error || !data?.success) {
+        throw new Error(error?.message || "Failed to change password");
+      }
       
       toast.success("Password changed successfully");
       setCurrentPassword("");
