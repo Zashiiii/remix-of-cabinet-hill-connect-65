@@ -793,6 +793,14 @@ export type Database = {
           username: string
         }[]
       }
+      verify_resident_and_get_id: {
+        Args: {
+          p_birth_date: string
+          p_full_name: string
+          p_household_number: string
+        }
+        Returns: string
+      }
       verify_resident_exists: {
         Args: {
           p_birth_date: string

@@ -6,10 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
+import { User, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, Shield, CalendarIcon, Home, Info } from "lucide-react";
 import { z } from "zod";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import DataPrivacyModal from "@/components/DataPrivacyModal";
 
 const loginSchema = z.object({
@@ -22,6 +27,8 @@ const signupSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
   fullName: z.string().min(2, "Full name is required"),
+  birthDate: z.date({ required_error: "Birth date is required" }),
+  householdNumber: z.string().min(1, "Household number is required"),
   privacyConsent: z.literal(true, {
     errorMap: () => ({ message: "You must agree to the Privacy Policy to create an account" }),
   }),
@@ -46,6 +53,8 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
   const [signupFullName, setSignupFullName] = useState("");
+  const [signupBirthDate, setSignupBirthDate] = useState<Date | undefined>();
+  const [signupHouseholdNumber, setSignupHouseholdNumber] = useState("");
   const [privacyConsent, setPrivacyConsent] = useState(false);
 
   // Check if user is already logged in
@@ -116,6 +125,8 @@ const Auth = () => {
         password: signupPassword,
         confirmPassword: signupConfirmPassword,
         fullName: signupFullName,
+        birthDate: signupBirthDate,
+        householdNumber: signupHouseholdNumber,
         privacyConsent: privacyConsent,
       });
     } catch (error) {
@@ -128,6 +139,31 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      // Step 1: Verify resident exists in the database
+      const { data: residentId, error: verifyError } = await supabase
+        .rpc('verify_resident_and_get_id', {
+          p_full_name: signupFullName.trim(),
+          p_birth_date: format(signupBirthDate!, 'yyyy-MM-dd'),
+          p_household_number: signupHouseholdNumber.trim().toUpperCase(),
+        });
+
+      if (verifyError) {
+        console.error('Verification error:', verifyError);
+        toast.error("An error occurred while verifying your information. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!residentId) {
+        toast.error(
+          "Registration failed: Your information doesn't match our records. Please visit the Barangay Office for assistance or to update your information.",
+          { duration: 8000 }
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Step 2: Create auth account (trigger will link to existing resident)
       const redirectUrl = `${window.location.origin}/resident/dashboard`;
 
       const { data, error } = await supabase.auth.signUp({
@@ -137,6 +173,9 @@ const Auth = () => {
           emailRedirectTo: redirectUrl,
           data: {
             full_name: signupFullName,
+            resident_id: residentId,
+            birth_date: format(signupBirthDate!, 'yyyy-MM-dd'),
+            household_number: signupHouseholdNumber.trim().toUpperCase(),
             privacy_consent_given_at: new Date().toISOString(),
           },
         },
@@ -268,21 +307,82 @@ const Auth = () => {
               </TabsContent>
 
               <TabsContent value="signup">
+                <Alert className="mb-4 border-primary/20 bg-primary/5">
+                  <Info className="h-4 w-4 text-primary" />
+                  <AlertDescription className="text-sm">
+                    Only registered residents of Barangay Salud Mitra can create an account. 
+                    Your information must match our records.
+                  </AlertDescription>
+                </Alert>
+
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
+                    <Label htmlFor="signup-name">Full Name (as registered)</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signup-name"
                         type="text"
-                        placeholder="Enter your full name"
+                        placeholder="e.g., Maria Santos Cruz"
                         value={signupFullName}
                         onChange={(e) => setSignupFullName(e.target.value)}
                         className="pl-10"
                         required
                       />
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Enter your full name exactly as registered (First Middle Last)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Birth Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !signupBirthDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {signupBirthDate ? format(signupBirthDate, "MMMM d, yyyy") : "Select your birth date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={signupBirthDate}
+                          onSelect={setSignupBirthDate}
+                          disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                          captionLayout="dropdown-buttons"
+                          fromYear={1920}
+                          toYear={new Date().getFullYear()}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-household">Household Number</Label>
+                    <div className="relative">
+                      <Home className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-household"
+                        type="text"
+                        placeholder="e.g., HH-2024-001"
+                        value={signupHouseholdNumber}
+                        onChange={(e) => setSignupHouseholdNumber(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Find this on your barangay census form or ID
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -368,12 +468,16 @@ const Auth = () => {
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating account...
+                        Verifying & Creating account...
                       </>
                     ) : (
                       "Create Account"
                     )}
                   </Button>
+
+                  <p className="text-xs text-center text-muted-foreground">
+                    Not registered yet? Visit the Barangay Office to be added to our records.
+                  </p>
                 </form>
               </TabsContent>
             </Tabs>
