@@ -1,8 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
-// Version 5.0 - Fixed body parsing for all actions
+// Version 6.0 - Added bcrypt password hashing
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +12,7 @@ const corsHeaders = {
 
 serve(async (req) => {
   const startTime = Date.now();
-  console.log('=== Staff Auth Function v5.0 Started ===');
+  console.log('=== Staff Auth Function v6.0 Started ===');
   console.log('Timestamp:', new Date().toISOString());
   console.log('Request method:', req.method);
 
@@ -39,10 +40,10 @@ serve(async (req) => {
     let body: any = {};
     try {
       const rawBody = await req.text();
-      console.log('Raw body received:', rawBody);
+      console.log('Raw body received:', rawBody ? 'present' : 'empty');
       if (rawBody && rawBody.trim().length > 0) {
         body = JSON.parse(rawBody);
-        console.log('Parsed body:', JSON.stringify(body));
+        console.log('Parsed body action:', body?.action || 'login');
       }
     } catch (e) {
       console.error('Body parse error:', e);
@@ -174,6 +175,67 @@ serve(async (req) => {
       );
     }
 
+    // ========== HASH PASSWORD ==========
+    if (action === 'hash-password') {
+      const password = body?.password;
+      console.log('Processing HASH-PASSWORD');
+
+      if (!password) {
+        return new Response(
+          JSON.stringify({ error: 'Password is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const hashedPassword = await bcrypt.hash(password);
+      console.log('Password hashed successfully');
+
+      return new Response(
+        JSON.stringify({ hashedPassword }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== CHANGE PASSWORD ==========
+    if (action === 'change-password') {
+      const userId = body?.userId;
+      const newPassword = body?.newPassword;
+      console.log('Processing CHANGE-PASSWORD for user:', userId);
+
+      if (!userId || !newPassword) {
+        return new Response(
+          JSON.stringify({ error: 'User ID and new password are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword);
+
+      // Update the password in the database
+      const { error: updateError } = await supabase
+        .from('staff_users')
+        .update({ 
+          password_hash: hashedPassword,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error('Password update error:', updateError.message);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update password' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Password changed successfully for user:', userId);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== LOGIN (default) ==========
     console.log('Processing LOGIN action');
     const username = body?.username;
@@ -214,8 +276,31 @@ serve(async (req) => {
       );
     }
 
-    // Simple password verification
-    if (user.password_hash !== password) {
+    // Verify password using bcrypt
+    // Support both legacy plain-text and new hashed passwords during migration
+    let passwordValid = false;
+    
+    if (user.password_hash.startsWith('$2')) {
+      // Password is hashed (bcrypt hash starts with $2a$, $2b$, or $2y$)
+      console.log('Verifying bcrypt hashed password');
+      passwordValid = await bcrypt.compare(password, user.password_hash);
+    } else {
+      // Legacy plain-text password - verify and upgrade to hash
+      console.log('Verifying legacy plain-text password');
+      passwordValid = user.password_hash === password;
+      
+      if (passwordValid) {
+        // Upgrade plain-text password to hashed password
+        console.log('Upgrading plain-text password to bcrypt hash for user:', username);
+        const hashedPassword = await bcrypt.hash(password);
+        await supabase
+          .from('staff_users')
+          .update({ password_hash: hashedPassword })
+          .eq('id', user.id);
+      }
+    }
+
+    if (!passwordValid) {
       console.log('Invalid password for user:', username);
       return new Response(
         JSON.stringify({ error: 'Incorrect password', code: 'INVALID_PASSWORD' }),
@@ -268,7 +353,7 @@ serve(async (req) => {
     console.error('Staff auth error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: errorMessage }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
