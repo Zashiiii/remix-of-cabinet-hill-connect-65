@@ -1,9 +1,10 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+// Use hashSync and compareSync to avoid Worker dependency issue in Supabase Edge Runtime
+import { hashSync, compareSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
-// Version 6.0 - Added bcrypt password hashing
+// Version 7.0 - Fixed bcrypt Worker issue by using sync methods
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +13,7 @@ const corsHeaders = {
 
 serve(async (req) => {
   const startTime = Date.now();
-  console.log('=== Staff Auth Function v6.0 Started ===');
+  console.log('=== Staff Auth Function v7.0 Started ===');
   console.log('Timestamp:', new Date().toISOString());
   console.log('Request method:', req.method);
 
@@ -187,8 +188,9 @@ serve(async (req) => {
         );
       }
 
-      const hashedPassword = await bcrypt.hash(password);
-      console.log('Password hashed successfully');
+      // Use hashSync instead of async hash to avoid Worker dependency
+      const hashedPassword = hashSync(password);
+      console.log('Password hashed successfully using hashSync');
 
       return new Response(
         JSON.stringify({ hashedPassword }),
@@ -209,8 +211,8 @@ serve(async (req) => {
         );
       }
 
-      // Hash the new password
-      const hashedPassword = await bcrypt.hash(newPassword);
+      // Hash the new password using hashSync
+      const hashedPassword = hashSync(newPassword);
 
       // Update the password in the database
       const { error: updateError } = await supabase
@@ -276,27 +278,28 @@ serve(async (req) => {
       );
     }
 
-    // Verify password using bcrypt
+    // Verify password using bcrypt sync methods
     // Support both legacy plain-text and new hashed passwords during migration
     let passwordValid = false;
     
     if (user.password_hash.startsWith('$2')) {
       // Password is hashed (bcrypt hash starts with $2a$, $2b$, or $2y$)
-      console.log('Verifying bcrypt hashed password');
-      passwordValid = await bcrypt.compare(password, user.password_hash);
+      console.log('Verifying bcrypt hashed password using compareSync');
+      passwordValid = compareSync(password, user.password_hash);
     } else {
       // Legacy plain-text password - verify and upgrade to hash
       console.log('Verifying legacy plain-text password');
       passwordValid = user.password_hash === password;
       
       if (passwordValid) {
-        // Upgrade plain-text password to hashed password
+        // Upgrade plain-text password to hashed password using hashSync
         console.log('Upgrading plain-text password to bcrypt hash for user:', username);
-        const hashedPassword = await bcrypt.hash(password);
+        const hashedPassword = hashSync(password);
         await supabase
           .from('staff_users')
           .update({ password_hash: hashedPassword })
           .eq('id', user.id);
+        console.log('Password upgraded successfully for user:', username);
       }
     }
 
