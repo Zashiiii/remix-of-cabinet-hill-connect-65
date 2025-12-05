@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import DOMPurify from "dompurify";
 import { ArrowLeft, FileText, Plus, Edit, Trash2, Loader2, Save, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,7 +207,8 @@ const AdminTemplates = () => {
         `<span class="bg-primary/20 px-1 rounded">[${p.description}]</span>`
       );
     });
-    return preview;
+    // Sanitize HTML to prevent XSS attacks
+    return DOMPurify.sanitize(preview);
   };
 
   if (authLoading) {
