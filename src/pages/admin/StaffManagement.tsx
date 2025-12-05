@@ -114,6 +114,18 @@ const AdminStaffManagement = () => {
     setShowEditDialog(true);
   };
 
+  const hashPassword = async (password: string): Promise<string> => {
+    const { data, error } = await supabase.functions.invoke("staff-auth", {
+      body: { action: "hash-password", password },
+    });
+    
+    if (error || !data?.hashedPassword) {
+      throw new Error("Failed to hash password");
+    }
+    
+    return data.hashedPassword;
+  };
+
   const handleSave = async () => {
     if (!formData.username || !formData.fullName) {
       toast.error("Please fill in username and full name");
@@ -137,7 +149,8 @@ const AdminStaffManagement = () => {
         };
 
         if (formData.password) {
-          updateData.password_hash = formData.password; // In production, hash this!
+          // Hash password via edge function
+          updateData.password_hash = await hashPassword(formData.password);
         }
 
         const { error } = await supabase
@@ -148,12 +161,15 @@ const AdminStaffManagement = () => {
         if (error) throw error;
         toast.success("Staff user updated successfully");
       } else {
+        // Hash password via edge function
+        const hashedPassword = await hashPassword(formData.password);
+        
         const { error } = await supabase
           .from("staff_users")
           .insert({
             username: formData.username,
             full_name: formData.fullName,
-            password_hash: formData.password, // In production, hash this!
+            password_hash: hashedPassword,
             role: formData.role,
             is_active: formData.isActive,
           });
