@@ -443,31 +443,9 @@ serve(async (req) => {
       );
     }
 
-    // Verify password using bcrypt sync methods
-    // Support both legacy plain-text and new hashed passwords during migration
-    let passwordValid = false;
-    
-    if (user.password_hash.startsWith('$2')) {
-      // Password is hashed (bcrypt hash starts with $2a$, $2b$, or $2y$)
-      console.log('Verifying bcrypt hashed password using compareSync');
-      passwordValid = compareSync(password, user.password_hash);
-    } else {
-      // Legacy plain-text password - verify and upgrade to hash
-      console.log('Verifying legacy plain-text password');
-      passwordValid = user.password_hash === password;
-      
-      if (passwordValid) {
-        // Upgrade plain-text password to hashed password using hashSync
-        console.log('Upgrading plain-text password to bcrypt hash for user:', username);
-        const hashedPassword = hashSync(password);
-        await supabase
-          .from('staff_users')
-          .update({ password_hash: hashedPassword })
-          .eq('id', user.id);
-        console.log('Password upgraded successfully for user:', username);
-      }
-    }
-
+    // Verify password using bcrypt only (legacy plain-text support removed)
+    console.log('Verifying bcrypt hashed password');
+    const passwordValid = compareSync(password, user.password_hash);
     if (!passwordValid) {
       console.log('Invalid password for user:', username);
       return new Response(
