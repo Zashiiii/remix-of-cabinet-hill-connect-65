@@ -28,6 +28,7 @@ import StaffMessages from "./pages/staff/Messages";
 import AdminTemplates from "./pages/admin/Templates";
 import AdminStaffManagement from "./pages/admin/StaffManagement";
 import AdminAuditLogs from "./pages/admin/AuditLogs";
+import AdminResidentApproval from "./pages/admin/ResidentApproval";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
@@ -112,6 +113,11 @@ const AppContent = () => {
         <Route path="/admin/audit-logs" element={
           <StaffProtectedRoute requiredRole="admin">
             <AdminAuditLogs />
+          </StaffProtectedRoute>
+        } />
+        <Route path="/admin/resident-approval" element={
+          <StaffProtectedRoute>
+            <AdminResidentApproval />
           </StaffProtectedRoute>
         } />
         

@@ -557,6 +557,9 @@ export type Database = {
       }
       residents: {
         Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           birth_date: string | null
           civil_status: string | null
           contact_number: string | null
@@ -588,6 +591,9 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           birth_date?: string | null
           civil_status?: string | null
           contact_number?: string | null
@@ -619,6 +625,9 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           birth_date?: string | null
           civil_status?: string | null
           contact_number?: string | null
@@ -809,6 +818,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_pending_registrations: {
+        Args: never
+        Returns: {
+          approval_status: string
+          birth_date: string
+          contact_number: string
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          middle_name: string
+          place_of_origin: string
+        }[]
+      }
       get_pending_requests: {
         Args: never
         Returns: {
@@ -866,8 +890,32 @@ export type Database = {
         Args: { p_ip_address: string; p_success: boolean; p_username: string }
         Returns: undefined
       }
+      register_new_resident: {
+        Args: {
+          p_address: string
+          p_birth_date: string
+          p_contact_number: string
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+          p_middle_name: string
+        }
+        Returns: string
+      }
+      staff_approve_resident: {
+        Args: { p_approved_by: string; p_resident_id: string }
+        Returns: undefined
+      }
       staff_mark_message_read: {
         Args: { p_message_id: string }
+        Returns: undefined
+      }
+      staff_reject_resident: {
+        Args: {
+          p_rejected_by: string
+          p_rejection_reason: string
+          p_resident_id: string
+        }
         Returns: undefined
       }
       staff_send_reply: {

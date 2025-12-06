@@ -156,6 +156,7 @@ const StaffSidebar = ({
   ];
 
   const adminMenuItems = [
+    { title: "Resident Approval", icon: CheckCircle, route: "/admin/resident-approval" },
     { title: "Certificate Templates", icon: FileText, route: "/admin/templates" },
     { title: "Staff Management", icon: Shield, route: "/admin/staff" },
     { title: "Audit Logs", icon: History, route: "/admin/audit-logs" },
