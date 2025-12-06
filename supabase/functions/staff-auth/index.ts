@@ -176,6 +176,94 @@ serve(async (req) => {
       );
     }
 
+    // ========== BOOTSTRAP ADMIN (one-time setup) ==========
+    if (action === 'bootstrap-admin') {
+      const username = body?.username;
+      console.log('Processing BOOTSTRAP-ADMIN request');
+
+      // Check if any admin users already exist
+      const { data: existingAdmins, error: checkError } = await supabase
+        .from('staff_users')
+        .select('id')
+        .eq('role', 'admin')
+        .eq('is_active', true)
+        .limit(1);
+
+      if (checkError) {
+        console.log('Error checking existing admins:', checkError.message);
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify admin status' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (existingAdmins && existingAdmins.length > 0) {
+        console.log('Admin user already exists, bootstrap denied');
+        return new Response(
+          JSON.stringify({ error: 'Admin user already exists. Use the staff management panel to create additional users.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get the initial password from environment variable
+      const initialPassword = Deno.env.get('ADMIN_INITIAL_PASSWORD');
+      if (!initialPassword) {
+        console.log('ADMIN_INITIAL_PASSWORD not configured');
+        return new Response(
+          JSON.stringify({ error: 'Initial admin password not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!username || username.length < 3) {
+        return new Response(
+          JSON.stringify({ error: 'Username must be at least 3 characters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Hash the password with bcrypt
+      const hashedPassword = hashSync(initialPassword);
+      console.log('Password hashed successfully for bootstrap admin');
+
+      // Insert the admin user
+      const { data: newAdmin, error: insertError } = await supabase
+        .from('staff_users')
+        .insert({
+          username: username.toLowerCase().trim(),
+          password_hash: hashedPassword,
+          full_name: 'System Administrator',
+          role: 'admin',
+          is_active: true
+        })
+        .select('id, username, role')
+        .single();
+
+      if (insertError) {
+        console.log('Error creating admin user:', insertError.message);
+        if (insertError.code === '23505') {
+          return new Response(
+            JSON.stringify({ error: 'Username already exists' }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(
+          JSON.stringify({ error: 'Failed to create admin user' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Bootstrap admin created successfully:', newAdmin.username);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Admin user created successfully',
+          username: newAdmin.username 
+        }),
+        { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== HASH PASSWORD ==========
     if (action === 'hash-password') {
       const token = body?.token;
