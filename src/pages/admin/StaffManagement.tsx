@@ -23,12 +23,14 @@ interface StaffUser {
   createdAt: string;
 }
 
+// Only barangay official positions - no generic "staff" role
 const ROLES = [
-  { value: "staff", label: "Staff" },
-  { value: "admin", label: "Admin" },
-  { value: "secretary", label: "Secretary" },
-  { value: "barangay_official", label: "Barangay Official" },
-  { value: "sk_chairman", label: "SK Chairman" },
+  { value: "admin", label: "System Administrator", description: "Full system access and staff management" },
+  { value: "barangay_captain", label: "Barangay Captain", description: "Head of barangay with full privileges" },
+  { value: "barangay_official", label: "Barangay Kagawad", description: "Elected barangay council member" },
+  { value: "secretary", label: "Barangay Secretary", description: "Handles documentation and records" },
+  { value: "treasurer", label: "Barangay Treasurer", description: "Handles financial matters" },
+  { value: "sk_chairman", label: "SK Chairman", description: "Head of Sangguniang Kabataan" },
 ];
 
 const AdminStaffManagement = () => {
@@ -46,7 +48,7 @@ const AdminStaffManagement = () => {
     username: "",
     fullName: "",
     password: "",
-    role: "staff",
+    role: "secretary",
     isActive: true,
   });
 
@@ -106,7 +108,7 @@ const AdminStaffManagement = () => {
         username: "",
         fullName: "",
         password: "",
-        role: "staff",
+        role: "secretary",
         isActive: true,
       });
       setSelectedUser(null);
@@ -312,8 +314,8 @@ const AdminStaffManagement = () => {
                         <TableCell className="font-medium">{staffUser.username}</TableCell>
                         <TableCell>{staffUser.fullName}</TableCell>
                         <TableCell>
-                          <Badge variant={staffUser.role === "admin" || staffUser.role === "barangay_official" ? "default" : "secondary"}>
-                            {(staffUser.role === "admin" || staffUser.role === "barangay_official" || staffUser.role === "sk_chairman") && <Shield className="h-3 w-3 mr-1" />}
+                          <Badge variant={staffUser.role === "admin" || staffUser.role === "barangay_captain" ? "default" : "secondary"}>
+                            {(staffUser.role === "admin" || staffUser.role === "barangay_captain" || staffUser.role === "barangay_official" || staffUser.role === "sk_chairman") && <Shield className="h-3 w-3 mr-1" />}
                             {ROLES.find(r => r.value === staffUser.role)?.label || staffUser.role}
                           </Badge>
                         </TableCell>
@@ -413,10 +415,18 @@ const AdminStaffManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {ROLES.map(r => (
-                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      <SelectItem key={r.value} value={r.value}>
+                        <div className="flex flex-col">
+                          <span>{r.label}</span>
+                          <span className="text-xs text-muted-foreground">{r.description}</span>
+                        </div>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Only official barangay positions can be assigned.
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <Switch

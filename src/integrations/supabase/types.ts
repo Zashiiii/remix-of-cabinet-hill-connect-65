@@ -484,6 +484,30 @@ export type Database = {
         }
         Relationships: []
       }
+      login_attempts: {
+        Row: {
+          attempted_at: string
+          id: string
+          ip_address: string
+          success: boolean
+          username: string | null
+        }
+        Insert: {
+          attempted_at?: string
+          id?: string
+          ip_address: string
+          success?: boolean
+          username?: string | null
+        }
+        Update: {
+          attempted_at?: string
+          id?: string
+          ip_address?: string
+          success?: boolean
+          username?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -726,6 +750,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_login_rate_limit: {
+        Args: { p_ip_address: string }
+        Returns: number
+      }
       get_active_announcements: {
         Args: never
         Returns: {
@@ -783,6 +811,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      record_login_attempt: {
+        Args: { p_ip_address: string; p_success: boolean; p_username: string }
+        Returns: undefined
       }
       track_certificate_request: {
         Args: { p_control_number: string }
