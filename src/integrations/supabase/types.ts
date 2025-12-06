@@ -795,6 +795,57 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_all_announcements_for_staff: {
+        Args: never
+        Returns: {
+          content: string
+          content_tl: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          title: string
+          title_tl: string | null
+          type: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "announcements"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_all_certificate_requests_for_staff: {
+        Args: { p_status_filter?: string }
+        Returns: {
+          birth_date: string | null
+          certificate_type: string
+          contact_number: string | null
+          control_number: string
+          created_at: string | null
+          email: string | null
+          full_name: string
+          household_number: string | null
+          id: string
+          notes: string | null
+          preferred_pickup_date: string | null
+          priority: string | null
+          processed_by: string | null
+          purpose: string | null
+          rejection_reason: string | null
+          resident_id: string | null
+          status: string | null
+          updated_at: string | null
+          uploaded_id_url: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "certificate_requests"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_all_residents_for_staff: {
         Args: never
         Returns: {
@@ -918,6 +969,35 @@ export type Database = {
         Args: { p_approved_by: string; p_resident_id: string }
         Returns: undefined
       }
+      staff_create_announcement: {
+        Args: {
+          p_content: string
+          p_content_tl?: string
+          p_created_by?: string
+          p_title: string
+          p_title_tl?: string
+          p_type?: string
+        }
+        Returns: {
+          content: string
+          content_tl: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          title: string
+          title_tl: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "announcements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      staff_delete_announcement: { Args: { p_id: string }; Returns: undefined }
       staff_mark_message_read: {
         Args: { p_message_id: string }
         Returns: undefined
@@ -939,6 +1019,53 @@ export type Database = {
           p_subject: string
         }
         Returns: string
+      }
+      staff_update_announcement: {
+        Args: {
+          p_content?: string
+          p_content_tl?: string
+          p_id: string
+          p_is_active?: boolean
+          p_title?: string
+          p_title_tl?: string
+          p_type?: string
+        }
+        Returns: undefined
+      }
+      staff_update_request_status: {
+        Args: {
+          p_notes?: string
+          p_processed_by: string
+          p_request_id: string
+          p_status: string
+        }
+        Returns: {
+          birth_date: string | null
+          certificate_type: string
+          contact_number: string | null
+          control_number: string
+          created_at: string | null
+          email: string | null
+          full_name: string
+          household_number: string | null
+          id: string
+          notes: string | null
+          preferred_pickup_date: string | null
+          priority: string | null
+          processed_by: string | null
+          purpose: string | null
+          rejection_reason: string | null
+          resident_id: string | null
+          status: string | null
+          updated_at: string | null
+          uploaded_id_url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "certificate_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       track_certificate_request: {
         Args: { p_control_number: string }

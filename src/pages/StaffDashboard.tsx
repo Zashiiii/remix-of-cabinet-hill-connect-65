@@ -1200,6 +1200,34 @@ const StaffDashboard = () => {
                   </Card>
                 </div>
 
+                {/* Pending Registrations Widget (Admin Only) */}
+                {user?.role === 'admin' && pendingRegistrationCount > 0 && (
+                  <Card className="mb-8 border-l-4 border-l-yellow-500 bg-yellow-50/50">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                        <User className="h-5 w-5 text-yellow-600" />
+                        Pending Resident Registrations
+                      </CardTitle>
+                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                        {pendingRegistrationCount} pending
+                      </Badge>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        There are {pendingRegistrationCount} resident registration{pendingRegistrationCount !== 1 ? 's' : ''} awaiting your approval.
+                      </p>
+                      <Button 
+                        size="sm" 
+                        onClick={() => navigate('/admin/resident-approval')}
+                        className="bg-yellow-600 hover:bg-yellow-700"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Review Registrations
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Quick Actions */}
                 <div className="mb-8">
                   <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
