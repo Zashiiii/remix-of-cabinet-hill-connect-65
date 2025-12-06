@@ -311,7 +311,8 @@ export const updateRequestStatus = async (
   id: string, 
   status: string, 
   processedBy: string,
-  notes?: string
+  notes?: string,
+  sessionToken?: string
 ) => {
   // Normalize status to match database format (capitalize first letter)
   const normalizedStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
@@ -357,6 +358,13 @@ export const updateRequestStatus = async (
   if (requestData?.email && (normalizedStatus === 'Approved' || normalizedStatus === 'Rejected')) {
     try {
       console.log('Sending notification email to:', requestData.email);
+      
+      // Build headers with session token if provided
+      const headers: Record<string, string> = {};
+      if (sessionToken) {
+        headers['Authorization'] = `Bearer ${sessionToken}`;
+      }
+      
       const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
         body: {
           recipientEmail: requestData.email,
@@ -366,6 +374,7 @@ export const updateRequestStatus = async (
           controlNumber: requestData.control_number,
           notes: notes || requestData.rejection_reason,
         },
+        headers,
       });
 
       if (emailError) {
