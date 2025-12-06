@@ -408,7 +408,13 @@ serve(async (req) => {
     const username = body?.username;
     const password = body?.password;
     
-    console.log('Login attempt - username:', username, 'password present:', !!password);
+    // Get client IP for rate limiting
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                     req.headers.get('cf-connecting-ip') || 
+                     req.headers.get('x-real-ip') || 
+                     'unknown';
+    
+    console.log('Login attempt - username:', username, 'password present:', !!password, 'IP:', clientIp);
 
     if (!username || !password) {
       console.log('Missing credentials for login');
@@ -416,6 +422,35 @@ serve(async (req) => {
         JSON.stringify({ error: 'Username and password are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // ========== RATE LIMITING ==========
+    // Check if IP is rate limited (5 failed attempts in 15 minutes = blocked)
+    const { data: rateLimitData, error: rateLimitError } = await supabase
+      .rpc('check_login_rate_limit', { p_ip_address: clientIp });
+
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError.message);
+      // Continue without rate limiting if there's an error
+    } else if (rateLimitData === -1) {
+      console.log('Rate limit exceeded for IP:', clientIp);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Too many failed login attempts. Please try again in 15 minutes.',
+          code: 'RATE_LIMITED',
+          retryAfter: 900 // 15 minutes in seconds
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': '900'
+          } 
+        }
+      );
+    } else {
+      console.log('Rate limit check passed. Remaining attempts:', rateLimitData);
     }
 
     // Find user by username
@@ -427,8 +462,14 @@ serve(async (req) => {
 
     if (userError || !user) {
       console.log('User not found:', username);
+      // Record failed attempt
+      await supabase.rpc('record_login_attempt', { 
+        p_ip_address: clientIp, 
+        p_username: username, 
+        p_success: false 
+      });
       return new Response(
-        JSON.stringify({ error: 'User not found', code: 'USER_NOT_FOUND' }),
+        JSON.stringify({ error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -437,6 +478,12 @@ serve(async (req) => {
 
     if (!user.is_active) {
       console.log('Account deactivated:', username);
+      // Record failed attempt for inactive account
+      await supabase.rpc('record_login_attempt', { 
+        p_ip_address: clientIp, 
+        p_username: username, 
+        p_success: false 
+      });
       return new Response(
         JSON.stringify({ error: 'Account is deactivated', code: 'ACCOUNT_INACTIVE' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -448,11 +495,24 @@ serve(async (req) => {
     const passwordValid = compareSync(password, user.password_hash);
     if (!passwordValid) {
       console.log('Invalid password for user:', username);
+      // Record failed attempt
+      await supabase.rpc('record_login_attempt', { 
+        p_ip_address: clientIp, 
+        p_username: username, 
+        p_success: false 
+      });
       return new Response(
-        JSON.stringify({ error: 'Incorrect password', code: 'INVALID_PASSWORD' }),
+        JSON.stringify({ error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    // Record successful login attempt (clears the rate limit counter effectively)
+    await supabase.rpc('record_login_attempt', { 
+      p_ip_address: clientIp, 
+      p_username: username, 
+      p_success: true 
+    });
 
     // Generate session token
     const token = crypto.randomUUID() + '-' + crypto.randomUUID();

@@ -98,11 +98,13 @@ import {
 
 interface PendingRequest {
   id: string;
+  dbId?: string; // Database UUID for linking
   residentName: string;
   certificateType: string;
   dateSubmitted: string;
   status: "pending" | "processing" | "approved" | "rejected" | "verifying" | "released";
   verificationStatus?: "verified" | "not-verified" | "checking";
+  residentId?: string; // Link to verified resident
   processedBy?: string;
   processedDate?: string;
   notes?: string;
@@ -114,6 +116,7 @@ interface PendingRequest {
   readyDate?: string;
   rejectionReason?: string;
   residentNotes?: string;
+  birthDate?: string;
 }
 
 interface Announcement {
@@ -281,6 +284,14 @@ const StaffDashboard = () => {
   const [isBatchUpdating, setIsBatchUpdating] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
 
+  // Resident verification state
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationResult, setVerificationResult] = useState<{
+    verified: boolean;
+    residentId?: string;
+    message: string;
+  } | null>(null);
+
   // Load certificate requests from Supabase
   const loadRequests = useCallback(async () => {
     try {
@@ -293,26 +304,30 @@ const StaffDashboard = () => {
       if (allData) {
         const mapped: PendingRequest[] = allData.map((item: any) => ({
           id: item.control_number,
+          dbId: item.id, // Store the database UUID
           residentName: item.full_name,
           certificateType: item.certificate_type,
           dateSubmitted: item.created_at 
             ? new Date(item.created_at).toLocaleDateString() 
             : new Date().toLocaleDateString(),
           status: (item.status?.toLowerCase() || 'pending') as PendingRequest['status'],
+          residentId: item.resident_id || undefined,
           processedBy: item.processed_by || undefined,
           processedDate: item.updated_at 
             ? new Date(item.updated_at).toLocaleString() 
             : undefined,
           notes: item.notes || undefined,
-          rejectionReason: item.notes || undefined,
+          rejectionReason: item.rejection_reason || undefined,
           contactNumber: item.contact_number || undefined,
           email: item.email || undefined,
+          householdNumber: item.household_number || undefined,
           purpose: item.purpose || undefined,
           priority: item.priority || 'Normal',
           readyDate: item.preferred_pickup_date 
             ? new Date(item.preferred_pickup_date).toLocaleDateString()
             : undefined,
           residentNotes: item.household_number ? `Household: ${item.household_number}` : undefined,
+          birthDate: item.birth_date || undefined,
         }));
         setRequests(mapped);
       }
@@ -376,7 +391,75 @@ const StaffDashboard = () => {
   // Open View Details Dialog
   const handleViewDetails = (request: PendingRequest) => {
     setDetailsRequest(request);
+    setVerificationResult(null); // Reset verification when opening new request
     setShowDetailsDialog(true);
+  };
+
+  // Verify if requester is a registered resident
+  const handleVerifyResident = async (request: PendingRequest) => {
+    if (!request.householdNumber || !request.birthDate) {
+      setVerificationResult({
+        verified: false,
+        message: "Missing household number or birth date. Cannot verify without complete information."
+      });
+      return;
+    }
+
+    setIsVerifying(true);
+    setVerificationResult(null);
+
+    try {
+      // Use the existing RPC function to verify resident
+      const { data, error } = await supabase
+        .rpc('verify_resident_and_get_id', {
+          p_full_name: request.residentName,
+          p_birth_date: request.birthDate,
+          p_household_number: request.householdNumber
+        });
+
+      if (error) {
+        console.error("Verification error:", error);
+        setVerificationResult({
+          verified: false,
+          message: "Error during verification. Please try again."
+        });
+        return;
+      }
+
+      if (data) {
+        // Resident found - update the certificate request to link to resident
+        const { error: updateError } = await supabase
+          .from('certificate_requests')
+          .update({ resident_id: data })
+          .eq('control_number', request.id);
+
+        if (updateError) {
+          console.error("Error linking resident:", updateError);
+        }
+
+        setVerificationResult({
+          verified: true,
+          residentId: data,
+          message: "✓ Verified! Resident found in the barangay database."
+        });
+        
+        // Reload requests to update the UI
+        loadRequests();
+      } else {
+        setVerificationResult({
+          verified: false,
+          message: "Not found. No matching resident in the barangay database. Consider rejecting this request."
+        });
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+      setVerificationResult({
+        verified: false,
+        message: "Verification failed. Please try again."
+      });
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   // Open Rejection Dialog
@@ -1582,6 +1665,69 @@ const StaffDashboard = () => {
                 </div>
               </div>
 
+              {/* Resident Verification Section */}
+              <div className="space-y-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Resident Verification
+                </h4>
+                <div className="pl-6">
+                  {detailsRequest.residentId ? (
+                    <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 rounded-lg border border-green-200">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Verified Resident</span>
+                      <span className="text-sm text-green-600">- Linked to barangay database</span>
+                    </div>
+                  ) : verificationResult ? (
+                    <div className={`flex items-start gap-2 p-3 rounded-lg border ${
+                      verificationResult.verified 
+                        ? 'bg-green-50 text-green-700 border-green-200' 
+                        : 'bg-red-50 text-red-700 border-red-200'
+                    }`}>
+                      {verificationResult.verified ? (
+                        <CheckCircle className="h-5 w-5 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 mt-0.5" />
+                      )}
+                      <span className="text-sm">{verificationResult.message}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <div className="text-sm text-muted-foreground">
+                        Verify if this person is a registered resident of the barangay before processing.
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleVerifyResident(detailsRequest)}
+                          disabled={isVerifying || !detailsRequest.householdNumber || !detailsRequest.birthDate}
+                        >
+                          {isVerifying ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Verifying...
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="h-4 w-4 mr-2" />
+                              Verify Resident
+                            </>
+                          )}
+                        </Button>
+                        {(!detailsRequest.householdNumber || !detailsRequest.birthDate) && (
+                          <span className="text-xs text-amber-600">
+                            Missing {!detailsRequest.householdNumber ? 'household number' : ''} 
+                            {!detailsRequest.householdNumber && !detailsRequest.birthDate ? ' and ' : ''}
+                            {!detailsRequest.birthDate ? 'birth date' : ''}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Resident Information */}
               <div className="space-y-4">
                 <h4 className="font-semibold flex items-center gap-2">
@@ -1594,6 +1740,10 @@ const StaffDashboard = () => {
                     <p className="font-medium">{detailsRequest.residentName}</p>
                   </div>
                   <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Birth Date</Label>
+                    <p>{detailsRequest.birthDate || 'Not provided'}</p>
+                  </div>
+                  <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground flex items-center gap-1">
                       <Phone className="h-3 w-3" /> Contact Number
                     </Label>
@@ -1604,6 +1754,10 @@ const StaffDashboard = () => {
                       <Mail className="h-3 w-3" /> Email
                     </Label>
                     <p>{detailsRequest.email || 'Not provided'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Household Number</Label>
+                    <p>{detailsRequest.householdNumber || 'Not provided'}</p>
                   </div>
                   {detailsRequest.residentNotes && (
                     <div className="space-y-1 col-span-2">
