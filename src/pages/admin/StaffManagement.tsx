@@ -35,7 +35,7 @@ const ROLES = [
 
 const AdminStaffManagement = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading: authLoading } = useStaffAuth();
+  const { user, token, isAuthenticated, isLoading: authLoading } = useStaffAuth();
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -117,8 +117,12 @@ const AdminStaffManagement = () => {
   };
 
   const hashPassword = async (password: string): Promise<string> => {
+    if (!token) {
+      throw new Error("Authentication required");
+    }
+    
     const { data, error } = await supabase.functions.invoke("staff-auth", {
-      body: { action: "hash-password", password },
+      body: { action: "hash-password", password, token },
     });
     
     if (error || !data?.hashedPassword) {
