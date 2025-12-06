@@ -200,14 +200,39 @@ serve(async (req) => {
 
     // ========== CHANGE PASSWORD ==========
     if (action === 'change-password') {
+      const token = body?.token;
       const userId = body?.userId;
       const newPassword = body?.newPassword;
       console.log('Processing CHANGE-PASSWORD for user:', userId);
 
-      if (!userId || !newPassword) {
+      // Validate required fields
+      if (!token || !userId || !newPassword) {
         return new Response(
-          JSON.stringify({ error: 'User ID and new password are required' }),
+          JSON.stringify({ error: 'Token, user ID, and new password are required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validate the session token
+      const { data: sessionData, error: sessionError } = await supabase.rpc('validate_session', { session_token: token });
+
+      if (sessionError || !sessionData || sessionData.length === 0) {
+        console.log('Invalid session for password change');
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized - invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const caller = sessionData[0];
+      console.log('Password change requested by:', caller.username, 'role:', caller.role);
+
+      // Authorization check: user can only change their own password, unless they're admin
+      if (userId !== caller.staff_user_id && caller.role !== 'admin') {
+        console.log('Unauthorized: user', caller.staff_user_id, 'tried to change password for', userId);
+        return new Response(
+          JSON.stringify({ error: 'You can only change your own password' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -231,7 +256,7 @@ serve(async (req) => {
         );
       }
 
-      console.log('Password changed successfully for user:', userId);
+      console.log('Password changed successfully for user:', userId, 'by:', caller.username);
       return new Response(
         JSON.stringify({ success: true }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
