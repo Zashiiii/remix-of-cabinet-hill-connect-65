@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, Shield, CalendarIcon, Home, Info } from "lucide-react";
+import { User, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, Shield, CalendarIcon, Phone, MapPin, Info, CheckCircle } from "lucide-react";
 import { z } from "zod";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -26,9 +26,12 @@ const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
-  fullName: z.string().min(2, "Full name is required"),
+  firstName: z.string().min(2, "First name is required"),
+  lastName: z.string().min(2, "Last name is required"),
+  middleName: z.string().optional(),
   birthDate: z.date({ required_error: "Birth date is required" }),
-  householdNumber: z.string().min(1, "Household number is required"),
+  contactNumber: z.string().min(10, "Valid contact number is required"),
+  address: z.string().min(5, "Address is required"),
   privacyConsent: z.literal(true, {
     errorMap: () => ({ message: "You must agree to the Privacy Policy to create an account" }),
   }),
@@ -43,6 +46,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -52,9 +56,12 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
-  const [signupFullName, setSignupFullName] = useState("");
+  const [signupFirstName, setSignupFirstName] = useState("");
+  const [signupLastName, setSignupLastName] = useState("");
+  const [signupMiddleName, setSignupMiddleName] = useState("");
   const [signupBirthDate, setSignupBirthDate] = useState<Date | undefined>();
-  const [signupHouseholdNumber, setSignupHouseholdNumber] = useState("");
+  const [signupContactNumber, setSignupContactNumber] = useState("");
+  const [signupAddress, setSignupAddress] = useState("");
   const [privacyConsent, setPrivacyConsent] = useState(false);
 
   // Check if user is already logged in
@@ -124,9 +131,12 @@ const Auth = () => {
         email: signupEmail,
         password: signupPassword,
         confirmPassword: signupConfirmPassword,
-        fullName: signupFullName,
+        firstName: signupFirstName,
+        lastName: signupLastName,
+        middleName: signupMiddleName,
         birthDate: signupBirthDate,
-        householdNumber: signupHouseholdNumber,
+        contactNumber: signupContactNumber,
+        address: signupAddress,
         privacyConsent: privacyConsent,
       });
     } catch (error) {
@@ -139,31 +149,30 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      // Step 1: Verify resident exists in the database
-      const { data: residentId, error: verifyError } = await supabase
-        .rpc('verify_resident_and_get_id', {
-          p_full_name: signupFullName.trim(),
+      // Step 1: Register the resident (pending approval)
+      const { data: residentId, error: registerError } = await supabase
+        .rpc('register_new_resident', {
+          p_first_name: signupFirstName.trim(),
+          p_last_name: signupLastName.trim(),
+          p_middle_name: signupMiddleName.trim() || null,
+          p_email: signupEmail.trim(),
           p_birth_date: format(signupBirthDate!, 'yyyy-MM-dd'),
-          p_household_number: signupHouseholdNumber.trim().toUpperCase(),
+          p_contact_number: signupContactNumber.trim(),
+          p_address: signupAddress.trim(),
         });
 
-      if (verifyError) {
-        console.error('Verification error:', verifyError);
-        toast.error("An error occurred while verifying your information. Please try again.");
+      if (registerError) {
+        console.error('Registration error:', registerError);
+        if (registerError.message.includes('duplicate')) {
+          toast.error("An account with this email already exists.");
+        } else {
+          toast.error("An error occurred during registration. Please try again.");
+        }
         setIsLoading(false);
         return;
       }
 
-      if (!residentId) {
-        toast.error(
-          "Registration failed: Your information doesn't match our records. Please visit the Barangay Office for assistance or to update your information.",
-          { duration: 8000 }
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      // Step 2: Create auth account (trigger will link to existing resident)
+      // Step 2: Create auth account
       const redirectUrl = `${window.location.origin}/resident/dashboard`;
 
       const { data, error } = await supabase.auth.signUp({
@@ -172,10 +181,9 @@ const Auth = () => {
         options: {
           emailRedirectTo: redirectUrl,
           data: {
-            full_name: signupFullName,
+            full_name: `${signupFirstName} ${signupMiddleName ? signupMiddleName + ' ' : ''}${signupLastName}`,
             resident_id: residentId,
             birth_date: format(signupBirthDate!, 'yyyy-MM-dd'),
-            household_number: signupHouseholdNumber.trim().toUpperCase(),
             privacy_consent_given_at: new Date().toISOString(),
           },
         },
@@ -193,9 +201,7 @@ const Auth = () => {
       }
 
       if (data.user) {
-        toast.success("Account created successfully! You can now log in.");
-        setActiveTab("login");
-        setLoginEmail(signupEmail);
+        setRegistrationSuccess(true);
       }
     } catch (error: any) {
       toast.error("An unexpected error occurred. Please try again.");
@@ -203,6 +209,56 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
+
+  // Show success message after registration
+  if (registrationSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+        <Card className="w-full max-w-md shadow-lg border-border/50">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-foreground">
+              Registration Submitted!
+            </CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Your account is pending approval
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert className="border-primary/20 bg-primary/5">
+              <Info className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-sm">
+                Your registration has been submitted and is awaiting approval from the Barangay admin. 
+                You will be able to log in once your account is approved.
+              </AlertDescription>
+            </Alert>
+            <p className="text-sm text-muted-foreground text-center">
+              This usually takes 1-2 business days. You may contact the Barangay office for faster processing.
+            </p>
+            <Button 
+              className="w-full" 
+              onClick={() => {
+                setRegistrationSuccess(false);
+                setActiveTab("login");
+              }}
+            >
+              Back to Login
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => navigate("/")}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
@@ -310,29 +366,45 @@ const Auth = () => {
                 <Alert className="mb-4 border-primary/20 bg-primary/5">
                   <Info className="h-4 w-4 text-primary" />
                   <AlertDescription className="text-sm">
-                    Only registered residents of Barangay Salud Mitra can create an account. 
-                    Your information must match our records.
+                    Sign up for a resident account. Your registration will be reviewed and approved by the Barangay admin.
                   </AlertDescription>
                 </Alert>
 
                 <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name (as registered)</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-firstname">First Name</Label>
                       <Input
-                        id="signup-name"
+                        id="signup-firstname"
                         type="text"
-                        placeholder="e.g., Maria Santos Cruz"
-                        value={signupFullName}
-                        onChange={(e) => setSignupFullName(e.target.value)}
-                        className="pl-10"
+                        placeholder="Juan"
+                        value={signupFirstName}
+                        onChange={(e) => setSignupFirstName(e.target.value)}
                         required
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Enter your full name exactly as registered (First Middle Last)
-                    </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-lastname">Last Name</Label>
+                      <Input
+                        id="signup-lastname"
+                        type="text"
+                        placeholder="Dela Cruz"
+                        value={signupLastName}
+                        onChange={(e) => setSignupLastName(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-middlename">Middle Name (Optional)</Label>
+                    <Input
+                      id="signup-middlename"
+                      type="text"
+                      placeholder="Santos"
+                      value={signupMiddleName}
+                      onChange={(e) => setSignupMiddleName(e.target.value)}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -367,22 +439,35 @@ const Auth = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-household">Household Number</Label>
+                    <Label htmlFor="signup-contact">Contact Number</Label>
                     <div className="relative">
-                      <Home className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="signup-household"
-                        type="text"
-                        placeholder="e.g., HH-2024-001"
-                        value={signupHouseholdNumber}
-                        onChange={(e) => setSignupHouseholdNumber(e.target.value)}
+                        id="signup-contact"
+                        type="tel"
+                        placeholder="09XX XXX XXXX"
+                        value={signupContactNumber}
+                        onChange={(e) => setSignupContactNumber(e.target.value)}
                         className="pl-10"
                         required
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Find this on your barangay census form or ID
-                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-address">Address</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-address"
+                        type="text"
+                        placeholder="House/Block/Lot, Street, Purok"
+                        value={signupAddress}
+                        onChange={(e) => setSignupAddress(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -444,22 +529,19 @@ const Auth = () => {
                     <div className="grid gap-1.5 leading-none">
                       <label
                         htmlFor="privacy-consent"
-                        className="text-sm font-medium leading-snug cursor-pointer"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
-                        I agree to the Data Privacy Policy
+                        I agree to the Privacy Policy
                       </label>
                       <p className="text-xs text-muted-foreground">
-                        By checking this box, I consent to the collection and processing of my 
-                        personal data as described in the{" "}
+                        By checking this box, you consent to the collection and processing of your personal data.{" "}
                         <button
                           type="button"
                           onClick={() => setShowPrivacyModal(true)}
-                          className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                          className="text-primary hover:underline"
                         >
-                          <Shield className="h-3 w-3" />
-                          Privacy Policy
+                          View Privacy Policy
                         </button>
-                        .
                       </p>
                     </div>
                   </div>
@@ -468,41 +550,27 @@ const Auth = () => {
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying & Creating account...
+                        Submitting...
                       </>
                     ) : (
-                      "Create Account"
+                      "Submit Registration"
                     )}
                   </Button>
-
-                  <p className="text-xs text-center text-muted-foreground">
-                    Not registered yet? Visit the Barangay Office to be added to our records.
-                  </p>
                 </form>
               </TabsContent>
             </Tabs>
+
+            <div className="mt-6 text-center">
+              <Link
+                to="/"
+                className="text-sm text-muted-foreground hover:text-primary inline-flex items-center"
+              >
+                <Shield className="mr-1 h-4 w-4" />
+                Staff Login
+              </Link>
+            </div>
           </CardContent>
         </Card>
-
-        <div className="text-center mt-4 space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Staff members?{" "}
-            <Button
-              variant="link"
-              className="p-0 h-auto text-primary"
-              onClick={() => navigate("/")}
-            >
-              Login through the main site
-            </Button>
-          </p>
-          <Link 
-            to="/privacy" 
-            className="text-xs text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
-          >
-            <Shield className="h-3 w-3" />
-            View Privacy Policy
-          </Link>
-        </div>
       </div>
     </div>
   );
