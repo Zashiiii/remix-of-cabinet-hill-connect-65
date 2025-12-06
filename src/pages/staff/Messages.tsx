@@ -68,13 +68,9 @@ const StaffMessages = () => {
   const loadMessages = async () => {
     setIsLoading(true);
     try {
-      // Fetch messages where staff is recipient
+      // Fetch messages using RPC (bypasses RLS for staff)
       const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("recipient_type", "staff")
-        .eq("recipient_id", user?.id)
-        .order("created_at", { ascending: false });
+        .rpc('get_staff_messages', { p_staff_id: user?.id });
 
       if (error) throw error;
 
@@ -122,10 +118,8 @@ const StaffMessages = () => {
     
     if (!message.isRead) {
       try {
-        await supabase
-          .from("messages")
-          .update({ is_read: true })
-          .eq("id", message.id);
+        // Use RPC to mark as read (bypasses RLS)
+        await supabase.rpc('staff_mark_message_read', { p_message_id: message.id });
         
         setMessages(prev => prev.map(m => 
           m.id === message.id ? { ...m, isRead: true } : m
@@ -144,14 +138,13 @@ const StaffMessages = () => {
 
     setIsSending(true);
     try {
-      const { error } = await supabase.from("messages").insert({
-        sender_type: "staff",
-        sender_id: user?.id,
-        recipient_type: "resident",
-        recipient_id: selectedMessage.senderId,
-        subject: `Re: ${selectedMessage.subject}`,
-        content: replyContent,
-        parent_message_id: selectedMessage.id,
+      // Use RPC to send reply (bypasses RLS)
+      const { error } = await supabase.rpc('staff_send_reply', {
+        p_staff_id: user?.id,
+        p_recipient_id: selectedMessage.senderId,
+        p_subject: `Re: ${selectedMessage.subject}`,
+        p_content: replyContent,
+        p_parent_message_id: selectedMessage.id,
       });
 
       if (error) throw error;

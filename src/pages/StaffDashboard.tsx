@@ -351,11 +351,9 @@ const StaffDashboard = () => {
         setRecentRequests(mappedRecent);
       }
 
-      // Get resident count
-      const { count } = await supabase
-        .from('residents')
-        .select('*', { count: 'exact', head: true });
-      setTotalResidents(count || 0);
+      // Get resident count using RPC (bypasses RLS)
+      const { data: residentCount } = await supabase.rpc('get_resident_count');
+      setTotalResidents(residentCount || 0);
 
     } catch (error) {
       console.error("Error loading requests:", error);
@@ -382,8 +380,23 @@ const StaffDashboard = () => {
         })
         .subscribe();
 
+      // Real-time subscription for residents count
+      const residentsChannel = supabase
+        .channel('residents-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'residents'
+        }, async () => {
+          console.log('Residents changed, updating count...');
+          const { data: residentCount } = await supabase.rpc('get_resident_count');
+          setTotalResidents(residentCount || 0);
+        })
+        .subscribe();
+
       return () => {
         supabase.removeChannel(requestsChannel);
+        supabase.removeChannel(residentsChannel);
       };
     }
   }, [isAuthenticated, loadRequests]);
@@ -1115,7 +1128,7 @@ const StaffDashboard = () => {
                       <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{totalResidents || 1344}</div>
+                      <div className="text-2xl font-bold">{totalResidents}</div>
                       <p className="text-xs text-muted-foreground">Registered residents</p>
                     </CardContent>
                   </Card>
@@ -1138,7 +1151,12 @@ const StaffDashboard = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">
-                        {requests.filter(r => r.status === "approved" || r.status === "rejected").length}
+                        {requests.filter(r => {
+                          if (r.status !== "approved" && r.status !== "rejected") return false;
+                          const today = new Date().toDateString();
+                          const processedDate = r.processedDate ? new Date(r.processedDate).toDateString() : null;
+                          return processedDate === today;
+                        }).length}
                       </div>
                       <p className="text-xs text-muted-foreground">Certificates processed</p>
                     </CardContent>

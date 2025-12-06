@@ -213,8 +213,8 @@ export const trackRequest = async (controlNumber: string): Promise<RequestStatus
       residentName: request.full_name,
       dateRequested: new Date(request.created_at || Date.now()),
       status: statusMap[request.status || 'Pending'] || 'pending',
-      purpose: '', // Not returned by RPC for privacy
-      remarks: undefined,
+      purpose: request.purpose || '',
+      remarks: request.rejection_reason || request.notes || undefined,
     };
   }
 

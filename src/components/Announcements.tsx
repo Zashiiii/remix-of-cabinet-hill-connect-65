@@ -49,7 +49,7 @@ const Announcements = () => {
           // Map Supabase data to our format
           const mapped: Announcement[] = data.map((item: any) => ({
             id: item.id,
-            type: (item.announcement_type === 'important' ? 'important' : 'general') as "important" | "general",
+            type: (item.type === 'important' ? 'important' : 'general') as "important" | "general",
             title: item.title,
             titleTl: item.title_tl || item.title,
             description: item.content,

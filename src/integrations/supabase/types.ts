@@ -775,6 +775,40 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_all_residents_for_staff: {
+        Args: never
+        Returns: {
+          birth_date: string
+          civil_status: string
+          contact_number: string
+          created_at: string
+          dialects_spoken: Json
+          education_attainment: string
+          email: string
+          employment_category: string
+          employment_status: string
+          ethnic_group: string
+          first_name: string
+          gender: string
+          household_id: string
+          id: string
+          is_head_of_household: boolean
+          last_name: string
+          livelihood_training: string
+          middle_name: string
+          monthly_income_cash: string
+          monthly_income_kind: string
+          occupation: string
+          place_of_origin: string
+          privacy_consent_given_at: string
+          relation_to_head: string
+          religion: string
+          schooling_status: string
+          suffix: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       get_pending_requests: {
         Args: never
         Returns: {
@@ -805,6 +839,22 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_resident_count: { Args: never; Returns: number }
+      get_staff_messages: {
+        Args: { p_staff_id: string }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean
+          parent_message_id: string
+          recipient_id: string
+          recipient_type: string
+          sender_id: string
+          sender_type: string
+          subject: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -816,6 +866,20 @@ export type Database = {
         Args: { p_ip_address: string; p_success: boolean; p_username: string }
         Returns: undefined
       }
+      staff_mark_message_read: {
+        Args: { p_message_id: string }
+        Returns: undefined
+      }
+      staff_send_reply: {
+        Args: {
+          p_content: string
+          p_parent_message_id: string
+          p_recipient_id: string
+          p_staff_id: string
+          p_subject: string
+        }
+        Returns: string
+      }
       track_certificate_request: {
         Args: { p_control_number: string }
         Returns: {
@@ -824,6 +888,9 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
+          notes: string
+          purpose: string
+          rejection_reason: string
           status: string
           updated_at: string
         }[]

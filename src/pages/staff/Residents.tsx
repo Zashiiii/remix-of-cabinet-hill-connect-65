@@ -188,28 +188,54 @@ const StaffResidents = () => {
   const loadResidents = useCallback(async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from("residents")
-        .select(`
-          *,
-          households (*)
-        `, { count: "exact" });
+      // Use RPC to get all residents (bypasses RLS for staff)
+      const { data: allResidents, error: rpcError } = await supabase.rpc('get_all_residents_for_staff');
+      
+      if (rpcError) throw rpcError;
 
+      let filteredResidents = allResidents || [];
+
+      // Apply search filter client-side
       if (searchQuery) {
-        query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,contact_number.ilike.%${searchQuery}%`);
+        const query = searchQuery.toLowerCase();
+        filteredResidents = filteredResidents.filter((r: any) => 
+          r.first_name?.toLowerCase().includes(query) ||
+          r.last_name?.toLowerCase().includes(query) ||
+          r.contact_number?.includes(query)
+        );
       }
 
+      // Get total count before pagination
+      const totalFiltered = filteredResidents.length;
+      setTotalCount(totalFiltered);
+
+      // Apply pagination client-side
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
+      const to = from + ITEMS_PER_PAGE;
+      const paginatedResidents = filteredResidents.slice(from, to);
 
-      const { data, count, error } = await query
-        .order("last_name", { ascending: true })
-        .range(from, to);
+      // Fetch household data for these residents
+      const householdIds = [...new Set(paginatedResidents.map((r: any) => r.household_id).filter(Boolean))];
+      let householdMap: Record<string, Household> = {};
+      
+      if (householdIds.length > 0) {
+        const { data: households } = await supabase
+          .from('households')
+          .select('*')
+          .in('id', householdIds);
+        
+        if (households) {
+          householdMap = Object.fromEntries(households.map(h => [h.id, h]));
+        }
+      }
 
-      if (error) throw error;
+      // Map residents with household data
+      const residentsWithHouseholds = paginatedResidents.map((r: any) => ({
+        ...r,
+        households: r.household_id ? householdMap[r.household_id] || null : null
+      }));
 
-      setResidents((data as Resident[]) || []);
-      setTotalCount(count || 0);
+      setResidents(residentsWithHouseholds as Resident[]);
     } catch (error) {
       console.error("Error loading residents:", error);
       toast.error("Failed to load residents");
