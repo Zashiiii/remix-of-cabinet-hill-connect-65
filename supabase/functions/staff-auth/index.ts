@@ -178,8 +178,37 @@ serve(async (req) => {
 
     // ========== HASH PASSWORD ==========
     if (action === 'hash-password') {
+      const token = body?.token;
       const password = body?.password;
       console.log('Processing HASH-PASSWORD');
+
+      // Require admin authentication
+      if (!token) {
+        return new Response(
+          JSON.stringify({ error: 'Admin authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validate the session token and check for admin role
+      const { data: sessionData, error: sessionError } = await supabase.rpc('validate_session', { session_token: token });
+
+      if (sessionError || !sessionData || sessionData.length === 0) {
+        console.log('Invalid session for hash-password');
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const session = sessionData[0];
+      if (session.role !== 'admin') {
+        console.log('Non-admin attempted hash-password:', session.username);
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       if (!password) {
         return new Response(
@@ -190,7 +219,7 @@ serve(async (req) => {
 
       // Use hashSync instead of async hash to avoid Worker dependency
       const hashedPassword = hashSync(password);
-      console.log('Password hashed successfully using hashSync');
+      console.log('Password hashed successfully by admin:', session.username);
 
       return new Response(
         JSON.stringify({ hashedPassword }),
