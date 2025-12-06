@@ -134,11 +134,13 @@ const StaffSidebar = ({
   setActiveTab, 
   onLogout,
   userRole,
+  pendingRegistrationCount,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
   onLogout: () => void;
   userRole?: string;
+  pendingRegistrationCount?: number;
 }) => {
   const { state } = useSidebar();
   const navigate = useNavigate();
@@ -156,7 +158,7 @@ const StaffSidebar = ({
   ];
 
   const adminMenuItems = [
-    { title: "Resident Approval", icon: CheckCircle, route: "/admin/resident-approval" },
+    { title: "Resident Approval", icon: CheckCircle, route: "/admin/resident-approval", badge: pendingRegistrationCount },
     { title: "Certificate Templates", icon: FileText, route: "/admin/templates" },
     { title: "Staff Management", icon: Shield, route: "/admin/staff" },
     { title: "Audit Logs", icon: History, route: "/admin/audit-logs" },
@@ -217,7 +219,21 @@ const StaffSidebar = ({
                       className="hover:bg-muted/50"
                     >
                       <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                      {!isCollapsed && (
+                        <span className="flex items-center justify-between flex-1">
+                          {item.title}
+                          {item.badge && item.badge > 0 && (
+                            <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1.5 text-xs">
+                              {item.badge}
+                            </Badge>
+                          )}
+                        </span>
+                      )}
+                      {isCollapsed && item.badge && item.badge > 0 && (
+                        <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
+                          {item.badge}
+                        </span>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -268,6 +284,7 @@ const StaffDashboard = () => {
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
   const [totalResidents, setTotalResidents] = useState(0);
+  const [pendingRegistrationCount, setPendingRegistrationCount] = useState(0);
 
   // View Details Dialog state
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -356,6 +373,10 @@ const StaffDashboard = () => {
       const { data: residentCount } = await supabase.rpc('get_resident_count');
       setTotalResidents(residentCount || 0);
 
+      // Get pending registration count
+      const { data: pendingCount } = await supabase.rpc('get_pending_registration_count');
+      setPendingRegistrationCount(pendingCount || 0);
+
     } catch (error) {
       console.error("Error loading requests:", error);
       toast.error("Failed to load certificate requests");
@@ -381,7 +402,7 @@ const StaffDashboard = () => {
         })
         .subscribe();
 
-      // Real-time subscription for residents count
+      // Real-time subscription for residents count and pending registrations
       const residentsChannel = supabase
         .channel('residents-changes')
         .on('postgres_changes', {
@@ -389,9 +410,13 @@ const StaffDashboard = () => {
           schema: 'public',
           table: 'residents'
         }, async () => {
-          console.log('Residents changed, updating count...');
-          const { data: residentCount } = await supabase.rpc('get_resident_count');
-          setTotalResidents(residentCount || 0);
+          console.log('Residents changed, updating counts...');
+          const [residentCount, pendingCount] = await Promise.all([
+            supabase.rpc('get_resident_count'),
+            supabase.rpc('get_pending_registration_count'),
+          ]);
+          setTotalResidents(residentCount.data || 0);
+          setPendingRegistrationCount(pendingCount.data || 0);
         })
         .subscribe();
 
@@ -1083,7 +1108,7 @@ const StaffDashboard = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} />
+        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} />
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}

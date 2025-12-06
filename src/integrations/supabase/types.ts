@@ -763,6 +763,17 @@ export type Database = {
         Args: { p_ip_address: string }
         Returns: number
       }
+      check_registration_status: {
+        Args: { p_email: string }
+        Returns: {
+          approved_at: string
+          approved_by: string
+          first_name: string
+          last_name: string
+          status: string
+          submitted_at: string
+        }[]
+      }
       get_active_announcements: {
         Args: never
         Returns: {
@@ -818,6 +829,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_pending_registration_count: { Args: never; Returns: number }
       get_pending_registrations: {
         Args: never
         Returns: {
