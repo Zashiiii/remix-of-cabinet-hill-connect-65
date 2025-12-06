@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, Shield, CalendarIcon, Phone, MapPin, Info, CheckCircle } from "lucide-react";
+import { User, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, Shield, CalendarIcon, Phone, MapPin, Info, CheckCircle, Search, Clock, XCircle } from "lucide-react";
 import { z } from "zod";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,15 @@ const signupSchema = z.object({
   path: ["confirmPassword"],
 });
 
+interface RegistrationStatus {
+  status: string;
+  first_name: string;
+  last_name: string;
+  submitted_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+}
+
 const Auth = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +72,12 @@ const Auth = () => {
   const [signupContactNumber, setSignupContactNumber] = useState("");
   const [signupAddress, setSignupAddress] = useState("");
   const [privacyConsent, setPrivacyConsent] = useState(false);
+
+  // Status checker state
+  const [statusEmail, setStatusEmail] = useState("");
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [statusResult, setStatusResult] = useState<RegistrationStatus | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -201,12 +216,104 @@ const Auth = () => {
       }
 
       if (data.user) {
+        // Step 3: Send notification email to admins (non-blocking)
+        try {
+          const fullName = `${signupFirstName} ${signupMiddleName ? signupMiddleName + ' ' : ''}${signupLastName}`;
+          await supabase.functions.invoke('send-registration-notification', {
+            body: {
+              residentName: fullName,
+              email: signupEmail,
+              contactNumber: signupContactNumber,
+              address: signupAddress,
+              birthDate: format(signupBirthDate!, 'MMMM d, yyyy'),
+              submittedAt: format(new Date(), 'MMMM d, yyyy h:mm a'),
+            },
+          });
+          console.log('Admin notification sent successfully');
+        } catch (notificationError) {
+          // Don't block registration if notification fails
+          console.error('Failed to send admin notification:', notificationError);
+        }
+
         setRegistrationSuccess(true);
       }
     } catch (error: any) {
       toast.error("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCheckStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!statusEmail.trim()) {
+      toast.error("Please enter your email address");
+      return;
+    }
+
+    setIsCheckingStatus(true);
+    setStatusResult(null);
+    setStatusError(null);
+
+    try {
+      const { data, error } = await supabase.rpc('check_registration_status', {
+        p_email: statusEmail.trim(),
+      });
+
+      if (error) {
+        console.error('Status check error:', error);
+        setStatusError("An error occurred while checking your status. Please try again.");
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setStatusResult(data[0]);
+      } else {
+        setStatusError("No registration found with this email address. Please make sure you've registered or check the email spelling.");
+      }
+    } catch (error) {
+      console.error('Status check error:', error);
+      setStatusError("An error occurred. Please try again.");
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
+  const getStatusDisplay = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return {
+          icon: Clock,
+          color: 'text-yellow-600',
+          bgColor: 'bg-yellow-50 border-yellow-200',
+          title: 'Pending Approval',
+          message: 'Your registration is awaiting approval from the Barangay admin. This usually takes 1-2 business days.',
+        };
+      case 'approved':
+        return {
+          icon: CheckCircle,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50 border-green-200',
+          title: 'Approved',
+          message: 'Your registration has been approved! You can now log in to your account.',
+        };
+      case 'rejected':
+        return {
+          icon: XCircle,
+          color: 'text-red-600',
+          bgColor: 'bg-red-50 border-red-200',
+          title: 'Rejected',
+          message: 'Your registration was rejected. Please contact the Barangay office for more information.',
+        };
+      default:
+        return {
+          icon: Info,
+          color: 'text-muted-foreground',
+          bgColor: 'bg-muted border-border',
+          title: 'Unknown',
+          message: 'Status unknown. Please contact the Barangay office.',
+        };
     }
   };
 
@@ -297,9 +404,10 @@ const Auth = () => {
 
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsTrigger value="status">Check Status</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login">
@@ -557,6 +665,96 @@ const Auth = () => {
                     )}
                   </Button>
                 </form>
+              </TabsContent>
+
+              <TabsContent value="status">
+                <div className="space-y-4">
+                  <Alert className="border-primary/20 bg-primary/5">
+                    <Search className="h-4 w-4 text-primary" />
+                    <AlertDescription className="text-sm">
+                      Check your registration status using the email you used during signup.
+                    </AlertDescription>
+                  </Alert>
+
+                  <form onSubmit={handleCheckStatus} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="status-email">Email Address</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="status-email"
+                          type="email"
+                          placeholder="Enter your registered email"
+                          value={statusEmail}
+                          onChange={(e) => setStatusEmail(e.target.value)}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={isCheckingStatus}>
+                      {isCheckingStatus ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Checking...
+                        </>
+                      ) : (
+                        <>
+                          <Search className="mr-2 h-4 w-4" />
+                          Check Status
+                        </>
+                      )}
+                    </Button>
+                  </form>
+
+                  {/* Status Result */}
+                  {statusResult && (
+                    <div className={cn(
+                      "p-4 rounded-lg border",
+                      getStatusDisplay(statusResult.status).bgColor
+                    )}>
+                      <div className="flex items-start gap-3">
+                        {(() => {
+                          const StatusIcon = getStatusDisplay(statusResult.status).icon;
+                          return <StatusIcon className={cn("h-5 w-5 mt-0.5", getStatusDisplay(statusResult.status).color)} />;
+                        })()}
+                        <div className="flex-1">
+                          <h4 className={cn("font-semibold", getStatusDisplay(statusResult.status).color)}>
+                            {getStatusDisplay(statusResult.status).title}
+                          </h4>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {getStatusDisplay(statusResult.status).message}
+                          </p>
+                          <div className="mt-3 text-sm space-y-1">
+                            <p><span className="font-medium">Name:</span> {statusResult.first_name} {statusResult.last_name}</p>
+                            <p><span className="font-medium">Submitted:</span> {statusResult.submitted_at ? format(new Date(statusResult.submitted_at), 'MMMM d, yyyy') : 'N/A'}</p>
+                            {statusResult.approved_at && (
+                              <p><span className="font-medium">Processed:</span> {format(new Date(statusResult.approved_at), 'MMMM d, yyyy')}</p>
+                            )}
+                          </div>
+                          {statusResult.status?.toLowerCase() === 'approved' && (
+                            <Button 
+                              className="mt-3 w-full" 
+                              size="sm"
+                              onClick={() => setActiveTab("login")}
+                            >
+                              Go to Login
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {statusError && (
+                    <Alert variant="destructive">
+                      <XCircle className="h-4 w-4" />
+                      <AlertDescription>{statusError}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
 
