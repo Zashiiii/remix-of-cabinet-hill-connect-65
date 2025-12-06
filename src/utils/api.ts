@@ -114,22 +114,11 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
     console.log('Using fallback direct Supabase insert...');
     
     controlNumber = generateControlNumber();
-    const now = new Date();
     
     // Capitalize priority
     const normalizedPriority = data.priority 
       ? data.priority.charAt(0).toUpperCase() + data.priority.slice(1).toLowerCase()
       : 'Regular';
-
-    // Store additional info in resident_notes
-    const additionalInfo = [];
-    if (data.householdNumber) {
-      additionalInfo.push(`Household: ${data.householdNumber}`);
-    }
-    if (data.birthDate) {
-      additionalInfo.push(`Birth Date: ${data.birthDate.toISOString().split('T')[0]}`);
-    }
-    const residentNotes = additionalInfo.length > 0 ? additionalInfo.join(' | ') : null;
 
     const { error: insertError } = await supabase
       .from('certificate_requests')
@@ -258,21 +247,13 @@ export const fetchPendingRequests = async () => {
 };
 
 /**
- * Fetch all certificate requests with optional status filter
+ * Fetch all certificate requests with optional status filter (uses RPC for staff)
  */
 export const fetchAllRequests = async (statusFilter?: string) => {
-  let query = supabase
-    .from('certificate_requests')
-    .select('*')
-    .order('full_name', { ascending: true });
-  
-  if (statusFilter && statusFilter !== 'All') {
-    // Normalize status for comparison
-    const normalizedStatus = statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1).toLowerCase();
-    query = query.eq('status', normalizedStatus);
-  }
-
-  const { data, error } = await query;
+  // Use the SECURITY DEFINER RPC function to bypass RLS
+  const { data, error } = await supabase.rpc('get_all_certificate_requests_for_staff', {
+    p_status_filter: statusFilter || null
+  });
 
   if (error) {
     console.error('Error fetching all requests:', error);
@@ -286,26 +267,30 @@ export const fetchAllRequests = async (statusFilter?: string) => {
  * Fetch recent processed requests (last 30 days)
  */
 export const fetchRecentProcessedRequests = async () => {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const { data, error } = await supabase
-    .from('certificate_requests')
-    .select('*')
-    .in('status', ['Approved', 'Rejected'])
-    .gte('updated_at', thirtyDaysAgo.toISOString())
-    .order('updated_at', { ascending: false });
+  // Use RPC to fetch - the get_all function works for this too
+  const { data, error } = await supabase.rpc('get_all_certificate_requests_for_staff', {
+    p_status_filter: null
+  });
 
   if (error) {
     console.error('Error fetching recent processed requests:', error);
     throw error;
   }
 
-  return data || [];
+  // Filter for approved/rejected in last 30 days
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  return (data || []).filter((item: any) => {
+    const status = item.status?.toLowerCase();
+    if (status !== 'approved' && status !== 'rejected') return false;
+    const updatedAt = new Date(item.updated_at);
+    return updatedAt >= thirtyDaysAgo;
+  });
 };
 
 /**
- * Update certificate request status and send email notification
+ * Update certificate request status using RPC and send email notification
  */
 export const updateRequestStatus = async (
   id: string, 
@@ -317,40 +302,20 @@ export const updateRequestStatus = async (
   // Normalize status to match database format (capitalize first letter)
   const normalizedStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
   
-  const updateData: Record<string, any> = {
-    status: normalizedStatus,
-    processed_by: processedBy,
-  };
-  
-  if (notes) {
-    updateData.notes = notes;
-  }
+  // First fetch the request to get email and other details using RPC
+  const allRequests = await fetchAllRequests();
+  const requestData = allRequests.find((r: any) => r.id === id);
 
-  // First fetch the request to get email and other details
-  const { data: requestData, error: fetchError } = await supabase
-    .from('certificate_requests')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (fetchError) {
-    console.error('Error fetching request for notification:', fetchError);
-  }
-
-  // Update the request status
-  const { error } = await supabase
-    .from('certificate_requests')
-    .update(updateData)
-    .eq('id', id);
+  // Use the RPC function to update (bypasses RLS)
+  const { data, error } = await supabase.rpc('staff_update_request_status', {
+    p_request_id: id,
+    p_status: normalizedStatus,
+    p_processed_by: processedBy,
+    p_notes: notes || null
+  });
 
   if (error) {
     console.error('Error updating request status:', error);
-    
-    // Check if it's the audit trail constraint error
-    if (error.message?.includes('certificate_audit_trail_action_check')) {
-      throw new Error('Database constraint error. Please run this SQL in Supabase SQL Editor to fix:\n\nALTER TABLE public.certificate_audit_trail DROP CONSTRAINT IF EXISTS certificate_audit_trail_action_check;\n\nALTER TABLE public.certificate_audit_trail ADD CONSTRAINT certificate_audit_trail_action_check CHECK (action IN (\'created\', \'submitted\', \'status_updated\', \'Pending\', \'Approved\', \'Rejected\', \'Verifying\', \'Ready for Pickup\', \'Released\'));');
-    }
-    
     throw error;
   }
 
@@ -358,12 +323,6 @@ export const updateRequestStatus = async (
   if (requestData?.email && (normalizedStatus === 'Approved' || normalizedStatus === 'Rejected')) {
     try {
       console.log('Sending notification email to:', requestData.email);
-      
-      // Build headers with session token if provided
-      const headers: Record<string, string> = {};
-      if (sessionToken) {
-        headers['Authorization'] = `Bearer ${sessionToken}`;
-      }
       
       const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
         body: {
@@ -374,24 +333,23 @@ export const updateRequestStatus = async (
           controlNumber: requestData.control_number,
           notes: notes || requestData.rejection_reason,
         },
-        headers,
       });
 
       if (emailError) {
         console.error('Failed to send notification email:', emailError);
-        // Don't throw - email failure shouldn't fail the status update
       } else {
         console.log('Notification email sent successfully');
       }
     } catch (emailError) {
       console.error('Error invoking email function:', emailError);
-      // Don't throw - email failure shouldn't fail the status update
     }
   }
+
+  return data;
 };
 
 /**
- * Fetch active announcements from Supabase
+ * Fetch active announcements from Supabase (for public view)
  */
 export const fetchActiveAnnouncements = async () => {
   const { data, error } = await supabase.rpc('get_active_announcements');
@@ -405,7 +363,21 @@ export const fetchActiveAnnouncements = async () => {
 };
 
 /**
- * Create a new announcement
+ * Fetch all announcements for staff dashboard
+ */
+export const fetchAnnouncementsForStaff = async () => {
+  const { data, error } = await supabase.rpc('get_all_announcements_for_staff');
+  
+  if (error) {
+    console.error('Error fetching announcements for staff:', error);
+    throw error;
+  }
+  
+  return data || [];
+};
+
+/**
+ * Create a new announcement using RPC (bypasses RLS)
  */
 export const createAnnouncement = async (announcement: {
   title: string;
@@ -415,19 +387,14 @@ export const createAnnouncement = async (announcement: {
   type: string;
   createdBy?: string;
 }) => {
-  const { data, error } = await supabase
-    .from('announcements')
-    .insert({
-      title: announcement.title,
-      content: announcement.content,
-      title_tl: announcement.titleTl,
-      content_tl: announcement.contentTl,
-      type: announcement.type,
-      created_by: announcement.createdBy,
-      is_active: true,
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('staff_create_announcement', {
+    p_title: announcement.title,
+    p_content: announcement.content,
+    p_title_tl: announcement.titleTl || null,
+    p_content_tl: announcement.contentTl || null,
+    p_type: announcement.type,
+    p_created_by: announcement.createdBy || null,
+  });
 
   if (error) {
     console.error('Error creating announcement:', error);
@@ -438,7 +405,7 @@ export const createAnnouncement = async (announcement: {
 };
 
 /**
- * Update an announcement
+ * Update an announcement using RPC (bypasses RLS)
  */
 export const updateAnnouncement = async (
   id: string,
@@ -451,20 +418,15 @@ export const updateAnnouncement = async (
     isActive?: boolean;
   }
 ) => {
-  const updateData: Record<string, any> = {};
-  
-  if (announcement.title !== undefined) updateData.title = announcement.title;
-  if (announcement.content !== undefined) updateData.content = announcement.content;
-  if (announcement.titleTl !== undefined) updateData.title_tl = announcement.titleTl;
-  if (announcement.contentTl !== undefined) updateData.content_tl = announcement.contentTl;
-  if (announcement.type !== undefined) updateData.type = announcement.type;
-  if (announcement.isActive !== undefined) updateData.is_active = announcement.isActive;
-  updateData.updated_at = new Date().toISOString();
-
-  const { error } = await supabase
-    .from('announcements')
-    .update(updateData)
-    .eq('id', id);
+  const { error } = await supabase.rpc('staff_update_announcement', {
+    p_id: id,
+    p_title: announcement.title || null,
+    p_content: announcement.content || null,
+    p_title_tl: announcement.titleTl || null,
+    p_content_tl: announcement.contentTl || null,
+    p_type: announcement.type || null,
+    p_is_active: announcement.isActive ?? null,
+  });
 
   if (error) {
     console.error('Error updating announcement:', error);
@@ -473,13 +435,12 @@ export const updateAnnouncement = async (
 };
 
 /**
- * Delete an announcement (soft delete by setting is_active to false)
+ * Delete an announcement using RPC (soft delete)
  */
 export const deleteAnnouncement = async (id: string) => {
-  const { error } = await supabase
-    .from('announcements')
-    .update({ is_active: false })
-    .eq('id', id);
+  const { error } = await supabase.rpc('staff_delete_announcement', {
+    p_id: id,
+  });
 
   if (error) {
     console.error('Error deleting announcement:', error);

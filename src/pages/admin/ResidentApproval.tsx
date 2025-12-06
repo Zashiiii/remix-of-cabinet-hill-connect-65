@@ -102,6 +102,23 @@ const ResidentApproval = () => {
         return;
       }
 
+      // Send approval notification email
+      if (resident.email) {
+        try {
+          await supabase.functions.invoke('send-approval-notification', {
+            body: {
+              recipientEmail: resident.email,
+              residentName: `${resident.first_name} ${resident.last_name}`,
+              status: 'approved',
+              approvedBy: user?.fullName || 'Admin',
+            },
+          });
+          console.log('Approval notification sent');
+        } catch (emailError) {
+          console.error('Failed to send approval notification:', emailError);
+        }
+      }
+
       toast.success(`${resident.first_name} ${resident.last_name}'s registration has been approved`);
       loadPendingRegistrations();
     } catch (error) {
@@ -133,6 +150,23 @@ const ResidentApproval = () => {
         console.error('Error rejecting resident:', error);
         toast.error("Failed to reject registration");
         return;
+      }
+
+      // Send rejection notification email
+      if (selectedResident.email) {
+        try {
+          await supabase.functions.invoke('send-approval-notification', {
+            body: {
+              recipientEmail: selectedResident.email,
+              residentName: `${selectedResident.first_name} ${selectedResident.last_name}`,
+              status: 'rejected',
+              rejectionReason: rejectionReason || 'Registration rejected',
+            },
+          });
+          console.log('Rejection notification sent');
+        } catch (emailError) {
+          console.error('Failed to send rejection notification:', emailError);
+        }
       }
 
       toast.success(`${selectedResident.first_name} ${selectedResident.last_name}'s registration has been rejected`);
