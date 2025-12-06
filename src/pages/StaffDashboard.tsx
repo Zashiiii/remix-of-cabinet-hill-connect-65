@@ -244,7 +244,7 @@ const StaffSidebar = ({
 
 const StaffDashboard = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading: authLoading, logout } = useStaffAuthContext();
+  const { user, token, isAuthenticated, isLoading: authLoading, logout } = useStaffAuthContext();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeTab, setActiveTab] = useState("home");
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -413,7 +413,8 @@ const StaffDashboard = () => {
         dbRequest.id, 
         'Rejected', 
         staffName,
-        rejectionReason.trim()
+        rejectionReason.trim(),
+        token || undefined
       );
 
       toast.success(`Request rejected successfully`, {
@@ -485,7 +486,8 @@ const StaffDashboard = () => {
           dbRequest.id, 
           newStatus, 
           staffName,
-          actionNote
+          actionNote,
+          token || undefined
         );
 
         // Update local state
@@ -744,7 +746,8 @@ const StaffDashboard = () => {
           dbRequest.id,
           'Released',
           staffName,
-          'Certificate released to resident'
+          'Certificate released to resident',
+          token || undefined
         );
         successCount++;
       }

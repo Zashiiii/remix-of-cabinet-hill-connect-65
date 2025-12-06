@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +28,62 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Validate staff session
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("Missing authorization header");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - missing authorization" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Extract session token from Authorization header
+    const sessionToken = authHeader.replace("Bearer ", "");
+    
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("Supabase configuration missing");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    
+    // Validate the session token using the existing validate_session function
+    const { data: sessionData, error: sessionError } = await supabase.rpc("validate_session", {
+      session_token: sessionToken,
+    });
+
+    if (sessionError) {
+      console.error("Session validation error:", sessionError);
+      return new Response(
+        JSON.stringify({ error: "Session validation failed" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (!sessionData || sessionData.length === 0) {
+      console.error("Invalid or expired session");
+      return new Response(
+        JSON.stringify({ error: "Invalid or expired session" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Verify the user has staff or admin role
+    const userRole = sessionData[0].role;
+    if (userRole !== "staff" && userRole !== "admin") {
+      console.error("Insufficient permissions - role:", userRole);
+      return new Response(
+        JSON.stringify({ error: "Insufficient permissions" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    console.log("Staff session validated successfully for user:", sessionData[0].username);
+
     const body: NotificationRequest = await req.json();
     console.log("Request body:", JSON.stringify(body));
 
