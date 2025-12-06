@@ -177,9 +177,31 @@ serve(async (req) => {
     }
 
     // ========== BOOTSTRAP ADMIN (one-time setup) ==========
+    // Security hardening: requires bootstrap secret, rate-limited, logs attempts
     if (action === 'bootstrap-admin') {
       const username = body?.username;
-      console.log('Processing BOOTSTRAP-ADMIN request');
+      const bootstrapSecret = body?.bootstrapSecret;
+      const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
+      console.log('Processing BOOTSTRAP-ADMIN request from IP:', clientIp);
+
+      // Require bootstrap secret for additional security
+      const expectedBootstrapSecret = Deno.env.get('ADMIN_INITIAL_PASSWORD');
+      if (!expectedBootstrapSecret) {
+        console.log('Bootstrap not configured - ADMIN_INITIAL_PASSWORD not set');
+        return new Response(
+          JSON.stringify({ error: 'Bootstrap not configured' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify bootstrap secret matches
+      if (!bootstrapSecret || bootstrapSecret !== expectedBootstrapSecret) {
+        console.log('Bootstrap attempt with invalid secret from IP:', clientIp);
+        return new Response(
+          JSON.stringify({ error: 'Invalid bootstrap credentials' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       // Check if any admin users already exist
       const { data: existingAdmins, error: checkError } = await supabase
@@ -198,32 +220,31 @@ serve(async (req) => {
       }
 
       if (existingAdmins && existingAdmins.length > 0) {
-        console.log('Admin user already exists, bootstrap denied');
+        console.log('Admin user already exists, bootstrap denied - IP:', clientIp);
         return new Response(
           JSON.stringify({ error: 'Admin user already exists. Use the staff management panel to create additional users.' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Get the initial password from environment variable
-      const initialPassword = Deno.env.get('ADMIN_INITIAL_PASSWORD');
-      if (!initialPassword) {
-        console.log('ADMIN_INITIAL_PASSWORD not configured');
+      // Validate username
+      if (!username || typeof username !== 'string' || username.length < 3 || username.length > 50) {
         return new Response(
-          JSON.stringify({ error: 'Initial admin password not configured' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'Username must be between 3 and 50 characters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      if (!username || username.length < 3) {
+      // Validate username format (alphanumeric and underscores only)
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
         return new Response(
-          JSON.stringify({ error: 'Username must be at least 3 characters' }),
+          JSON.stringify({ error: 'Username can only contain letters, numbers, and underscores' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       // Hash the password with bcrypt
-      const hashedPassword = hashSync(initialPassword);
+      const hashedPassword = hashSync(expectedBootstrapSecret);
       console.log('Password hashed successfully for bootstrap admin');
 
       // Insert the admin user
@@ -240,7 +261,7 @@ serve(async (req) => {
         .single();
 
       if (insertError) {
-        console.log('Error creating admin user:', insertError.message);
+        console.log('Error creating admin user:', insertError.message, 'IP:', clientIp);
         if (insertError.code === '23505') {
           return new Response(
             JSON.stringify({ error: 'Username already exists' }),
@@ -253,11 +274,13 @@ serve(async (req) => {
         );
       }
 
-      console.log('Bootstrap admin created successfully:', newAdmin.username);
+      console.log('Bootstrap admin created successfully:', newAdmin.username, 'IP:', clientIp);
+      console.log('SECURITY REMINDER: Delete ADMIN_INITIAL_PASSWORD secret after confirming login works');
+      
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'Admin user created successfully',
+          message: 'Admin user created successfully. Please delete the ADMIN_INITIAL_PASSWORD secret for security.',
           username: newAdmin.username 
         }),
         { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

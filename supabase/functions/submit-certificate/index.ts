@@ -90,6 +90,46 @@ serve(async (req) => {
       );
     }
 
+    // Input length validation to prevent DoS and database bloat
+    const validationErrors: string[] = [];
+    
+    if (data.fullName.length > 200) {
+      validationErrors.push('Full name must be 200 characters or less');
+    }
+    if (data.purpose.length > 500) {
+      validationErrors.push('Purpose must be 500 characters or less');
+    }
+    if (data.email && data.email.length > 254) {
+      validationErrors.push('Email must be 254 characters or less');
+    }
+    if (data.householdNumber && data.householdNumber.length > 50) {
+      validationErrors.push('Household number must be 50 characters or less');
+    }
+    if (data.certificateType.length > 100) {
+      validationErrors.push('Certificate type must be 100 characters or less');
+    }
+    
+    // Validate certificate type against allowed values
+    const allowedCertificateTypes = [
+      'Barangay Clearance',
+      'Certificate of Residency', 
+      'Certificate of Indigency',
+      'Business Permit',
+      'Barangay ID',
+      'Other'
+    ];
+    if (!allowedCertificateTypes.includes(data.certificateType)) {
+      validationErrors.push('Invalid certificate type');
+    }
+
+    if (validationErrors.length > 0) {
+      console.error('Input validation errors:', validationErrors);
+      return new Response(
+        JSON.stringify({ error: validationErrors.join('. '), success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Validate contact number format (11 digits starting with 09)
     if (!/^09\d{9}$/.test(data.contactNumber)) {
       console.error('Invalid contact number format:', data.contactNumber?.substring(0, 4));
