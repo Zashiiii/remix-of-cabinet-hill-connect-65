@@ -5,6 +5,8 @@ import { User, Session } from "@supabase/supabase-js";
 interface ResidentProfile {
   id: string;
   userId: string;
+  firstName: string;
+  lastName: string;
   fullName: string;
   email: string;
   contactNumber?: string;
@@ -81,7 +83,9 @@ export const useResidentAuth = () => {
         setProfile({
           id: data.id,
           userId: data.user_id || userId,
-          fullName: `${data.first_name} ${data.middle_name ? data.middle_name + ' ' : ''}${data.last_name}${data.suffix ? ' ' + data.suffix : ''}`,
+          firstName: data.first_name || "",
+          lastName: data.last_name || "",
+          fullName: `${data.first_name} ${data.middle_name ? data.middle_name + ' ' : ''}${data.last_name}${data.suffix ? ' ' + data.suffix : ''}`.trim(),
           email: data.email || "",
           contactNumber: data.contact_number || undefined,
           address: data.households 

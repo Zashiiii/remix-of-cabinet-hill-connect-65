@@ -241,7 +241,9 @@ const ResidentDashboard = () => {
               <SidebarTrigger />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">
-                  Welcome, {profile?.fullName || user?.email?.split("@")[0] || "Resident"}
+                  Welcome, {profile?.firstName && profile?.lastName 
+                    ? `${profile.firstName} ${profile.lastName}` 
+                    : profile?.fullName || "Resident"}
                 </h1>
                 <p className="text-muted-foreground">
                   Manage your barangay services online
