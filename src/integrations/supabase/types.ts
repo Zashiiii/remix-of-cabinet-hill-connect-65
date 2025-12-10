@@ -564,6 +564,8 @@ export type Database = {
           civil_status: string | null
           contact_number: string | null
           created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           dialects_spoken: Json | null
           education_attainment: string | null
           email: string | null
@@ -598,6 +600,8 @@ export type Database = {
           civil_status?: string | null
           contact_number?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           dialects_spoken?: Json | null
           education_attainment?: string | null
           email?: string | null
@@ -632,6 +636,8 @@ export type Database = {
           civil_status?: string | null
           contact_number?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           dialects_spoken?: Json | null
           education_attainment?: string | null
           email?: string | null
@@ -880,6 +886,20 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_deleted_residents_for_staff: {
+        Args: never
+        Returns: {
+          contact_number: string
+          deleted_at: string
+          deleted_by: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          middle_name: string
+          suffix: string
+        }[]
+      }
       get_pending_registration_count: { Args: never; Returns: number }
       get_pending_registrations: {
         Args: never
@@ -1035,6 +1055,10 @@ export type Database = {
           p_rejection_reason: string
           p_resident_id: string
         }
+        Returns: undefined
+      }
+      staff_restore_resident: {
+        Args: { p_resident_id: string }
         Returns: undefined
       }
       staff_send_new_message: {
