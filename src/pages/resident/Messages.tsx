@@ -18,9 +18,12 @@ interface Message {
   subject: string;
   content: string;
   senderType: string;
+  senderId: string;
   senderName?: string;
   isRead: boolean;
   createdAt: string;
+  parentMessageId?: string;
+  replies?: Message[];
 }
 
 interface StaffUser {
@@ -41,6 +44,8 @@ const ResidentMessages = () => {
   const [selectedRecipient, setSelectedRecipient] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
+  const [replyContent, setReplyContent] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -112,25 +117,39 @@ const ResidentMessages = () => {
         let staffMap: Record<string, string> = {};
         
         if (staffIds.length > 0) {
-          const { data: staffData } = await supabase
-            .from("staff_users")
-            .select("id, full_name")
-            .in("id", staffIds);
+          const { data: staffData } = await supabase.rpc("get_staff_for_messaging");
           
           if (staffData) {
-            staffMap = Object.fromEntries(staffData.map(s => [s.id, s.full_name]));
+            staffMap = Object.fromEntries(staffData.map((s: StaffUser) => [s.id, s.full_name]));
           }
         }
 
-        setMessages(data.map(m => ({
+        // Map all messages
+        const allMessages = data.map(m => ({
           id: m.id,
           subject: m.subject || "No Subject",
           content: m.content,
           senderType: m.sender_type,
+          senderId: m.sender_id,
           senderName: m.sender_type === "staff" ? staffMap[m.sender_id] : undefined,
           isRead: m.is_read || false,
-          createdAt: new Date(m.created_at || "").toLocaleDateString(),
-        })));
+          createdAt: new Date(m.created_at || "").toLocaleString(),
+          parentMessageId: m.parent_message_id || undefined,
+        }));
+
+        // Group messages by thread (parent messages with their replies)
+        const parentMessages = allMessages.filter(m => !m.parentMessageId);
+        const replies = allMessages.filter(m => m.parentMessageId);
+
+        // Attach replies to parent messages
+        const threaded = parentMessages.map(parent => ({
+          ...parent,
+          replies: replies
+            .filter(r => r.parentMessageId === parent.id)
+            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+        }));
+
+        setMessages(threaded);
       }
     } catch (error) {
       console.error("Error loading messages:", error);
@@ -178,6 +197,7 @@ const ResidentMessages = () => {
 
   const handleReadMessage = async (message: Message) => {
     setSelectedMessage(message);
+    setReplyContent("");
     
     if (!message.isRead && message.senderType !== "resident") {
       try {
@@ -192,6 +212,79 @@ const ResidentMessages = () => {
       } catch (error) {
         console.error("Error marking as read:", error);
       }
+    }
+  };
+
+  const handleReply = async () => {
+    if (!replyContent.trim() || !selectedMessage) {
+      toast.error("Please enter a reply message");
+      return;
+    }
+
+    // Find the recipient - if original message was from staff, reply to them
+    // If it was from resident (us), we need to find the staff recipient
+    let recipientId = "";
+    if (selectedMessage.senderType === "staff") {
+      recipientId = selectedMessage.senderId;
+    } else {
+      // Find the last staff member in the thread
+      const staffReply = selectedMessage.replies?.find(r => r.senderType === "staff");
+      if (staffReply) {
+        recipientId = staffReply.senderId;
+      } else {
+        // No staff in thread, use selected recipient from compose
+        const defaultStaff = staffUsers.find(s => s.role === "admin") || staffUsers[0];
+        if (defaultStaff) {
+          recipientId = defaultStaff.id;
+        }
+      }
+    }
+
+    if (!recipientId) {
+      toast.error("Unable to determine recipient");
+      return;
+    }
+
+    setIsReplying(true);
+    try {
+      const { error } = await supabase.from("messages").insert({
+        sender_type: "resident",
+        sender_id: user?.id,
+        recipient_type: "staff",
+        recipient_id: recipientId,
+        subject: `Re: ${selectedMessage.subject.replace(/^Re: /, "")}`,
+        content: replyContent,
+        parent_message_id: selectedMessage.id,
+      });
+
+      if (error) throw error;
+
+      toast.success("Reply sent successfully");
+      setReplyContent("");
+      loadMessages();
+      
+      // Update the selected message with the new reply
+      const updatedMessage = {
+        ...selectedMessage,
+        replies: [
+          ...(selectedMessage.replies || []),
+          {
+            id: "temp-" + Date.now(),
+            subject: `Re: ${selectedMessage.subject}`,
+            content: replyContent,
+            senderType: "resident",
+            senderId: user?.id || "",
+            isRead: true,
+            createdAt: new Date().toLocaleString(),
+          }
+        ]
+      };
+      setSelectedMessage(updatedMessage);
+    } catch (error: any) {
+      console.error("Error sending reply:", error);
+      toast.error("Failed to send reply");
+    } finally {
+      setIsReplying(false);
     }
   };
 
@@ -271,6 +364,11 @@ const ResidentMessages = () => {
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {message.content}
                         </p>
+                        {message.replies && message.replies.length > 0 && (
+                          <p className="text-xs text-primary mt-1">
+                            {message.replies.length} {message.replies.length === 1 ? "reply" : "replies"}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground mt-2">
                           {message.createdAt}
                         </p>
@@ -344,17 +442,67 @@ const ResidentMessages = () => {
           </DialogContent>
         </Dialog>
 
-        {/* View Message Dialog */}
+        {/* View Message Dialog with Thread */}
         <Dialog open={!!selectedMessage} onOpenChange={() => setSelectedMessage(null)}>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>{selectedMessage?.subject}</DialogTitle>
-            <DialogDescription>
-              {selectedMessage?.senderType === "resident" ? "Sent" : `From ${selectedMessage?.senderName || "Staff"}`} • {selectedMessage?.createdAt}
-            </DialogDescription>
+              <DialogDescription>
+                {selectedMessage?.senderType === "resident" ? "Sent by you" : `From ${selectedMessage?.senderName || "Staff"}`} • {selectedMessage?.createdAt}
+              </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-              <p className="whitespace-pre-wrap">{selectedMessage?.content}</p>
+            
+            {/* Message Thread */}
+            <div className="flex-1 overflow-y-auto space-y-4 py-4">
+              {/* Original Message */}
+              <div className={`p-3 rounded-lg ${selectedMessage?.senderType === "resident" ? "bg-primary/10 ml-8" : "bg-muted mr-8"}`}>
+                <p className="text-xs text-muted-foreground mb-1">
+                  {selectedMessage?.senderType === "resident" ? "You" : selectedMessage?.senderName || "Staff"}
+                </p>
+                <p className="whitespace-pre-wrap text-sm">{selectedMessage?.content}</p>
+                <p className="text-xs text-muted-foreground mt-2">{selectedMessage?.createdAt}</p>
+              </div>
+
+              {/* Replies */}
+              {selectedMessage?.replies && selectedMessage.replies.length > 0 && (
+                <>
+                  {selectedMessage.replies.map((reply) => (
+                    <div 
+                      key={reply.id} 
+                      className={`p-3 rounded-lg ${reply.senderType === "resident" ? "bg-primary/10 ml-8" : "bg-muted mr-8"}`}
+                    >
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {reply.senderType === "resident" ? "You" : reply.senderName || "Staff"}
+                      </p>
+                      <p className="whitespace-pre-wrap text-sm">{reply.content}</p>
+                      <p className="text-xs text-muted-foreground mt-2">{reply.createdAt}</p>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Reply Input */}
+            <div className="border-t pt-4 space-y-3">
+              <Textarea
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+                placeholder="Type your reply..."
+                rows={3}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setSelectedMessage(null)}>
+                  Close
+                </Button>
+                <Button onClick={handleReply} disabled={isReplying || !replyContent.trim()}>
+                  {isReplying ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Reply
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
