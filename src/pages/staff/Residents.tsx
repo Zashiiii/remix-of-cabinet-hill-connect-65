@@ -24,6 +24,8 @@ import {
   Car,
   Save,
   X,
+  RotateCcw,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +120,18 @@ interface Resident {
   households: Household | null;
 }
 
+interface DeletedResident {
+  id: string;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  suffix: string | null;
+  email: string | null;
+  contact_number: string | null;
+  deleted_at: string;
+  deleted_by: string | null;
+}
+
 interface EditFormData {
   first_name: string;
   middle_name: string;
@@ -185,6 +199,10 @@ const StaffResidents = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingResident, setDeletingResident] = useState<Resident | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<"active" | "deleted">("active");
+  const [deletedResidents, setDeletedResidents] = useState<DeletedResident[]>([]);
+  const [isLoadingDeleted, setIsLoadingDeleted] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   // Auth is now handled by ProtectedRoute wrapper
 
@@ -247,11 +265,49 @@ const StaffResidents = () => {
     }
   }, [searchQuery, currentPage]);
 
+  const loadDeletedResidents = useCallback(async () => {
+    setIsLoadingDeleted(true);
+    try {
+      const { data, error } = await supabase.rpc('get_deleted_residents_for_staff');
+      if (error) throw error;
+      setDeletedResidents(data || []);
+    } catch (error) {
+      console.error("Error loading deleted residents:", error);
+      toast.error("Failed to load deleted residents");
+    } finally {
+      setIsLoadingDeleted(false);
+    }
+  }, []);
+
+  const handleRestoreResident = async (residentId: string) => {
+    setRestoringId(residentId);
+    try {
+      const { error } = await supabase.rpc('staff_restore_resident', {
+        p_resident_id: residentId
+      });
+      if (error) throw error;
+      toast.success("Resident restored successfully");
+      loadDeletedResidents();
+      loadResidents();
+    } catch (error) {
+      console.error("Error restoring resident:", error);
+      toast.error("Failed to restore resident");
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       loadResidents();
     }
   }, [isAuthenticated, loadResidents]);
+
+  useEffect(() => {
+    if (isAuthenticated && activeTab === "deleted") {
+      loadDeletedResidents();
+    }
+  }, [isAuthenticated, activeTab, loadDeletedResidents]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -383,16 +439,27 @@ const StaffResidents = () => {
 
       if (error) throw error;
 
-      toast.success("Resident deleted successfully");
+  toast.success("Resident moved to deleted list");
       setShowDeleteDialog(false);
       setDeletingResident(null);
       loadResidents();
+      if (activeTab === "deleted") {
+        loadDeletedResidents();
+      }
     } catch (error) {
       console.error("Error deleting resident:", error);
       toast.error("Failed to delete resident");
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const getDeletedFullName = (resident: DeletedResident) => {
+    const parts = [resident.first_name];
+    if (resident.middle_name) parts.push(resident.middle_name);
+    parts.push(resident.last_name);
+    if (resident.suffix) parts.push(resident.suffix);
+    return parts.join(" ");
   };
 
   const formatArrayField = (arr: unknown) => {
@@ -451,151 +518,259 @@ const StaffResidents = () => {
           </div>
         </div>
 
-        {/* Residents Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Residents List</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : residents.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">No residents found</p>
-                <p className="text-sm">Try adjusting your search criteria</p>
-              </div>
-            ) : (
-              <>
+        {/* Tab Toggle */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "active" | "deleted")} className="mb-6">
+          <TabsList>
+            <TabsTrigger value="active" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Active Residents
+            </TabsTrigger>
+            <TabsTrigger value="deleted" className="flex items-center gap-2">
+              <Archive className="h-4 w-4" />
+              Deleted ({deletedResidents.length})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {activeTab === "active" ? (
+          /* Residents Table */
+          <Card>
+            <CardHeader>
+              <CardTitle>Residents List</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : residents.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">No residents found</p>
+                  <p className="text-sm">Try adjusting your search criteria</p>
+                </div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Household</TableHead>
+                        <TableHead>Address</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {residents.map((resident) => (
+                        <TableRow key={resident.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                <User className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{getFullName(resident)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {resident.gender || "N/A"} • {resident.birth_date ? `${calculateAge(resident.birth_date)} yrs` : "Age N/A"}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {resident.contact_number && (
+                                <div className="flex items-center gap-1 text-sm">
+                                  <Phone className="h-3 w-3" />
+                                  {resident.contact_number}
+                                </div>
+                              )}
+                              {resident.email && (
+                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                  <Mail className="h-3 w-3" />
+                                  {resident.email}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {resident.households ? (
+                              <Badge variant="outline">{resident.households.household_number}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">N/A</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 text-sm max-w-[200px] truncate">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              {resident.households
+                                ? `${resident.households.address || ""}, ${resident.households.barangay || ""}`
+                                : "N/A"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewProfile(resident)}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditResident(resident)}
+                                title="Edit Resident"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setDeletingResident(resident);
+                                  setShowDeleteDialog(true);
+                                }}
+                                title="Delete Resident"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                        {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of {totalCount}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          /* Deleted Residents Table */
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Archive className="h-5 w-5" />
+                Deleted Residents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingDeleted ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : deletedResidents.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Archive className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">No deleted residents</p>
+                  <p className="text-sm">Deleted residents will appear here for restoration</p>
+                </div>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Contact</TableHead>
-                      <TableHead>Household</TableHead>
-                      <TableHead>Address</TableHead>
+                      <TableHead>Deleted At</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {residents.map((resident) => (
-                      <TableRow key={resident.id}>
+                    {deletedResidents.map((resident) => (
+                      <TableRow key={resident.id} className="opacity-75">
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                              <User className="h-5 w-5 text-primary" />
+                            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                              <User className="h-5 w-5 text-muted-foreground" />
                             </div>
                             <div>
-                              <p className="font-medium">{getFullName(resident)}</p>
+                              <p className="font-medium">{getDeletedFullName(resident)}</p>
                               <p className="text-xs text-muted-foreground">
-                                {resident.gender || "N/A"} • {resident.birth_date ? `${calculateAge(resident.birth_date)} yrs` : "Age N/A"}
+                                {resident.email || "No email"}
                               </p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="space-y-1">
-                            {resident.contact_number && (
-                              <div className="flex items-center gap-1 text-sm">
-                                <Phone className="h-3 w-3" />
-                                {resident.contact_number}
-                              </div>
-                            )}
-                            {resident.email && (
-                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                <Mail className="h-3 w-3" />
-                                {resident.email}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {resident.households ? (
-                            <Badge variant="outline">{resident.households.household_number}</Badge>
+                          {resident.contact_number ? (
+                            <div className="flex items-center gap-1 text-sm">
+                              <Phone className="h-3 w-3" />
+                              {resident.contact_number}
+                            </div>
                           ) : (
                             <span className="text-muted-foreground text-sm">N/A</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1 text-sm max-w-[200px] truncate">
-                            <MapPin className="h-3 w-3 flex-shrink-0" />
-                            {resident.households
-                              ? `${resident.households.address || ""}, ${resident.households.barangay || ""}`
-                              : "N/A"}
+                          <div className="text-sm">
+                            {new Date(resident.deleted_at).toLocaleDateString()}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(resident.deleted_at).toLocaleTimeString()}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleViewProfile(resident)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditResident(resident)}
-                              title="Edit Resident"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setDeletingResident(resident);
-                                setShowDeleteDialog(true);
-                              }}
-                              title="Delete Resident"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRestoreResident(resident.id)}
+                            disabled={restoringId === resident.id}
+                            className="text-primary"
+                          >
+                            {restoringId === resident.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                Restoring...
+                              </>
+                            ) : (
+                              <>
+                                <RotateCcw className="h-4 w-4 mr-1" />
+                                Restore
+                              </>
+                            )}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
-                      {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of {totalCount}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        Next
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       {/* Full Census Profile Dialog */}
@@ -1188,7 +1363,7 @@ const StaffResidents = () => {
               <span className="font-semibold">
                 {deletingResident && getFullName(deletingResident)}
               </span>
-              ? This action cannot be undone and will also remove their user account if they have one.
+              ? You can restore this resident later from the "Deleted" tab.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
