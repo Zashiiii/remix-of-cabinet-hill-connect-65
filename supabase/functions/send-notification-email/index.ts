@@ -28,7 +28,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Validate staff session
+    // Check for authorization header (can be Supabase JWT or staff session token)
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       console.error("Missing authorization header");
@@ -38,8 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Extract session token from Authorization header
-    const sessionToken = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "");
     
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       console.error("Supabase configuration missing");
@@ -51,38 +50,50 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    // Validate the session token using the existing validate_session function
-    const { data: sessionData, error: sessionError } = await supabase.rpc("validate_session", {
-      session_token: sessionToken,
+    // Try to validate as staff session token first
+    let isAuthorized = false;
+    
+    const { data: sessionData } = await supabase.rpc("validate_session", {
+      session_token: token,
     });
 
-    if (sessionError) {
-      console.error("Session validation error:", sessionError);
-      return new Response(
-        JSON.stringify({ error: "Session validation failed" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+    if (sessionData && sessionData.length > 0) {
+      const userRole = sessionData[0].role;
+      if (userRole === "staff" || userRole === "admin" || userRole === "secretary") {
+        isAuthorized = true;
+        console.log("Staff session validated for user:", sessionData[0].username);
+      }
     }
-
-    if (!sessionData || sessionData.length === 0) {
-      console.error("Invalid or expired session");
+    
+    // If not a staff session, try to validate as Supabase JWT
+    if (!isAuthorized) {
+      const supabaseWithToken = createClient(SUPABASE_URL, token);
+      const { data: userData } = await supabaseWithToken.auth.getUser();
+      
+      if (userData?.user) {
+        // Check if this user has admin/staff role in user_roles
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userData.user.id)
+          .in("role", ["admin", "staff"]);
+        
+        if (roleData && roleData.length > 0) {
+          isAuthorized = true;
+          console.log("Supabase user authorized:", userData.user.email);
+        }
+      }
+    }
+    
+    if (!isAuthorized) {
+      console.error("Authorization failed - no valid session or JWT");
       return new Response(
         JSON.stringify({ error: "Invalid or expired session" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Verify the user has staff or admin role
-    const userRole = sessionData[0].role;
-    if (userRole !== "staff" && userRole !== "admin") {
-      console.error("Insufficient permissions - role:", userRole);
-      return new Response(
-        JSON.stringify({ error: "Insufficient permissions" }),
-        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    console.log("Staff session validated successfully for user:", sessionData[0].username);
+    console.log("Authorization successful, processing email request");
 
     const body: NotificationRequest = await req.json();
     console.log("Request body:", JSON.stringify(body));
