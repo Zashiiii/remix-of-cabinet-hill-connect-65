@@ -76,23 +76,22 @@ const StaffChatWidget = () => {
       if (error) throw error;
 
       if (data) {
-        // Get resident names
-        const residentIds = [
+        // Get resident names using RPC that bypasses RLS
+        const residentUserIds = [
           ...new Set(
             data.filter((m: any) => m.sender_type === "resident").map((m: any) => m.sender_id)
           ),
         ];
         let residentMap: Record<string, string> = {};
 
-        if (residentIds.length > 0) {
-          const { data: residentData } = await supabase
-            .from("residents")
-            .select("user_id, first_name, last_name")
-            .in("user_id", residentIds);
+        if (residentUserIds.length > 0) {
+          const { data: residentData } = await supabase.rpc("get_resident_names_by_user_ids", {
+            p_user_ids: residentUserIds,
+          });
 
           if (residentData) {
             residentMap = Object.fromEntries(
-              residentData.map((r) => [r.user_id, `${r.first_name} ${r.last_name}`])
+              residentData.map((r: any) => [r.user_id, r.full_name])
             );
           }
         }
