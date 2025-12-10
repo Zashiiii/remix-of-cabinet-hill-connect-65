@@ -1021,6 +1021,10 @@ export type Database = {
         }
       }
       staff_delete_announcement: { Args: { p_id: string }; Returns: undefined }
+      staff_delete_resident: {
+        Args: { p_resident_id: string }
+        Returns: undefined
+      }
       staff_mark_message_read: {
         Args: { p_message_id: string }
         Returns: undefined

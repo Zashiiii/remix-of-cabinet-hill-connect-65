@@ -182,6 +182,9 @@ const StaffResidents = () => {
     relation_to_head: "",
     is_head_of_household: false,
   });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingResident, setDeletingResident] = useState<Resident | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Auth is now handled by ProtectedRoute wrapper
 
@@ -369,6 +372,29 @@ const StaffResidents = () => {
     }
   };
 
+  const handleDeleteResident = async () => {
+    if (!deletingResident) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.rpc('staff_delete_resident', {
+        p_resident_id: deletingResident.id
+      });
+
+      if (error) throw error;
+
+      toast.success("Resident deleted successfully");
+      setShowDeleteDialog(false);
+      setDeletingResident(null);
+      loadResidents();
+    } catch (error) {
+      console.error("Error deleting resident:", error);
+      toast.error("Failed to delete resident");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const formatArrayField = (arr: unknown) => {
     if (!arr) return "Not specified";
     if (Array.isArray(arr) && arr.length > 0) {
@@ -517,6 +543,18 @@ const StaffResidents = () => {
                               title="Edit Resident"
                             >
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setDeletingResident(resident);
+                                setShowDeleteDialog(true);
+                              }}
+                              title="Delete Resident"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -1130,6 +1168,54 @@ const StaffResidents = () => {
                 <>
                   <Save className="h-4 w-4 mr-2" />
                   Save Changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Delete Resident
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold">
+                {deletingResident && getFullName(deletingResident)}
+              </span>
+              ? This action cannot be undone and will also remove their user account if they have one.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setDeletingResident(null);
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteResident}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Resident
                 </>
               )}
             </Button>
