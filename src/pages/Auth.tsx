@@ -79,17 +79,54 @@ const Auth = () => {
   const [statusResult, setStatusResult] = useState<RegistrationStatus | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  // Check if user is already logged in
+  // Check if user is already logged in and approved
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
+    const checkApprovalAndRedirect = async (userId: string, email: string) => {
+      // Check if resident is approved before redirecting
+      const { data: resident } = await supabase
+        .from("residents")
+        .select("approval_status")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      // If no resident found, try by email
+      if (!resident) {
+        const { data: residentByEmail } = await supabase
+          .from("residents")
+          .select("approval_status")
+          .eq("email", email)
+          .maybeSingle();
+
+        if (residentByEmail?.approval_status === "approved") {
+          navigate("/resident/dashboard");
+        } else if (residentByEmail?.approval_status === "pending") {
+          // Sign out if account is pending approval
+          await supabase.auth.signOut();
+          toast.info("Your account is pending approval. Please wait for admin approval before logging in.");
+        }
+        return;
+      }
+
+      if (resident.approval_status === "approved") {
         navigate("/resident/dashboard");
+      } else if (resident.approval_status === "pending") {
+        // Sign out if account is pending approval
+        await supabase.auth.signOut();
+        toast.info("Your account is pending approval. Please wait for admin approval before logging in.");
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user && event !== "SIGNED_OUT") {
+        setTimeout(() => {
+          checkApprovalAndRedirect(session.user.id, session.user.email || "");
+        }, 0);
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        navigate("/resident/dashboard");
+        checkApprovalAndRedirect(session.user.id, session.user.email || "");
       }
     });
 
@@ -216,6 +253,9 @@ const Auth = () => {
       }
 
       if (data.user) {
+        // Sign out immediately - user needs admin approval before login
+        await supabase.auth.signOut();
+
         // Step 3: Send notification email to admins (non-blocking)
         try {
           const fullName = `${signupFirstName} ${signupMiddleName ? signupMiddleName + ' ' : ''}${signupLastName}`;
