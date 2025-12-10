@@ -934,6 +934,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_residents_for_messaging: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       get_staff_for_messaging: {
         Args: never
         Returns: {
@@ -1024,6 +1032,15 @@ export type Database = {
           p_resident_id: string
         }
         Returns: undefined
+      }
+      staff_send_new_message: {
+        Args: {
+          p_content: string
+          p_recipient_user_id: string
+          p_staff_id: string
+          p_subject: string
+        }
+        Returns: string
       }
       staff_send_reply: {
         Args: {

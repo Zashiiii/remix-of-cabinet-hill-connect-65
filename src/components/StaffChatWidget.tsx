@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, X, Send, Loader2, Inbox, ArrowLeft, Mail, MailOpen } from "lucide-react";
+import { MessageSquare, X, Send, Loader2, Inbox, ArrowLeft, Mail, MailOpen, Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +25,12 @@ interface Message {
   replies?: Message[];
 }
 
+interface Resident {
+  user_id: string;
+  full_name: string;
+  email: string;
+}
+
 const StaffChatWidget = () => {
   const { user, isAuthenticated } = useStaffAuthContext();
   const [isOpen, setIsOpen] = useState(false);
@@ -33,6 +42,14 @@ const StaffChatWidget = () => {
   const [isSending, setIsSending] = useState(false);
   const [activeTab, setActiveTab] = useState("unread");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Compose state
+  const [isComposing, setIsComposing] = useState(false);
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [selectedRecipient, setSelectedRecipient] = useState("");
+  const [newSubject, setNewSubject] = useState("");
+  const [newContent, setNewContent] = useState("");
+  const [isLoadingResidents, setIsLoadingResidents] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -64,6 +81,59 @@ const StaffChatWidget = () => {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [selectedConversation?.replies]);
+
+  const loadResidents = async () => {
+    setIsLoadingResidents(true);
+    try {
+      const { data, error } = await supabase.rpc("get_residents_for_messaging");
+      if (error) throw error;
+      setResidents(data || []);
+    } catch (error) {
+      console.error("Error loading residents:", error);
+      toast.error("Failed to load residents");
+    } finally {
+      setIsLoadingResidents(false);
+    }
+  };
+
+  const handleOpenCompose = () => {
+    setIsComposing(true);
+    setSelectedRecipient("");
+    setNewSubject("");
+    setNewContent("");
+    loadResidents();
+  };
+
+  const handleSendNewMessage = async () => {
+    if (!selectedRecipient || !newSubject.trim() || !newContent.trim() || !user?.id) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const { error } = await supabase.rpc("staff_send_new_message", {
+        p_staff_id: user.id,
+        p_recipient_user_id: selectedRecipient,
+        p_subject: newSubject.trim(),
+        p_content: newContent.trim(),
+      });
+
+      if (error) throw error;
+
+      toast.success("Message sent successfully");
+      setIsComposing(false);
+      setSelectedRecipient("");
+      setNewSubject("");
+      setNewContent("");
+      loadMessages();
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message");
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const loadMessages = async () => {
     if (!user?.id) return;
@@ -214,7 +284,22 @@ const StaffChatWidget = () => {
         <div className="bg-card border rounded-lg shadow-2xl w-[380px] h-[500px] flex flex-col animate-in slide-in-from-bottom-4 duration-200">
           {/* Header */}
           <div className="p-4 border-b flex items-center justify-between bg-primary text-primary-foreground rounded-t-lg">
-            {selectedConversation ? (
+            {isComposing ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/20"
+                  onClick={() => setIsComposing(false)}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <h3 className="font-semibold text-sm">New Message</h3>
+                  <p className="text-xs opacity-80">Send to resident</p>
+                </div>
+              </div>
+            ) : selectedConversation ? (
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -249,6 +334,7 @@ const StaffChatWidget = () => {
               onClick={() => {
                 setIsOpen(false);
                 setSelectedConversation(null);
+                setIsComposing(false);
               }}
             >
               <X className="h-4 w-4" />
@@ -256,7 +342,77 @@ const StaffChatWidget = () => {
           </div>
 
           {/* Content */}
-          {selectedConversation ? (
+          {isComposing ? (
+            <div className="flex-1 flex flex-col p-4">
+              <div className="space-y-4 flex-1">
+                <div className="space-y-2">
+                  <Label htmlFor="recipient" className="text-sm font-medium">
+                    To
+                  </Label>
+                  <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                    <SelectTrigger id="recipient">
+                      <SelectValue placeholder={isLoadingResidents ? "Loading..." : "Select resident"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {residents.map((resident) => (
+                        <SelectItem key={resident.user_id} value={resident.user_id}>
+                          <div className="flex items-center gap-2">
+                            <Users className="h-3 w-3" />
+                            <span>{resident.full_name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="subject" className="text-sm font-medium">
+                    Subject
+                  </Label>
+                  <Input
+                    id="subject"
+                    placeholder="Enter subject..."
+                    value={newSubject}
+                    onChange={(e) => setNewSubject(e.target.value)}
+                    maxLength={100}
+                  />
+                </div>
+
+                <div className="space-y-2 flex-1">
+                  <Label htmlFor="content" className="text-sm font-medium">
+                    Message
+                  </Label>
+                  <Textarea
+                    id="content"
+                    placeholder="Type your message..."
+                    value={newContent}
+                    onChange={(e) => setNewContent(e.target.value)}
+                    className="min-h-[120px] resize-none"
+                    maxLength={1000}
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSendNewMessage}
+                disabled={isSending || !selectedRecipient || !newSubject.trim() || !newContent.trim()}
+                className="w-full mt-4"
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Message
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : selectedConversation ? (
             <div className="flex-1 flex flex-col">
               <ScrollArea className="flex-1 p-4">
                 {/* Original Message */}
@@ -406,6 +562,14 @@ const StaffChatWidget = () => {
                   </div>
                 )}
               </ScrollArea>
+
+              {/* Compose Button */}
+              <div className="p-3 border-t">
+                <Button onClick={handleOpenCompose} className="w-full" variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Message
+                </Button>
+              </div>
             </div>
           )}
         </div>
