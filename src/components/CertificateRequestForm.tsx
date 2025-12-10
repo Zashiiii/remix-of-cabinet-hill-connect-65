@@ -40,9 +40,6 @@ const formSchema = z.object({
   contactNumber: z.string().trim().regex(/^09\d{9}$/, "Contact number must be 11 digits starting with 09 (e.g., 09123456789)"),
   email: z.string().trim().email("Please enter a valid email address").optional().or(z.literal("")),
   householdNumber: z.string().trim().min(3, "Household number must be at least 3 characters").max(5, "Household number must be at most 5 characters"),
-  birthDate: z.date({
-    required_error: "Birth date is required",
-  }).refine((date) => date <= new Date(), "Birth date cannot be in the future"),
   purpose: z.string().trim().min(10, "Please provide more details about the purpose (at least 10 characters)").max(500, "Purpose is too long"),
   priority: z.enum(["normal", "urgent"], {
     required_error: "Please select a priority level",
@@ -99,7 +96,6 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
         contactNumber: data.contactNumber,
         email: data.email,
         householdNumber: data.householdNumber,
-        birthDate: data.birthDate,
         purpose: data.purpose,
         priority: data.priority,
         preferredPickupDate: data.preferredPickupDate,
@@ -224,53 +220,6 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                   </FormControl>
                   <FormDescription>
                     Enter 3-5 character household code
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="birthDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Birth Date / Petsa ng Kapanganakan *</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full pl-3 text-left font-normal bg-background",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) => date > new Date()}
-                        captionLayout="dropdown-buttons"
-                        fromYear={1920}
-                        toYear={new Date().getFullYear()}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormDescription>
-                    Make sure your birth date is correct for faster processing.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

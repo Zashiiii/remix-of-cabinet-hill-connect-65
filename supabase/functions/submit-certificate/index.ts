@@ -15,7 +15,6 @@ interface CertificateRequestData {
   contactNumber: string;
   email?: string;
   householdNumber: string;
-  birthDate: string;
   purpose: string;
   priority: string;
   preferredPickupDate: string;
@@ -151,13 +150,10 @@ serve(async (req) => {
       ? data.priority.charAt(0).toUpperCase() + data.priority.slice(1).toLowerCase()
       : 'Regular';
 
-    // Store additional info (household number, birth date) in resident_notes
+    // Store additional info (household number) in notes if needed
     const additionalInfo = [];
     if (data.householdNumber) {
       additionalInfo.push(`Household: ${data.householdNumber}`);
-    }
-    if (data.birthDate) {
-      additionalInfo.push(`Birth Date: ${data.birthDate}`);
     }
     const residentNotes = additionalInfo.length > 0 ? additionalInfo.join(' | ') : null;
 
@@ -184,7 +180,6 @@ serve(async (req) => {
         status: 'Pending',
         preferred_pickup_date: data.preferredPickupDate || null,
         household_number: data.householdNumber || null,
-        birth_date: data.birthDate || null,
       })
       .select()
       .single();

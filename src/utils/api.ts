@@ -6,7 +6,6 @@ export interface CertificateRequestData {
   contactNumber: string;
   email?: string;
   householdNumber: string;
-  birthDate: Date;
   purpose: string;
   priority: string;
   preferredPickupDate: Date;
@@ -54,11 +53,6 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
     throw new Error('Household number must be 3-5 characters');
   }
 
-  // Validate birth date is in the past
-  if (!data.birthDate || data.birthDate > new Date()) {
-    throw new Error('Birth date must be a past date');
-  }
-
   // Validate pickup date is today or future
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -84,7 +78,6 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
         contactNumber: data.contactNumber,
         email: data.email || null,
         householdNumber: data.householdNumber,
-        birthDate: data.birthDate.toISOString().split('T')[0],
         purpose: data.purpose,
         priority: data.priority,
         preferredPickupDate: data.preferredPickupDate.toISOString(),
@@ -133,7 +126,6 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
         status: 'Pending',
         preferred_pickup_date: data.preferredPickupDate.toISOString().split('T')[0],
         household_number: data.householdNumber || null,
-        birth_date: data.birthDate.toISOString().split('T')[0],
       });
 
     if (insertError) {
