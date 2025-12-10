@@ -76,17 +76,14 @@ const ResidentMessages = () => {
 
   const loadStaffUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from("staff_users")
-        .select("id, full_name, role")
-        .eq("is_active", true)
-        .in("role", ["admin", "secretary"]);
+      // Use RPC function to get staff users (bypasses RLS)
+      const { data, error } = await supabase.rpc("get_staff_for_messaging");
 
       if (error) throw error;
       if (data) {
         setStaffUsers(data);
         // Default to first admin if available
-        const defaultAdmin = data.find(s => s.role === "admin");
+        const defaultAdmin = data.find((s: StaffUser) => s.role === "admin");
         if (defaultAdmin) {
           setSelectedRecipient(defaultAdmin.id);
         } else if (data.length > 0) {

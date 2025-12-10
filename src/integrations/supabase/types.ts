@@ -927,6 +927,14 @@ export type Database = {
         }
       }
       get_resident_count: { Args: never; Returns: number }
+      get_staff_for_messaging: {
+        Args: never
+        Returns: {
+          full_name: string
+          id: string
+          role: string
+        }[]
+      }
       get_staff_messages: {
         Args: { p_staff_id: string }
         Returns: {
