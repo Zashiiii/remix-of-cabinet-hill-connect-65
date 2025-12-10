@@ -95,16 +95,17 @@ import {
   logBulkCertificateDownload,
   logBatchStatusUpdate,
 } from "@/utils/certificatePdf";
+import StaffChatWidget from "@/components/StaffChatWidget";
 
 interface PendingRequest {
   id: string;
-  dbId?: string; // Database UUID for linking
+  dbId?: string;
   residentName: string;
   certificateType: string;
   dateSubmitted: string;
   status: "pending" | "processing" | "approved" | "rejected" | "verifying" | "released";
   verificationStatus?: "verified" | "not-verified" | "checking";
-  residentId?: string; // Link to verified resident
+  residentId?: string;
   processedBy?: string;
   processedDate?: string;
   notes?: string;
@@ -148,7 +149,6 @@ const StaffSidebar = ({
   const mainMenuItems = [
     { title: "Home", icon: Home, tab: "home" },
     { title: "Certificate Requests", icon: FileText, tab: "certificate-requests" },
-    { title: "Messages", icon: Mail, route: "/staff/messages" },
     { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", route: "/staff/incidents" },
     { title: "Manage Announcements", icon: Bell, tab: "announcements" },
     { title: "Manage Residents", icon: Users, route: "/staff/residents" },
@@ -2088,6 +2088,8 @@ const StaffDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <StaffChatWidget />
     </SidebarProvider>
   );
 };
