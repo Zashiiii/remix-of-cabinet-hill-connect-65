@@ -13,7 +13,8 @@ import {
   Home,
   Settings,
   ChevronRight,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -35,6 +36,8 @@ import { toast } from "sonner";
 import { useResidentAuth } from "@/hooks/useResidentAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveAnnouncements } from "@/utils/api";
+import CertificateRequestForm from "@/components/CertificateRequestForm";
+import SuccessModal from "@/components/SuccessModal";
 
 interface Request {
   id: string;
@@ -124,6 +127,8 @@ const ResidentDashboard = () => {
   const [requests, setRequests] = useState<Request[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [submittedControlNumber, setSubmittedControlNumber] = useState("");
 
   // Auth is now handled by ResidentProtectedRoute wrapper
 
@@ -180,9 +185,7 @@ const ResidentDashboard = () => {
   };
 
   const handleTabChange = (tab: string) => {
-    if (tab === "request") {
-      navigate("/request-certificate");
-    } else if (tab === "profile") {
+    if (tab === "profile") {
       navigate("/resident/profile");
     } else if (tab === "requests") {
       navigate("/resident/requests");
@@ -193,6 +196,17 @@ const ResidentDashboard = () => {
     } else {
       setActiveTab(tab);
     }
+  };
+
+  const handleRequestSuccess = (controlNumber: string) => {
+    setSubmittedControlNumber(controlNumber);
+    setShowSuccessModal(true);
+    loadData(); // Refresh the requests list
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    setActiveTab("dashboard");
   };
 
   const getStatusBadge = (status: string) => {
@@ -236,175 +250,213 @@ const ResidentDashboard = () => {
         />
         
         <main className="flex-1 p-4 md:p-6 overflow-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">
-                  Welcome, {profile?.firstName && profile?.lastName 
-                    ? `${profile.firstName} ${profile.lastName}` 
-                    : profile?.fullName || "Resident"}
-                </h1>
-                <p className="text-muted-foreground">
-                  Manage your barangay services online
-                </p>
+          {activeTab === "dashboard" && (
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <SidebarTrigger />
+                  <div>
+                    <h1 className="text-2xl font-bold text-foreground">
+                      Welcome, {profile?.firstName && profile?.lastName 
+                        ? `${profile.firstName} ${profile.lastName}` 
+                        : profile?.fullName || "Resident"}
+                    </h1>
+                    <p className="text-muted-foreground">
+                      Manage your barangay services online
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card 
-              className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-primary"
-              onClick={() => navigate("/request-certificate")}
-            >
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Request Certificate</h3>
-                  <p className="text-sm text-muted-foreground">Apply for barangay documents</p>
-                </div>
-                <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
-              </CardContent>
-            </Card>
+              {/* Quick Actions */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card 
+                  className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-primary"
+                  onClick={() => setActiveTab("request")}
+                >
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Request Certificate</h3>
+                      <p className="text-sm text-muted-foreground">Apply for barangay documents</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
+                  </CardContent>
+                </Card>
 
-            <Card 
-              className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-accent"
-              onClick={() => navigate("/track-request")}
-            >
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Track Request</h3>
-                  <p className="text-sm text-muted-foreground">Check status of your requests</p>
-                </div>
-                <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
-              </CardContent>
-            </Card>
+                <Card 
+                  className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-accent"
+                  onClick={() => navigate("/track-request")}
+                >
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                      <Clock className="h-6 w-6 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Track Request</h3>
+                      <p className="text-sm text-muted-foreground">Check status of your requests</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
+                  </CardContent>
+                </Card>
 
-            <Card 
-              className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-amber-500"
-              onClick={() => navigate("/resident/profile")}
-            >
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-                  <User className="h-6 w-6 text-amber-500" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">My Profile</h3>
-                  <p className="text-sm text-muted-foreground">Update your information</p>
-                </div>
-                <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
-              </CardContent>
-            </Card>
-          </div>
+                <Card 
+                  className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-amber-500"
+                  onClick={() => navigate("/resident/profile")}
+                >
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+                      <User className="h-6 w-6 text-amber-500" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">My Profile</h3>
+                      <p className="text-sm text-muted-foreground">Update your information</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent Requests */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Recent Requests</CardTitle>
-                  <CardDescription>Your latest certificate requests</CardDescription>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => navigate("/resident/requests")}>
-                  View All
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
-                ) : requests.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No certificate requests yet</p>
-                    <Button 
-                      variant="link" 
-                      className="mt-2"
-                      onClick={() => navigate("/request-certificate")}
-                    >
-                      Request your first certificate
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Recent Requests */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Recent Requests</CardTitle>
+                      <CardDescription>Your latest certificate requests</CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => navigate("/resident/requests")}>
+                      View All
                     </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {requests.map((request) => (
-                      <div 
-                        key={request.id} 
-                        className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                      >
-                        <div>
-                          <p className="font-medium">{request.certificateType}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {request.controlNumber} • {request.dateSubmitted}
-                          </p>
-                          {request.status === "rejected" && request.rejectionReason && (
-                            <p className="text-sm text-destructive mt-1">
-                              Reason: {request.rejectionReason}
-                            </p>
-                          )}
-                        </div>
-                        {getStatusBadge(request.status)}
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    ) : requests.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No certificate requests yet</p>
+                        <Button 
+                          variant="link" 
+                          className="mt-2"
+                          onClick={() => setActiveTab("request")}
+                        >
+                          Request your first certificate
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {requests.map((request) => (
+                          <div 
+                            key={request.id} 
+                            className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                          >
+                            <div>
+                              <p className="font-medium">{request.certificateType}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {request.controlNumber} • {request.dateSubmitted}
+                              </p>
+                              {request.status === "rejected" && request.rejectionReason && (
+                                <p className="text-sm text-destructive mt-1">
+                                  Reason: {request.rejectionReason}
+                                </p>
+                              )}
+                            </div>
+                            {getStatusBadge(request.status)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            {/* Announcements */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Announcements</CardTitle>
-                  <CardDescription>Latest barangay updates</CardDescription>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setActiveTab("announcements")}>
-                  View All
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
-                ) : announcements.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Bell className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No announcements at the moment</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {announcements.map((announcement) => (
-                      <div 
-                        key={announcement.id} 
-                        className="p-3 rounded-lg border bg-card"
-                      >
-                        <div className="flex items-start justify-between">
-                          <h4 className="font-medium">{announcement.title}</h4>
-                          <Badge variant={announcement.type === "important" ? "destructive" : "secondary"}>
-                            {announcement.type}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                          {announcement.content}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {announcement.createdAt}
-                        </p>
+                {/* Announcements */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Announcements</CardTitle>
+                      <CardDescription>Latest barangay updates</CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab("announcements")}>
+                      View All
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                    ) : announcements.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Bell className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No announcements at the moment</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {announcements.map((announcement) => (
+                          <div 
+                            key={announcement.id} 
+                            className="p-3 rounded-lg border bg-card"
+                          >
+                            <div className="flex items-start justify-between">
+                              <h4 className="font-medium">{announcement.title}</h4>
+                              <Badge variant={announcement.type === "important" ? "destructive" : "secondary"}>
+                                {announcement.type}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                              {announcement.content}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {announcement.createdAt}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+
+          {activeTab === "request" && (
+            <>
+              <div className="flex items-center gap-4 mb-6">
+                <SidebarTrigger />
+                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Dashboard
+                </Button>
+              </div>
+
+              <Card className="max-w-2xl mx-auto">
+                <CardHeader>
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <FileText className="h-6 w-6" />
+                    Request Certificate
+                  </CardTitle>
+                  <CardDescription>
+                    Fill out the form below to request a barangay certificate
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <CertificateRequestForm onSuccess={handleRequestSuccess} />
+                </CardContent>
+              </Card>
+
+              <SuccessModal
+                open={showSuccessModal}
+                onOpenChange={setShowSuccessModal}
+                controlNumber={submittedControlNumber}
+                onReset={() => setActiveTab("dashboard")}
+              />
+            </>
+          )}
         </main>
       </div>
     </SidebarProvider>
