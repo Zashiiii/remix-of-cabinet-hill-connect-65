@@ -79,15 +79,18 @@ import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  fetchPendingRequests,
-  updateRequestStatus,
-  fetchAnnouncementsForStaff,
-  createAnnouncement,
-  updateAnnouncement,
-  deleteAnnouncement,
-  fetchAllRequests,
-  fetchRecentProcessedRequests,
+  fetchActiveAnnouncements,
 } from "@/utils/api";
+import {
+  getCertificateRequests,
+  updateCertificateRequestStatus,
+  getAnnouncementsForStaff,
+  createAnnouncementStaff,
+  updateAnnouncementStaff,
+  deleteAnnouncementStaff,
+  getResidentCount,
+  getPendingRegistrationCount,
+} from "@/utils/staffApi";
 import { 
   downloadCertificatePdf, 
   logCertificateGeneration,
@@ -313,12 +316,9 @@ const StaffDashboard = () => {
   // Load certificate requests from Supabase
   const loadRequests = useCallback(async () => {
     try {
-      // Fetch from Supabase - both filtered and recent
-      const [allData, recentData] = await Promise.all([
-        fetchAllRequests(statusFilter),
-        fetchRecentProcessedRequests()
-      ]);
-
+      // Fetch from staff API - both filtered and recent
+      const allData = await getCertificateRequests(statusFilter || undefined);
+      
       if (allData) {
         const mapped: PendingRequest[] = allData.map((item: any) => ({
           id: item.control_number,
@@ -348,10 +348,18 @@ const StaffDashboard = () => {
           birthDate: item.birth_date || undefined,
         }));
         setRequests(mapped);
-      }
 
-      if (recentData) {
-        const mappedRecent: PendingRequest[] = recentData.map((item: any) => ({
+        // Filter for recent processed (approved/rejected in last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const recentProcessed = allData.filter((item: any) => {
+          const status = item.status?.toLowerCase();
+          if (status !== 'approved' && status !== 'rejected') return false;
+          const updatedAt = new Date(item.updated_at);
+          return updatedAt >= thirtyDaysAgo;
+        });
+
+        const mappedRecent: PendingRequest[] = recentProcessed.map((item: any) => ({
           id: item.control_number,
           residentName: item.full_name,
           certificateType: item.certificate_type,
@@ -369,12 +377,12 @@ const StaffDashboard = () => {
         setRecentRequests(mappedRecent);
       }
 
-      // Get resident count using RPC (bypasses RLS)
-      const { data: residentCount } = await supabase.rpc('get_resident_count');
+      // Get resident count using staff API
+      const residentCount = await getResidentCount();
       setTotalResidents(residentCount || 0);
 
       // Get pending registration count
-      const { data: pendingCount } = await supabase.rpc('get_pending_registration_count');
+      const pendingCount = await getPendingRegistrationCount();
       setPendingRegistrationCount(pendingCount || 0);
 
     } catch (error) {
@@ -527,7 +535,7 @@ const StaffDashboard = () => {
       }
 
       // Update in Supabase with rejection reason
-      await updateRequestStatus(
+      await updateCertificateRequestStatus(
         dbId, 
         'Rejected', 
         staffName,
@@ -594,7 +602,7 @@ const StaffDashboard = () => {
           ? 'Approved - All requirements verified'
           : 'Under verification';
 
-        await updateRequestStatus(
+        await updateCertificateRequestStatus(
           dbId, 
           newStatus, 
           staffName,
@@ -644,7 +652,7 @@ const StaffDashboard = () => {
   const handleDownloadCertificate = async (request: PendingRequest) => {
     try {
       // Use the already fetched request data from the RPC
-      const allRequests = await fetchAllRequests();
+      const allRequests = await getCertificateRequests();
       const requestData = allRequests.find((r: any) => r.control_number === request.id);
 
       if (!requestData) {
@@ -842,7 +850,7 @@ const StaffDashboard = () => {
         }
 
         // Update status to Released
-        await updateRequestStatus(
+        await updateCertificateRequestStatus(
           dbRequest.id,
           'Released',
           staffName,
@@ -960,7 +968,7 @@ const StaffDashboard = () => {
     try {
       if (editingAnnouncement) {
         // Update existing announcement
-        await updateAnnouncement(editingAnnouncement.id, {
+        await updateAnnouncementStaff(editingAnnouncement.id, {
           title: announcementForm.title,
           content: announcementForm.description,
           titleTl: announcementForm.titleTl,
@@ -970,13 +978,12 @@ const StaffDashboard = () => {
         toast.success("Announcement updated successfully");
       } else {
         // Create new announcement
-        await createAnnouncement({
+        await createAnnouncementStaff({
           title: announcementForm.title,
           content: announcementForm.description,
           titleTl: announcementForm.titleTl,
           contentTl: announcementForm.descriptionTl,
           type: announcementForm.type,
-          createdBy: user?.id,
         });
         toast.success("Announcement created successfully");
       }
@@ -1034,7 +1041,7 @@ const StaffDashboard = () => {
 
   const handleDeleteAnnouncement = async (id: string) => {
     try {
-      await deleteAnnouncement(id);
+      await deleteAnnouncementStaff(id);
       await loadAnnouncements();
 
       // Also update localStorage
@@ -1622,7 +1629,7 @@ const StaffDashboard = () => {
                                     onClick={async () => {
                                       if (confirm("Are you sure you want to delete this announcement?")) {
                                         try {
-                                          await deleteAnnouncement(announcement.id);
+                                          await deleteAnnouncementStaff(announcement.id);
                                           toast.success("Announcement deleted successfully");
                                           loadAnnouncements();
                                         } catch (error) {

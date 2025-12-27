@@ -608,6 +608,486 @@ serve(async (req) => {
       );
     }
 
+    // ========== STAFF DATABASE OPERATIONS ==========
+    // These bypass RLS using service role since staff auth is separate from Supabase Auth
+
+    // Helper to validate staff session and return user info
+    const validateStaffSession = async (token: string | null) => {
+      if (!token) return null;
+      const { data, error } = await supabase.rpc('validate_session', { session_token: token });
+      if (error || !data || data.length === 0) return null;
+      return data[0];
+    };
+
+    // Get pending registrations
+    if (action === 'get-pending-registrations') {
+      const token = body?.token || getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('residents')
+        .select('id, first_name, middle_name, last_name, email, contact_number, birth_date, place_of_origin, approval_status, created_at')
+        .eq('approval_status', 'pending')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching pending registrations:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch pending registrations' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Approve resident
+    if (action === 'approve-resident') {
+      const token = body?.token || getTokenFromCookie(req);
+      const residentId = body?.residentId;
+      const approvedBy = body?.approvedBy;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!residentId) {
+        return new Response(
+          JSON.stringify({ error: 'Resident ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase
+        .from('residents')
+        .update({ 
+          approval_status: 'approved', 
+          approved_at: new Date().toISOString(),
+          approved_by: approvedBy || session.full_name
+        })
+        .eq('id', residentId);
+
+      if (error) {
+        console.error('Error approving resident:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to approve resident' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Resident approved:', residentId, 'by:', session.username);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Reject resident
+    if (action === 'reject-resident') {
+      const token = body?.token || getTokenFromCookie(req);
+      const residentId = body?.residentId;
+      const rejectedBy = body?.rejectedBy;
+      const rejectionReason = body?.rejectionReason;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!residentId) {
+        return new Response(
+          JSON.stringify({ error: 'Resident ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase
+        .from('residents')
+        .update({ 
+          approval_status: 'rejected', 
+          approved_by: rejectedBy || session.full_name
+        })
+        .eq('id', residentId);
+
+      if (error) {
+        console.error('Error rejecting resident:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to reject resident' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Resident rejected:', residentId, 'by:', session.username);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get all certificate requests for staff
+    if (action === 'get-certificate-requests') {
+      const token = body?.token || getTokenFromCookie(req);
+      const statusFilter = body?.statusFilter;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      let query = supabase
+        .from('certificate_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (statusFilter) {
+        query = query.eq('status', statusFilter);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching certificate requests:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch certificate requests' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update certificate request status
+    if (action === 'update-request-status') {
+      const token = body?.token || getTokenFromCookie(req);
+      const requestId = body?.requestId;
+      const status = body?.status;
+      const processedBy = body?.processedBy;
+      const notes = body?.notes;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!requestId || !status) {
+        return new Response(
+          JSON.stringify({ error: 'Request ID and status are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('certificate_requests')
+        .update({ 
+          status,
+          processed_by: processedBy || session.full_name,
+          notes: notes || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating request status:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update request status' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Request status updated:', requestId, 'to:', status, 'by:', session.username);
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get all announcements for staff
+    if (action === 'get-announcements') {
+      const token = body?.token || getTokenFromCookie(req);
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('announcements')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching announcements:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch announcements' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create announcement
+    if (action === 'create-announcement') {
+      const token = body?.token || getTokenFromCookie(req);
+      const { title, content, titleTl, contentTl, type } = body;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('announcements')
+        .insert({
+          title,
+          content,
+          title_tl: titleTl || null,
+          content_tl: contentTl || null,
+          type: type || 'info',
+          created_by: session.full_name,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating announcement:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create announcement' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Announcement created by:', session.username);
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update announcement
+    if (action === 'update-announcement') {
+      const token = body?.token || getTokenFromCookie(req);
+      const { id, title, content, titleTl, contentTl, type, isActive } = body;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'Announcement ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const updateData: any = { updated_at: new Date().toISOString() };
+      if (title !== undefined) updateData.title = title;
+      if (content !== undefined) updateData.content = content;
+      if (titleTl !== undefined) updateData.title_tl = titleTl;
+      if (contentTl !== undefined) updateData.content_tl = contentTl;
+      if (type !== undefined) updateData.type = type;
+      if (isActive !== undefined) updateData.is_active = isActive;
+
+      const { error } = await supabase
+        .from('announcements')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating announcement:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update announcement' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Announcement updated:', id, 'by:', session.username);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Delete announcement
+    if (action === 'delete-announcement') {
+      const token = body?.token || getTokenFromCookie(req);
+      const { id } = body;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'Announcement ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase
+        .from('announcements')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting announcement:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to delete announcement' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Announcement deleted:', id, 'by:', session.username);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get resident count
+    if (action === 'get-resident-count') {
+      const token = body?.token || getTokenFromCookie(req);
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { count, error } = await supabase
+        .from('residents')
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null)
+        .eq('approval_status', 'approved');
+
+      if (error) {
+        console.error('Error fetching resident count:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch resident count' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ count: count || 0 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get pending registration count
+    if (action === 'get-pending-registration-count') {
+      const token = body?.token || getTokenFromCookie(req);
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { count, error } = await supabase
+        .from('residents')
+        .select('*', { count: 'exact', head: true })
+        .eq('approval_status', 'pending')
+        .is('deleted_at', null);
+
+      if (error) {
+        console.error('Error fetching pending count:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch pending count' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ count: count || 0 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get staff messages
+    if (action === 'get-staff-messages') {
+      const token = body?.token || getTokenFromCookie(req);
+      const staffId = body?.staffId;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${staffId || session.staff_user_id},recipient_id.eq.${staffId || session.staff_user_id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch messages' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== LOGIN (default) ==========
     console.log('Processing LOGIN action');
     const username = body?.username;

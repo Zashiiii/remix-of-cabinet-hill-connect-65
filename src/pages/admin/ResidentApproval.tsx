@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffAuth } from "@/hooks/useStaffAuth";
+import { getPendingRegistrations, approveResident, rejectResident } from "@/utils/staffApi";
 import { 
   ArrowLeft, 
   Search, 
@@ -71,18 +72,11 @@ const ResidentApproval = () => {
   const loadPendingRegistrations = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('get_pending_registrations');
-      
-      if (error) {
-        console.error('Error loading pending registrations:', error);
-        toast.error("Failed to load pending registrations");
-        return;
-      }
-
+      const data = await getPendingRegistrations();
       setPendingResidents(data || []);
     } catch (error) {
       console.error('Error:', error);
-      toast.error("An error occurred while loading registrations");
+      toast.error("Failed to load pending registrations");
     } finally {
       setIsLoading(false);
     }
@@ -91,16 +85,7 @@ const ResidentApproval = () => {
   const handleApprove = async (resident: PendingResident) => {
     setProcessingId(resident.id);
     try {
-      const { error } = await supabase.rpc('staff_approve_resident', {
-        p_resident_id: resident.id,
-        p_approved_by: user?.fullName || 'Admin',
-      });
-
-      if (error) {
-        console.error('Error approving resident:', error);
-        toast.error("Failed to approve registration");
-        return;
-      }
+      await approveResident(resident.id, user?.fullName || 'Admin');
 
       // Send approval notification email
       if (resident.email) {
@@ -123,7 +108,7 @@ const ResidentApproval = () => {
       loadPendingRegistrations();
     } catch (error) {
       console.error('Error:', error);
-      toast.error("An error occurred while approving registration");
+      toast.error("Failed to approve registration");
     } finally {
       setProcessingId(null);
     }
@@ -140,17 +125,11 @@ const ResidentApproval = () => {
     
     setProcessingId(selectedResident.id);
     try {
-      const { error } = await supabase.rpc('staff_reject_resident', {
-        p_resident_id: selectedResident.id,
-        p_rejected_by: user?.fullName || 'Admin',
-        p_rejection_reason: rejectionReason || 'Registration rejected',
-      });
-
-      if (error) {
-        console.error('Error rejecting resident:', error);
-        toast.error("Failed to reject registration");
-        return;
-      }
+      await rejectResident(
+        selectedResident.id,
+        user?.fullName || 'Admin',
+        rejectionReason || 'Registration rejected'
+      );
 
       // Send rejection notification email
       if (selectedResident.email) {
@@ -174,7 +153,7 @@ const ResidentApproval = () => {
       loadPendingRegistrations();
     } catch (error) {
       console.error('Error:', error);
-      toast.error("An error occurred while rejecting registration");
+      toast.error("Failed to reject registration");
     } finally {
       setProcessingId(null);
     }
