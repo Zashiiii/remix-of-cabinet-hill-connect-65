@@ -10,13 +10,18 @@ import { hashSync, compareSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts"
 const COOKIE_NAME = 'bris_staff_session';
 const SESSION_DURATION_HOURS = 8;
 
-// Get allowed origins for CORS
+// Get allowed origins for CORS - environment-aware configuration
 function getAllowedOrigins(): string[] {
+  // Check if we're in development mode (Deno.env or default to production)
+  const customOrigins = Deno.env.get('ALLOWED_ORIGINS');
+  if (customOrigins) {
+    return customOrigins.split(',').map(o => o.trim()).filter(Boolean);
+  }
+  
+  // Production-only origins by default (no localhost in production)
   return [
-    'http://localhost:5173',
-    'http://localhost:8080',
     'https://xzyqcnapqfiawjmgfxws.lovableproject.com',
-    // Add any custom domains here
+    // Add any custom production domains here
   ];
 }
 
@@ -565,6 +570,21 @@ serve(async (req) => {
           JSON.stringify({ error: 'Failed to update password' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      // SECURITY: Invalidate all other sessions for this user after password change
+      // This ensures compromised sessions are immediately revoked
+      const { error: sessionDeleteError } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('staff_user_id', userId)
+        .neq('token', token); // Keep current session active
+
+      if (sessionDeleteError) {
+        console.log('Warning: Failed to invalidate other sessions:', sessionDeleteError.message);
+        // Continue anyway - password was changed successfully
+      } else {
+        console.log('Other sessions invalidated for user:', userId);
       }
 
       console.log('Password changed successfully for user:', userId, 'by:', caller.username);
