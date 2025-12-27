@@ -16,8 +16,9 @@ interface StaffAuthState {
 }
 
 const WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before expiry
+const STORAGE_KEY = 'bris_staff_session';
 
-// Helper function to call staff-auth edge function with credentials (cookies)
+// Helper function to call staff-auth edge function
 const callStaffAuthFunction = async (body: Record<string, unknown>): Promise<{ data: any; error: any }> => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -30,7 +31,7 @@ const callStaffAuthFunction = async (body: Record<string, unknown>): Promise<{ d
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`,
       },
-      credentials: 'include', // Include cookies in cross-origin requests
+      credentials: 'include',
       body: JSON.stringify(body),
     });
     
@@ -46,8 +47,42 @@ const callStaffAuthFunction = async (body: Record<string, unknown>): Promise<{ d
   }
 };
 
+// Get stored token from localStorage
+const getStoredToken = (): string | null => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    // Check if token is expired
+    if (parsed.expiresAt && new Date(parsed.expiresAt) < new Date()) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return parsed.token;
+  } catch {
+    return null;
+  }
+};
+
+// Store token in localStorage
+const storeToken = (token: string, expiresAt: string) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, expiresAt }));
+  } catch (error) {
+    console.error('Failed to store session token:', error);
+  }
+};
+
+// Clear stored token
+const clearStoredToken = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.error('Failed to clear session token:', error);
+  }
+};
+
 export const useStaffAuth = () => {
-  // Start in loading state - we need to check server for session
   const [authState, setAuthState] = useState<StaffAuthState>({
     user: null,
     isAuthenticated: false,
@@ -55,26 +90,38 @@ export const useStaffAuth = () => {
     expiresAt: null,
   });
 
-  // Ref to track if we've already initialized
   const initializedRef = useRef(false);
-  // Ref for warning toast shown
   const warningShownRef = useRef(false);
-  // Ref to store timer
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check session with server on mount (httpOnly cookie-based)
+  // Check session on mount
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
     const checkSession = async () => {
       try {
-        console.log('Checking session with server (httpOnly cookie)...');
+        const storedToken = getStoredToken();
+        console.log('Checking session - stored token present:', !!storedToken);
         
-        const { data, error } = await callStaffAuthFunction({ action: 'get-session' });
+        if (!storedToken) {
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            expiresAt: null,
+          });
+          return;
+        }
+
+        const { data, error } = await callStaffAuthFunction({ 
+          action: 'get-session',
+          token: storedToken 
+        });
         
         if (error) {
           console.log('Session check error:', error);
+          clearStoredToken();
           setAuthState({
             user: null,
             isAuthenticated: false,
@@ -94,6 +141,7 @@ export const useStaffAuth = () => {
           });
         } else {
           console.log('No valid session found');
+          clearStoredToken();
           setAuthState({
             user: null,
             isAuthenticated: false,
@@ -103,6 +151,7 @@ export const useStaffAuth = () => {
         }
       } catch (error) {
         console.error('Session check error:', error);
+        clearStoredToken();
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -118,7 +167,6 @@ export const useStaffAuth = () => {
   // Set up session expiration warning
   useEffect(() => {
     if (!authState.isAuthenticated || !authState.expiresAt) {
-      // Clear any existing timer
       if (warningTimerRef.current) {
         clearTimeout(warningTimerRef.current);
         warningTimerRef.current = null;
@@ -133,11 +181,11 @@ export const useStaffAuth = () => {
       const now = new Date();
       const timeUntilExpiry = authState.expiresAt.getTime() - now.getTime();
 
-      // Session already expired
       if (timeUntilExpiry <= 0) {
         toast.error('Your session has expired. Please login again.', {
           duration: 5000,
         });
+        clearStoredToken();
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -147,7 +195,6 @@ export const useStaffAuth = () => {
         return;
       }
 
-      // Show warning if within threshold and not already shown
       if (timeUntilExpiry <= WARNING_THRESHOLD_MS && !warningShownRef.current) {
         warningShownRef.current = true;
         const minutesLeft = Math.ceil(timeUntilExpiry / 60000);
@@ -161,12 +208,10 @@ export const useStaffAuth = () => {
         });
       }
 
-      // Schedule next check
       const nextCheckIn = Math.min(timeUntilExpiry - WARNING_THRESHOLD_MS, 60000);
       if (nextCheckIn > 0) {
         warningTimerRef.current = setTimeout(checkExpiration, nextCheckIn);
       } else {
-        // Check more frequently when close to expiry
         warningTimerRef.current = setTimeout(checkExpiration, 30000);
       }
     };
@@ -180,13 +225,21 @@ export const useStaffAuth = () => {
     };
   }, [authState.isAuthenticated, authState.expiresAt]);
 
-  // Extend session
   const extendSession = useCallback(async () => {
     try {
-      const { data, error } = await callStaffAuthFunction({ action: 'extend' });
+      const storedToken = getStoredToken();
+      const { data, error } = await callStaffAuthFunction({ 
+        action: 'extend',
+        token: storedToken 
+      });
 
       if (data?.success && data?.expiresAt) {
         const newExpiresAt = new Date(data.expiresAt);
+        
+        // Update stored token expiry
+        if (storedToken) {
+          storeToken(storedToken, data.expiresAt);
+        }
         
         setAuthState(prev => ({
           ...prev,
@@ -204,11 +257,16 @@ export const useStaffAuth = () => {
     }
   }, []);
 
-  // Validate session with server
   const validateSession = useCallback(async (): Promise<boolean> => {
     try {
+      const storedToken = getStoredToken();
+      if (!storedToken) return false;
+      
       console.log('Validating session with server...');
-      const { data, error } = await callStaffAuthFunction({ action: 'validate' });
+      const { data, error } = await callStaffAuthFunction({ 
+        action: 'validate',
+        token: storedToken 
+      });
 
       console.log('Validation response:', { data, error });
       
@@ -228,7 +286,11 @@ export const useStaffAuth = () => {
     try {
       console.log('Attempting login for:', username);
       
-      const { data, error } = await callStaffAuthFunction({ action: 'login', username, password });
+      const { data, error } = await callStaffAuthFunction({ 
+        action: 'login', 
+        username, 
+        password 
+      });
 
       console.log('Login response:', { data, error });
 
@@ -241,11 +303,13 @@ export const useStaffAuth = () => {
         return { success: false, error: data.error, code: data.code };
       }
 
-      if (!data?.success || !data?.user) {
+      if (!data?.success || !data?.user || !data?.token) {
         return { success: false, error: 'Invalid response from server' };
       }
 
-      // No need to store token - it's in httpOnly cookie
+      // Store token in localStorage
+      storeToken(data.token, data.expiresAt);
+
       setAuthState({
         user: data.user,
         isAuthenticated: true,
@@ -264,13 +328,18 @@ export const useStaffAuth = () => {
   const logout = useCallback(async () => {
     try {
       console.log('Logging out...');
-      await callStaffAuthFunction({ action: 'logout' });
+      const storedToken = getStoredToken();
+      await callStaffAuthFunction({ 
+        action: 'logout',
+        token: storedToken 
+      });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
       if (warningTimerRef.current) {
         clearTimeout(warningTimerRef.current);
       }
+      clearStoredToken();
       setAuthState({
         user: null,
         isAuthenticated: false,

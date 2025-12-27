@@ -299,8 +299,9 @@ serve(async (req) => {
 
     // ========== GET SESSION (for client to get current user info) ==========
     if (action === 'get-session') {
-      const token = getTokenFromCookie(req);
-      console.log('Processing GET-SESSION - cookie present:', !!token);
+      // Accept token from body (localStorage) or cookie
+      const token = body?.token || getTokenFromCookie(req);
+      console.log('Processing GET-SESSION - token source:', body?.token ? 'body' : (getTokenFromCookie(req) ? 'cookie' : 'none'));
 
       if (!token) {
         return new Response(
@@ -744,7 +745,7 @@ serve(async (req) => {
     const duration = Date.now() - startTime;
     console.log('Login successful for user:', username, 'Duration:', duration, 'ms');
 
-    // Return success with httpOnly cookie - token is NOT returned in body
+    // Return success with token in body (for localStorage storage) AND httpOnly cookie as backup
     return new Response(
       JSON.stringify({
         success: true,
@@ -755,6 +756,7 @@ serve(async (req) => {
           role: user.role,
         },
         expiresAt: expiresAt.toISOString(),
+        token: token, // Return token for client-side storage
       }),
       { 
         status: 200, 
