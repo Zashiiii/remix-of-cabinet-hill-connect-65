@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Version 4.0 - Force redeploy with improved logging and error handling
+// Version 5.0 - Added rate limiting for certificate requests
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,9 +20,53 @@ interface CertificateRequestData {
   preferredPickupDate: string;
 }
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MINUTES = 60; // 1 hour window
+const MAX_REQUESTS_PER_WINDOW = 5; // 5 requests per hour per IP
+
+// In-memory rate limit store (resets on function cold start)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+function getClientIP(req: Request): string {
+  // Try to get the real IP from various headers
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0].trim();
+  }
+  
+  const realIP = req.headers.get('x-real-ip');
+  if (realIP) {
+    return realIP;
+  }
+  
+  // Fallback to a default if no IP found
+  return 'unknown';
+}
+
+function checkRateLimit(ip: string): { allowed: boolean; remainingRequests: number; retryAfterSeconds?: number } {
+  const now = Date.now();
+  const windowMs = RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
+  
+  const record = rateLimitStore.get(ip);
+  
+  if (!record || now > record.resetTime) {
+    // First request or window expired
+    rateLimitStore.set(ip, { count: 1, resetTime: now + windowMs });
+    return { allowed: true, remainingRequests: MAX_REQUESTS_PER_WINDOW - 1 };
+  }
+  
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    const retryAfterSeconds = Math.ceil((record.resetTime - now) / 1000);
+    return { allowed: false, remainingRequests: 0, retryAfterSeconds };
+  }
+  
+  record.count++;
+  return { allowed: true, remainingRequests: MAX_REQUESTS_PER_WINDOW - record.count };
+}
+
 serve(async (req) => {
   const startTime = Date.now();
-  console.log('=== Submit Certificate Function v4.0 Started ===');
+  console.log('=== Submit Certificate Function v5.0 Started ===');
   console.log('Timestamp:', new Date().toISOString());
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
@@ -34,6 +78,32 @@ serve(async (req) => {
   }
 
   try {
+    // Check rate limit before processing
+    const clientIP = getClientIP(req);
+    console.log('Client IP:', clientIP);
+    
+    const rateLimit = checkRateLimit(clientIP);
+    console.log('Rate limit check:', { ip: clientIP, allowed: rateLimit.allowed, remaining: rateLimit.remainingRequests });
+    
+    if (!rateLimit.allowed) {
+      console.warn('Rate limit exceeded for IP:', clientIP);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Too many requests. Please try again later.', 
+          success: false,
+          retryAfterSeconds: rateLimit.retryAfterSeconds
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimit.retryAfterSeconds)
+          } 
+        }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
