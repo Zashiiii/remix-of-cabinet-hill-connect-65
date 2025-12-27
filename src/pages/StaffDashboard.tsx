@@ -74,6 +74,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
@@ -1025,6 +1035,9 @@ const StaffDashboard = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [deleteAnnouncementDialogOpen, setDeleteAnnouncementDialogOpen] = useState(false);
+  const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
+  const [isDeletingAnnouncement, setIsDeletingAnnouncement] = useState(false);
   const [announcementForm, setAnnouncementForm] = useState({
     title: "",
     titleTl: "",
@@ -1032,6 +1045,24 @@ const StaffDashboard = () => {
     descriptionTl: "",
     type: "general" as "important" | "general",
   });
+
+  const handleDeleteAnnouncement = async () => {
+    if (!announcementToDelete) return;
+    
+    setIsDeletingAnnouncement(true);
+    try {
+      await deleteAnnouncementStaff(announcementToDelete.id);
+      toast.success("Announcement deleted successfully");
+      loadAnnouncements();
+      setDeleteAnnouncementDialogOpen(false);
+      setAnnouncementToDelete(null);
+    } catch (error) {
+      console.error("Error deleting announcement:", error);
+      toast.error("Failed to delete announcement");
+    } finally {
+      setIsDeletingAnnouncement(false);
+    }
+  };
 
   // Load announcements from Supabase
   const loadAnnouncements = useCallback(async () => {
@@ -1179,27 +1210,6 @@ const StaffDashboard = () => {
     setShowAnnouncementDialog(true);
   };
 
-  const handleDeleteAnnouncement = async (id: string) => {
-    try {
-      await deleteAnnouncementStaff(id);
-      await loadAnnouncements();
-
-      // Also update localStorage
-      const storedAnnouncements = JSON.parse(localStorage.getItem("barangay_announcements") || "[]");
-      const updatedLocal = storedAnnouncements.filter((a: Announcement) => a.id !== id);
-      localStorage.setItem("barangay_announcements", JSON.stringify(updatedLocal));
-      
-      window.dispatchEvent(new StorageEvent("storage", {
-        key: "barangay_announcements",
-        newValue: JSON.stringify(updatedLocal),
-      }));
-      
-      toast.success("Announcement deleted successfully");
-    } catch (error) {
-      console.error("Error deleting announcement:", error);
-      toast.error("Failed to delete announcement");
-    }
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -1892,16 +1902,9 @@ const StaffDashboard = () => {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={async () => {
-                                      if (confirm("Are you sure you want to delete this announcement?")) {
-                                        try {
-                                          await deleteAnnouncementStaff(announcement.id);
-                                          toast.success("Announcement deleted successfully");
-                                          loadAnnouncements();
-                                        } catch (error) {
-                                          toast.error("Failed to delete announcement");
-                                        }
-                                      }
+                                    onClick={() => {
+                                      setAnnouncementToDelete(announcement);
+                                      setDeleteAnnouncementDialogOpen(true);
                                     }}
                                   >
                                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -2396,6 +2399,34 @@ const StaffDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Delete Announcement Confirmation Dialog */}
+      <AlertDialog open={deleteAnnouncementDialogOpen} onOpenChange={setDeleteAnnouncementDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Announcement</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{announcementToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingAnnouncement}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAnnouncement}
+              disabled={isDeletingAnnouncement}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingAnnouncement ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
       <StaffChatWidget />
     </SidebarProvider>
