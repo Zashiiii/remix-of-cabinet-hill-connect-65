@@ -16,6 +16,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import DataPrivacyModal from "@/components/DataPrivacyModal";
+import { logResidentLogin, logResidentRegistration } from "@/utils/auditLog";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -205,6 +206,21 @@ const Auth = () => {
           return;
         }
 
+        // Log successful resident login
+        const residentName = `${loginEmail}`;
+        // Get resident name for audit log
+        const { data: residentData } = await supabase
+          .from("residents")
+          .select("first_name, last_name")
+          .or(`user_id.eq.${data.user.id},email.eq.${data.user.email}`)
+          .maybeSingle();
+        
+        const fullName = residentData 
+          ? `${residentData.first_name} ${residentData.last_name}`
+          : loginEmail;
+        
+        await logResidentLogin(fullName, data.user.id);
+
         toast.success("Login successful!");
         navigate("/resident/dashboard");
       }
@@ -314,6 +330,10 @@ const Auth = () => {
           // Don't block registration if notification fails
           console.error('Failed to send admin notification:', notificationError);
         }
+
+        // Log resident registration in audit log
+        const fullName = `${signupFirstName} ${signupMiddleName ? signupMiddleName + ' ' : ''}${signupLastName}`;
+        await logResidentRegistration(fullName, signupEmail);
 
         setRegistrationSuccess(true);
       }

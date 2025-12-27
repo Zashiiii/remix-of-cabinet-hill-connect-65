@@ -33,6 +33,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { submitCertificateRequest } from "@/utils/api";
 import { toast } from "sonner";
+import { logResidentCertificateRequest } from "@/utils/auditLog";
 
 const formSchema = z.object({
   certificateType: z.string().min(1, "Please select a certificate type"),
@@ -100,6 +101,9 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
         priority: data.priority,
         preferredPickupDate: data.preferredPickupDate,
       });
+      
+      // Log the certificate request in audit log
+      await logResidentCertificateRequest(controlNumber, data.fullName, data.certificateType);
       
       // Show success
       onSuccess(controlNumber);
