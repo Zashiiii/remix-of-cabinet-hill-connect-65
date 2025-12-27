@@ -1068,14 +1068,14 @@ const StaffDashboard = () => {
     }
   };
 
-  // Load announcements from Supabase
+  // Load announcements from Supabase via edge function
   const loadAnnouncements = useCallback(async () => {
     try {
-      // Use RPC function to bypass RLS
-      const { data, error } = await supabase.rpc('get_all_announcements_for_staff');
+      // Use staff API which authenticates via edge function
+      const data = await getAnnouncementsForStaff();
 
-      if (data && !error) {
-        const mapped: Announcement[] = data.map((item) => ({
+      if (data && data.length > 0) {
+        const mapped: Announcement[] = data.map((item: any) => ({
           id: item.id,
           type: (item.type === 'important' ? 'important' : 'general') as "important" | "general",
           title: item.title,
@@ -1090,24 +1090,11 @@ const StaffDashboard = () => {
         }));
         setAnnouncements(mapped);
       } else {
-        // Fallback to localStorage
-        const stored = localStorage.getItem("barangay_announcements");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setAnnouncements(Array.isArray(parsed) ? parsed : []);
-        }
+        setAnnouncements([]);
       }
     } catch (error) {
       console.error("Error loading announcements:", error);
-      try {
-        const stored = localStorage.getItem("barangay_announcements");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setAnnouncements(Array.isArray(parsed) ? parsed : []);
-        }
-      } catch {
-        setAnnouncements([]);
-      }
+      setAnnouncements([]);
     }
   }, []);
 
