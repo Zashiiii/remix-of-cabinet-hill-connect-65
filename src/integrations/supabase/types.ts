@@ -1032,12 +1032,12 @@ export type Database = {
           title_tl: string | null
           type: string | null
           updated_at: string | null
-        }
+        }[]
         SetofOptions: {
           from: "*"
           to: "announcements"
-          isOneToOne: true
-          isSetofReturn: false
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       staff_delete_announcement: { Args: { p_id: string }; Returns: undefined }
@@ -1119,12 +1119,12 @@ export type Database = {
           status: string | null
           updated_at: string | null
           uploaded_id_url: string | null
-        }
+        }[]
         SetofOptions: {
           from: "*"
           to: "certificate_requests"
-          isOneToOne: true
-          isSetofReturn: false
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       track_certificate_request: {
