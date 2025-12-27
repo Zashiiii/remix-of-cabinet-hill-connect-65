@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { getAuditLogs } from "@/utils/staffApi";
 
 interface AuditLog {
   id: string;
@@ -46,26 +46,10 @@ const AdminAuditLogs = () => {
   const loadLogs = useCallback(async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from("audit_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      if (entityFilter !== "all") {
-        query = query.eq("entity_type", entityFilter);
-      }
-
-      if (actionFilter !== "all") {
-        query = query.ilike("action", `%${actionFilter}%`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
+      const data = await getAuditLogs(entityFilter, actionFilter, 100);
 
       if (data) {
-        setLogs(data.map(log => ({
+        setLogs(data.map((log: any) => ({
           id: log.id,
           action: log.action,
           entityType: log.entity_type,

@@ -1088,6 +1088,57 @@ serve(async (req) => {
       );
     }
 
+    // Get audit logs (admin only)
+    if (action === 'get-audit-logs') {
+      const token = body?.token || getTokenFromCookie(req);
+      const { entityFilter, actionFilter, limit } = body;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Only admins can view audit logs
+      if (session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      let query = supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit || 100);
+
+      if (entityFilter && entityFilter !== 'all') {
+        query = query.eq('entity_type', entityFilter);
+      }
+
+      if (actionFilter && actionFilter !== 'all') {
+        query = query.ilike('action', `%${actionFilter}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching audit logs:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch audit logs' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== LOGIN (default) ==========
     console.log('Processing LOGIN action');
     const username = body?.username;
