@@ -118,6 +118,7 @@ import ResidentsTab from "@/components/staff/ResidentsTab";
 import HouseholdsTab from "@/components/staff/HouseholdsTab";
 import IncidentsTab from "@/components/staff/IncidentsTab";
 import SettingsTab from "@/components/staff/SettingsTab";
+import AuditLogsTab from "@/components/staff/AuditLogsTab";
 
 interface PendingRequest {
   id: string;
@@ -183,7 +184,7 @@ const StaffSidebar = ({
     { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount },
     { title: "Certificate Templates", icon: FileText, route: "/admin/templates" },
     { title: "Staff Management", icon: Shield, route: "/admin/staff" },
-    { title: "Audit Logs", icon: History, route: "/admin/audit-logs" },
+    { title: "Audit Logs", icon: History, tab: "audit-logs" },
   ];
 
   const isCollapsed = state === "collapsed";
@@ -1941,6 +1942,16 @@ const StaffDashboard = () => {
                 </CardContent>
               </Card>
             )}
+
+            {activeTab === "residents" && <ResidentsTab />}
+
+            {activeTab === "households" && <HouseholdsTab />}
+
+            {activeTab === "incidents" && <IncidentsTab />}
+
+            {activeTab === "settings" && <SettingsTab />}
+
+            {activeTab === "audit-logs" && <AuditLogsTab />}
           </main>
         </div>
       </div>
