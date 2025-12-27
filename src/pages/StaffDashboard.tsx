@@ -316,8 +316,9 @@ const StaffDashboard = () => {
   // Load certificate requests from Supabase
   const loadRequests = useCallback(async () => {
     try {
-      // Fetch from staff API - both filtered and recent
-      const allData = await getCertificateRequests(statusFilter || undefined);
+      // Fetch from staff API - only pass filter if not "All"
+      const filterToSend = statusFilter && statusFilter !== "All" ? statusFilter : undefined;
+      const allData = await getCertificateRequests(filterToSend);
       
       if (allData) {
         const mapped: PendingRequest[] = allData.map((item: any) => ({
