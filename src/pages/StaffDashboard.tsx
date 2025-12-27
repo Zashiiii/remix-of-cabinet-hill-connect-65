@@ -90,7 +90,12 @@ import {
   deleteAnnouncementStaff,
   getResidentCount,
   getPendingRegistrationCount,
+  getPendingRegistrations,
+  approveResident,
+  rejectResident,
 } from "@/utils/staffApi";
+import { format } from "date-fns";
+import { MapPin, Search } from "lucide-react";
 import { 
   downloadCertificatePdf, 
   logCertificateGeneration,
@@ -161,7 +166,7 @@ const StaffSidebar = ({
   ];
 
   const adminMenuItems = [
-    { title: "Resident Approval", icon: CheckCircle, route: "/admin/resident-approval", badge: pendingRegistrationCount },
+    { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount },
     { title: "Certificate Templates", icon: FileText, route: "/admin/templates" },
     { title: "Staff Management", icon: Shield, route: "/admin/staff" },
     { title: "Audit Logs", icon: History, route: "/admin/audit-logs" },
@@ -313,6 +318,27 @@ const StaffDashboard = () => {
     message: string;
   } | null>(null);
 
+  // Resident Approval state
+  interface PendingResident {
+    id: string;
+    first_name: string;
+    last_name: string;
+    middle_name: string | null;
+    email: string | null;
+    birth_date: string | null;
+    contact_number: string | null;
+    place_of_origin: string | null;
+    approval_status: string;
+    created_at: string;
+  }
+  const [pendingResidents, setPendingResidents] = useState<PendingResident[]>([]);
+  const [isLoadingResidents, setIsLoadingResidents] = useState(false);
+  const [residentSearchTerm, setResidentSearchTerm] = useState("");
+  const [processingResidentId, setProcessingResidentId] = useState<string | null>(null);
+  const [residentRejectDialogOpen, setResidentRejectDialogOpen] = useState(false);
+  const [selectedResidentForReject, setSelectedResidentForReject] = useState<PendingResident | null>(null);
+  const [residentRejectionReason, setResidentRejectionReason] = useState("");
+
   // Load certificate requests from Supabase
   const loadRequests = useCallback(async () => {
     try {
@@ -436,7 +462,120 @@ const StaffDashboard = () => {
     }
   }, [isAuthenticated, loadRequests]);
 
-  // Open View Details Dialog
+  // Load pending resident registrations
+  const loadPendingResidents = useCallback(async () => {
+    setIsLoadingResidents(true);
+    try {
+      const data = await getPendingRegistrations();
+      setPendingResidents(data || []);
+    } catch (error) {
+      console.error('Error loading pending registrations:', error);
+      toast.error("Failed to load pending registrations");
+    } finally {
+      setIsLoadingResidents(false);
+    }
+  }, []);
+
+  // Load pending residents when tab is active
+  useEffect(() => {
+    if (isAuthenticated && activeTab === "resident-approval") {
+      loadPendingResidents();
+    }
+  }, [isAuthenticated, activeTab, loadPendingResidents]);
+
+  // Handle resident approval
+  const handleApproveResident = async (resident: PendingResident) => {
+    setProcessingResidentId(resident.id);
+    try {
+      await approveResident(resident.id, user?.fullName || 'Admin');
+
+      // Send approval notification email
+      if (resident.email) {
+        try {
+          await supabase.functions.invoke('send-approval-notification', {
+            body: {
+              recipientEmail: resident.email,
+              residentName: `${resident.first_name} ${resident.last_name}`,
+              status: 'approved',
+              approvedBy: user?.fullName || 'Admin',
+            },
+          });
+        } catch (emailError) {
+          console.error('Failed to send approval notification:', emailError);
+        }
+      }
+
+      toast.success(`${resident.first_name} ${resident.last_name}'s registration has been approved`);
+      loadPendingResidents();
+      
+      // Update pending count
+      const pendingCount = await getPendingRegistrationCount();
+      setPendingRegistrationCount(pendingCount || 0);
+    } catch (error) {
+      console.error('Error approving resident:', error);
+      toast.error("Failed to approve registration");
+    } finally {
+      setProcessingResidentId(null);
+    }
+  };
+
+  // Open resident reject dialog
+  const openResidentRejectDialog = (resident: PendingResident) => {
+    setSelectedResidentForReject(resident);
+    setResidentRejectionReason("");
+    setResidentRejectDialogOpen(true);
+  };
+
+  // Handle resident rejection
+  const handleRejectResident = async () => {
+    if (!selectedResidentForReject) return;
+    
+    setProcessingResidentId(selectedResidentForReject.id);
+    try {
+      await rejectResident(
+        selectedResidentForReject.id,
+        user?.fullName || 'Admin',
+        residentRejectionReason || 'Registration rejected'
+      );
+
+      // Send rejection notification email
+      if (selectedResidentForReject.email) {
+        try {
+          await supabase.functions.invoke('send-approval-notification', {
+            body: {
+              recipientEmail: selectedResidentForReject.email,
+              residentName: `${selectedResidentForReject.first_name} ${selectedResidentForReject.last_name}`,
+              status: 'rejected',
+              rejectionReason: residentRejectionReason || 'Registration rejected',
+            },
+          });
+        } catch (emailError) {
+          console.error('Failed to send rejection notification:', emailError);
+        }
+      }
+
+      toast.success(`${selectedResidentForReject.first_name} ${selectedResidentForReject.last_name}'s registration has been rejected`);
+      setResidentRejectDialogOpen(false);
+      loadPendingResidents();
+      
+      // Update pending count
+      const pendingCount = await getPendingRegistrationCount();
+      setPendingRegistrationCount(pendingCount || 0);
+    } catch (error) {
+      console.error('Error rejecting resident:', error);
+      toast.error("Failed to reject registration");
+    } finally {
+      setProcessingResidentId(null);
+    }
+  };
+
+  // Filter pending residents
+  const filteredPendingResidents = pendingResidents.filter(resident => {
+    const fullName = `${resident.first_name} ${resident.middle_name || ''} ${resident.last_name}`.toLowerCase();
+    return fullName.includes(residentSearchTerm.toLowerCase()) || 
+           resident.email?.toLowerCase().includes(residentSearchTerm.toLowerCase());
+  });
+
   const handleViewDetails = (request: PendingRequest) => {
     setDetailsRequest(request);
     setVerificationResult(null); // Reset verification when opening new request
@@ -1547,6 +1686,132 @@ const StaffDashboard = () => {
               </div>
             )}
 
+            {activeTab === "resident-approval" && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold">Resident Registration Approval</h2>
+                <p className="text-muted-foreground">
+                  Review and approve or reject pending resident registrations
+                </p>
+
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or email..."
+                    value={residentSearchTerm}
+                    onChange={(e) => setResidentSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Pending Count */}
+                <div>
+                  <Badge variant="secondary" className="text-sm">
+                    {filteredPendingResidents.length} pending registration{filteredPendingResidents.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
+
+                {isLoadingResidents ? (
+                  <div className="text-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                    <p className="mt-2 text-muted-foreground">Loading pending registrations...</p>
+                  </div>
+                ) : filteredPendingResidents.length === 0 ? (
+                  <Card>
+                    <CardContent className="text-center py-12 text-muted-foreground">
+                      <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-lg font-medium">No pending registrations</p>
+                      <p className="text-sm">New resident registration requests will appear here</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredPendingResidents.map((resident) => (
+                      <Card key={resident.id} className="border-l-4 border-l-yellow-500">
+                        <CardContent className="p-4">
+                          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                            <div className="space-y-2 flex-1">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-semibold text-lg">
+                                  {resident.first_name} {resident.middle_name} {resident.last_name}
+                                </span>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                                {resident.email && (
+                                  <div className="flex items-center gap-2">
+                                    <Mail className="h-3 w-3" />
+                                    <span>{resident.email}</span>
+                                  </div>
+                                )}
+                                {resident.birth_date && (
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>{format(new Date(resident.birth_date), 'MMMM d, yyyy')}</span>
+                                  </div>
+                                )}
+                                {resident.contact_number && (
+                                  <div className="flex items-center gap-2">
+                                    <Phone className="h-3 w-3" />
+                                    <span>{resident.contact_number}</span>
+                                  </div>
+                                )}
+                                {resident.place_of_origin && (
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className="h-3 w-3" />
+                                    <span>{resident.place_of_origin}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-3 w-3" />
+                                  <span>Applied: {format(new Date(resident.created_at), 'MMM d, yyyy h:mm a')}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => openResidentRejectDialog(resident)}
+                                disabled={processingResidentId === resident.id}
+                              >
+                                {processingResidentId === resident.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => handleApproveResident(resident)}
+                                disabled={processingResidentId === resident.id}
+                              >
+                                {processingResidentId === resident.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Approve
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === "announcements" && (
               <div>
                 <div className="flex justify-between items-center mb-6">
@@ -2088,6 +2353,45 @@ const StaffDashboard = () => {
             </Button>
             <Button onClick={handleCreateAnnouncement}>
               {editingAnnouncement ? "Update" : "Create"} Announcement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resident Rejection Dialog */}
+      <Dialog open={residentRejectDialogOpen} onOpenChange={setResidentRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Registration</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reject the registration for{" "}
+              <strong>{selectedResidentForReject?.first_name} {selectedResidentForReject?.last_name}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="resident-rejection-reason">Reason for Rejection (Optional)</Label>
+              <Textarea
+                id="resident-rejection-reason"
+                placeholder="Enter the reason for rejection..."
+                value={residentRejectionReason}
+                onChange={(e) => setResidentRejectionReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResidentRejectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleRejectResident}
+              disabled={processingResidentId === selectedResidentForReject?.id}
+            >
+              {processingResidentId === selectedResidentForReject?.id ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Reject Registration
             </Button>
           </DialogFooter>
         </DialogContent>
