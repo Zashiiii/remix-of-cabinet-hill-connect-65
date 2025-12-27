@@ -23,6 +23,56 @@ type EntityType =
 
 type PerformedByType = "staff" | "admin" | "resident" | "system";
 
+// Resident audit logging functions
+export const logResidentLogin = async (residentName: string, userId: string) => {
+  return createAuditLog({
+    action: "login",
+    entityType: "resident",
+    entityId: userId,
+    performedBy: residentName,
+    performedByType: "resident",
+  });
+};
+
+export const logResidentLogout = async (residentName: string, userId: string) => {
+  return createAuditLog({
+    action: "logout",
+    entityType: "resident",
+    entityId: userId,
+    performedBy: residentName,
+    performedByType: "resident",
+  });
+};
+
+export const logResidentCertificateRequest = async (
+  controlNumber: string,
+  residentName: string,
+  certificateType: string
+) => {
+  return createAuditLog({
+    action: "create",
+    entityType: "certificate_request",
+    entityId: controlNumber,
+    performedBy: residentName,
+    performedByType: "resident",
+    details: { certificate_type: certificateType },
+  });
+};
+
+export const logResidentRegistration = async (
+  residentName: string,
+  email: string
+) => {
+  return createAuditLog({
+    action: "create",
+    entityType: "resident",
+    entityId: email,
+    performedBy: residentName,
+    performedByType: "resident",
+    details: { registration_type: "self_registration" },
+  });
+};
+
 interface AuditLogData {
   action: AuditAction;
   entityType: EntityType;

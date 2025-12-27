@@ -39,6 +39,7 @@ import { fetchActiveAnnouncements } from "@/utils/api";
 import CertificateRequestForm from "@/components/CertificateRequestForm";
 import SuccessModal from "@/components/SuccessModal";
 import ChatWidget from "@/components/ChatWidget";
+import { logResidentLogout } from "@/utils/auditLog";
 
 interface Request {
   id: string;
@@ -179,6 +180,13 @@ const ResidentDashboard = () => {
   };
 
   const handleLogout = async () => {
+    // Log the logout action
+    if (user && profile) {
+      const fullName = profile.firstName && profile.lastName 
+        ? `${profile.firstName} ${profile.lastName}`
+        : profile.fullName || "Unknown Resident";
+      await logResidentLogout(fullName, user.id);
+    }
     await logout();
     toast.success("Logged out successfully");
     navigate("/");
