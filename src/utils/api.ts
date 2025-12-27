@@ -288,8 +288,7 @@ export const updateRequestStatus = async (
   id: string, 
   status: string, 
   processedBy: string,
-  notes?: string,
-  sessionToken?: string
+  notes?: string
 ) => {
   // Normalize status to match database format (capitalize first letter)
   const normalizedStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
