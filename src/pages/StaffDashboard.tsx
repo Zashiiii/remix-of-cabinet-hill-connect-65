@@ -114,6 +114,10 @@ import {
   logBatchStatusUpdate,
 } from "@/utils/certificatePdf";
 import StaffChatWidget from "@/components/StaffChatWidget";
+import ResidentsTab from "@/components/staff/ResidentsTab";
+import HouseholdsTab from "@/components/staff/HouseholdsTab";
+import IncidentsTab from "@/components/staff/IncidentsTab";
+import SettingsTab from "@/components/staff/SettingsTab";
 
 interface PendingRequest {
   id: string;
@@ -167,12 +171,12 @@ const StaffSidebar = ({
   const mainMenuItems = [
     { title: "Home", icon: Home, tab: "home" },
     { title: "Certificate Requests", icon: FileText, tab: "certificate-requests" },
-    { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", route: "/staff/incidents" },
+    { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents" },
     { title: "Manage Announcements", icon: Bell, tab: "announcements" },
-    { title: "Manage Residents", icon: Users, route: "/staff/residents" },
-    { title: "Manage Households", icon: Home, route: "/staff/households" },
+    { title: "Manage Residents", icon: Users, tab: "residents" },
+    { title: "Manage Households", icon: Home, tab: "households" },
     { title: "View Reports", icon: BarChart3, tab: "view-reports" },
-    { title: "Settings", icon: Settings, route: "/staff/settings" },
+    { title: "Settings", icon: Settings, tab: "settings" },
   ];
 
   const adminMenuItems = [
