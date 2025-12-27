@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -11,11 +11,16 @@ import { toast } from "sonner";
 import { trackRequest } from "@/utils/api";
 import { supabase } from "@/integrations/supabase/client";
 
+// Client-side rate limiting for tracking requests
+const TRACK_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_TRACK_REQUESTS = 5; // 5 requests per minute
+
 const TrackRequest = () => {
   const [controlNumber, setControlNumber] = useState("");
   const [requestData, setRequestData] = useState<RequestData | null>(null);
   const [searched, setSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const trackAttemptsRef = useRef<number[]>([]);
 
   // Real-time subscription for status updates
   useEffect(() => {
@@ -60,6 +65,19 @@ const TrackRequest = () => {
       toast.error("Please enter a control number");
       return;
     }
+
+    // Client-side rate limiting
+    const now = Date.now();
+    trackAttemptsRef.current = trackAttemptsRef.current.filter(
+      (timestamp) => now - timestamp < TRACK_LIMIT_WINDOW_MS
+    );
+    
+    if (trackAttemptsRef.current.length >= MAX_TRACK_REQUESTS) {
+      toast.error("Too many tracking requests. Please wait a moment before trying again.");
+      return;
+    }
+    
+    trackAttemptsRef.current.push(now);
 
     try {
       setIsSearching(true);
