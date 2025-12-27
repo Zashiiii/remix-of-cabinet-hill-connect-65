@@ -58,14 +58,12 @@ function createSessionCookie(token: string, expiresAt: Date, isSecure: boolean):
     `${COOKIE_NAME}=${token}`,
     `Path=/`,
     `HttpOnly`,
-    `SameSite=Lax`,
+    // SameSite=None is required for cross-origin requests with credentials
+    // Secure is required when using SameSite=None
+    `SameSite=None`,
+    `Secure`,
     `Expires=${expiresAt.toUTCString()}`,
   ];
-  
-  // Only add Secure flag in production (HTTPS)
-  if (isSecure) {
-    cookieOptions.push('Secure');
-  }
   
   return cookieOptions.join('; ');
 }
@@ -75,14 +73,13 @@ function createLogoutCookie(isSecure: boolean): string {
     `${COOKIE_NAME}=`,
     `Path=/`,
     `HttpOnly`,
-    `SameSite=Lax`,
+    // SameSite=None is required for cross-origin requests with credentials
+    // Secure is required when using SameSite=None
+    `SameSite=None`,
+    `Secure`,
     `Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
     `Max-Age=0`,
   ];
-  
-  if (isSecure) {
-    cookieOptions.push('Secure');
-  }
   
   return cookieOptions.join('; ');
 }

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface StaffUser {
@@ -17,6 +16,35 @@ interface StaffAuthState {
 }
 
 const WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before expiry
+
+// Helper function to call staff-auth edge function with credentials (cookies)
+const callStaffAuthFunction = async (body: Record<string, unknown>): Promise<{ data: any; error: any }> => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/staff-auth`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+      credentials: 'include', // Include cookies in cross-origin requests
+      body: JSON.stringify(body),
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      return { data: null, error: { message: data.error || 'Request failed' } };
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: { message: 'Network error' } };
+  }
+};
 
 export const useStaffAuth = () => {
   // Start in loading state - we need to check server for session
@@ -42,17 +70,27 @@ export const useStaffAuth = () => {
     const checkSession = async () => {
       try {
         console.log('Checking session with server (httpOnly cookie)...');
-        const response = await supabase.functions.invoke('staff-auth', {
-          body: { action: 'get-session' },
-        });
-
-        if (response.data?.authenticated && response.data?.user) {
-          console.log('Session valid, user:', response.data.user.username);
+        
+        const { data, error } = await callStaffAuthFunction({ action: 'get-session' });
+        
+        if (error) {
+          console.log('Session check error:', error);
           setAuthState({
-            user: response.data.user,
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            expiresAt: null,
+          });
+          return;
+        }
+
+        if (data?.authenticated && data?.user) {
+          console.log('Session valid, user:', data.user.username);
+          setAuthState({
+            user: data.user,
             isAuthenticated: true,
             isLoading: false,
-            expiresAt: response.data.expiresAt ? new Date(response.data.expiresAt) : null,
+            expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
           });
         } else {
           console.log('No valid session found');
@@ -145,12 +183,10 @@ export const useStaffAuth = () => {
   // Extend session
   const extendSession = useCallback(async () => {
     try {
-      const response = await supabase.functions.invoke('staff-auth', {
-        body: { action: 'extend' },
-      });
+      const { data, error } = await callStaffAuthFunction({ action: 'extend' });
 
-      if (response.data?.success && response.data?.expiresAt) {
-        const newExpiresAt = new Date(response.data.expiresAt);
+      if (data?.success && data?.expiresAt) {
+        const newExpiresAt = new Date(data.expiresAt);
         
         setAuthState(prev => ({
           ...prev,
@@ -172,18 +208,16 @@ export const useStaffAuth = () => {
   const validateSession = useCallback(async (): Promise<boolean> => {
     try {
       console.log('Validating session with server...');
-      const response = await supabase.functions.invoke('staff-auth', {
-        body: { action: 'validate' },
-      });
+      const { data, error } = await callStaffAuthFunction({ action: 'validate' });
 
-      console.log('Validation response:', response);
+      console.log('Validation response:', { data, error });
       
-      if (response.error) {
-        console.error('Validation error:', response.error);
+      if (error) {
+        console.error('Validation error:', error);
         return false;
       }
 
-      return response.data?.valid === true;
+      return data?.valid === true;
     } catch (error) {
       console.error('Session validation error:', error);
       return false;
@@ -194,9 +228,7 @@ export const useStaffAuth = () => {
     try {
       console.log('Attempting login for:', username);
       
-      const { data, error } = await supabase.functions.invoke('staff-auth', {
-        body: { action: 'login', username, password },
-      });
+      const { data, error } = await callStaffAuthFunction({ action: 'login', username, password });
 
       console.log('Login response:', { data, error });
 
@@ -232,9 +264,7 @@ export const useStaffAuth = () => {
   const logout = useCallback(async () => {
     try {
       console.log('Logging out...');
-      await supabase.functions.invoke('staff-auth', {
-        body: { action: 'logout' },
-      });
+      await callStaffAuthFunction({ action: 'logout' });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
