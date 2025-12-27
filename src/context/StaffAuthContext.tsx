@@ -10,12 +10,12 @@ interface StaffUser {
 
 interface StaffAuthContextType {
   user: StaffUser | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   expiresAt: Date | null;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string; code?: string }>;
   logout: () => Promise<void>;
+  validateSession: () => Promise<boolean>;
   extendSession: () => Promise<void>;
 }
 

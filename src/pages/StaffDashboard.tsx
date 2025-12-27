@@ -264,7 +264,7 @@ const StaffSidebar = ({
 
 const StaffDashboard = () => {
   const navigate = useNavigate();
-  const { user, token, isAuthenticated, isLoading: authLoading, logout } = useStaffAuthContext();
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useStaffAuthContext();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeTab, setActiveTab] = useState("home");
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -531,8 +531,7 @@ const StaffDashboard = () => {
         dbId, 
         'Rejected', 
         staffName,
-        rejectionReason.trim(),
-        token || undefined
+        rejectionReason.trim()
       );
 
       toast.success(`Request rejected successfully`, {
@@ -595,13 +594,11 @@ const StaffDashboard = () => {
           ? 'Approved - All requirements verified'
           : 'Under verification';
 
-        // Update in Supabase using RPC
         await updateRequestStatus(
           dbId, 
           newStatus, 
           staffName,
-          actionNote,
-          token || undefined
+          actionNote
         );
 
         // Update local state
@@ -849,8 +846,7 @@ const StaffDashboard = () => {
           dbRequest.id,
           'Released',
           staffName,
-          'Certificate released to resident',
-          token || undefined
+          'Certificate released to resident'
         );
         successCount++;
       }

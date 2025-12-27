@@ -4,18 +4,95 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // Use hashSync and compareSync to avoid Worker dependency issue in Supabase Edge Runtime
 import { hashSync, compareSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
-// Version 7.0 - Fixed bcrypt Worker issue by using sync methods
+// Version 8.0 - Security: httpOnly cookie-based session management
+// Tokens are now stored in secure httpOnly cookies instead of being returned to client
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const COOKIE_NAME = 'bris_staff_session';
+const SESSION_DURATION_HOURS = 8;
+
+// Get allowed origins for CORS
+function getAllowedOrigins(): string[] {
+  return [
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'https://xzyqcnapqfiawjmgfxws.lovableproject.com',
+    // Add any custom domains here
+  ];
+}
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigins = getAllowedOrigins();
+  const corsOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  
+  return {
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
+
+function createSessionCookie(token: string, expiresAt: Date, isSecure: boolean): string {
+  const cookieOptions = [
+    `${COOKIE_NAME}=${token}`,
+    `Path=/`,
+    `HttpOnly`,
+    `SameSite=Lax`,
+    `Expires=${expiresAt.toUTCString()}`,
+  ];
+  
+  // Only add Secure flag in production (HTTPS)
+  if (isSecure) {
+    cookieOptions.push('Secure');
+  }
+  
+  return cookieOptions.join('; ');
+}
+
+function createLogoutCookie(isSecure: boolean): string {
+  const cookieOptions = [
+    `${COOKIE_NAME}=`,
+    `Path=/`,
+    `HttpOnly`,
+    `SameSite=Lax`,
+    `Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+    `Max-Age=0`,
+  ];
+  
+  if (isSecure) {
+    cookieOptions.push('Secure');
+  }
+  
+  return cookieOptions.join('; ');
+}
+
+function getTokenFromCookie(req: Request): string | null {
+  const cookieHeader = req.headers.get('cookie');
+  if (!cookieHeader) return null;
+  
+  const cookies = cookieHeader.split(';').map(c => c.trim());
+  for (const cookie of cookies) {
+    if (cookie.startsWith(`${COOKIE_NAME}=`)) {
+      return cookie.substring(COOKIE_NAME.length + 1);
+    }
+  }
+  return null;
+}
+
+function isSecureRequest(req: Request): boolean {
+  const proto = req.headers.get('x-forwarded-proto');
+  return proto === 'https' || req.url.startsWith('https://');
 }
 
 serve(async (req) => {
   const startTime = Date.now();
-  console.log('=== Staff Auth Function v7.0 Started ===');
+  console.log('=== Staff Auth Function v8.0 (httpOnly cookies) ===');
   console.log('Timestamp:', new Date().toISOString());
   console.log('Request method:', req.method);
+
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  const isSecure = isSecureRequest(req);
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -59,42 +136,44 @@ serve(async (req) => {
 
     // ========== LOGOUT ==========
     if (action === 'logout') {
-      const token = body?.token;
+      const token = getTokenFromCookie(req) || body?.token;
       console.log('Processing LOGOUT - token present:', !!token);
 
-      if (!token) {
-        return new Response(
-          JSON.stringify({ success: true, message: 'No token provided, already logged out' }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      if (token) {
+        // Delete session from database
+        const { error: deleteError } = await supabase
+          .from('sessions')
+          .delete()
+          .eq('token', token);
 
-      // Delete session
-      const { error: deleteError } = await supabase
-        .from('sessions')
-        .delete()
-        .eq('token', token);
-
-      if (deleteError) {
-        console.log('Session delete warning:', deleteError.message);
+        if (deleteError) {
+          console.log('Session delete warning:', deleteError.message);
+        }
       }
 
       console.log('Logout successful');
       return new Response(
         JSON.stringify({ success: true }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 200, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Set-Cookie': createLogoutCookie(isSecure),
+          } 
+        }
       );
     }
 
     // ========== EXTEND SESSION ==========
     if (action === 'extend') {
-      const token = body?.token;
+      const token = getTokenFromCookie(req) || body?.token;
       console.log('Processing EXTEND - token present:', !!token);
 
       if (!token) {
         return new Response(
-          JSON.stringify({ success: false, error: 'No token provided' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ success: false, error: 'No session found' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -105,12 +184,19 @@ serve(async (req) => {
         console.log('Invalid session for extension');
         return new Response(
           JSON.stringify({ success: false, error: 'Invalid or expired session' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { 
+            status: 401, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'Set-Cookie': createLogoutCookie(isSecure),
+            } 
+          }
         );
       }
 
       // Extend session by 8 hours
-      const newExpiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      const newExpiresAt = new Date(Date.now() + SESSION_DURATION_HOURS * 60 * 60 * 1000);
       
       const { error: updateError } = await supabase
         .from('sessions')
@@ -131,20 +217,30 @@ serve(async (req) => {
           success: true,
           expiresAt: newExpiresAt.toISOString(),
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 200, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Set-Cookie': createSessionCookie(token, newExpiresAt, isSecure),
+          } 
+        }
       );
     }
 
     // ========== VALIDATE ==========
     if (action === 'validate') {
+      // Priority: cookie > body > auth header
       const authHeader = req.headers.get('Authorization');
-      const token = body?.token || authHeader?.replace('Bearer ', '');
+      const token = getTokenFromCookie(req) || body?.token || authHeader?.replace('Bearer ', '');
 
-      console.log('Processing VALIDATE - token present:', !!token);
+      console.log('Processing VALIDATE - token source:', 
+        getTokenFromCookie(req) ? 'cookie' : (body?.token ? 'body' : (authHeader ? 'header' : 'none'))
+      );
 
       if (!token) {
         return new Response(
-          JSON.stringify({ valid: false, error: 'No token provided' }),
+          JSON.stringify({ valid: false, error: 'No session found' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -155,7 +251,14 @@ serve(async (req) => {
         console.log('Invalid or expired session');
         return new Response(
           JSON.stringify({ valid: false, error: 'Invalid or expired session' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { 
+            status: 401, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'Set-Cookie': createLogoutCookie(isSecure),
+            } 
+          }
         );
       }
 
@@ -171,6 +274,60 @@ serve(async (req) => {
             fullName: session.full_name,
             role: session.role,
           },
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== GET SESSION (for client to get current user info) ==========
+    if (action === 'get-session') {
+      const token = getTokenFromCookie(req);
+      console.log('Processing GET-SESSION - cookie present:', !!token);
+
+      if (!token) {
+        return new Response(
+          JSON.stringify({ authenticated: false }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase.rpc('validate_session', { session_token: token });
+
+      if (error || !data || data.length === 0) {
+        console.log('Session expired or invalid');
+        return new Response(
+          JSON.stringify({ authenticated: false }),
+          { 
+            status: 200, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'Set-Cookie': createLogoutCookie(isSecure),
+            } 
+          }
+        );
+      }
+
+      // Get session expiry
+      const { data: sessionRecord } = await supabase
+        .from('sessions')
+        .select('expires_at')
+        .eq('token', token)
+        .single();
+
+      const session = data[0];
+      console.log('Session retrieved for user:', session.username);
+      
+      return new Response(
+        JSON.stringify({
+          authenticated: true,
+          user: {
+            id: session.staff_user_id,
+            username: session.username,
+            fullName: session.full_name,
+            role: session.role,
+          },
+          expiresAt: sessionRecord?.expires_at,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -289,7 +446,7 @@ serve(async (req) => {
 
     // ========== HASH PASSWORD ==========
     if (action === 'hash-password') {
-      const token = body?.token;
+      const token = getTokenFromCookie(req) || body?.token;
       const password = body?.password;
       console.log('Processing HASH-PASSWORD');
 
@@ -308,7 +465,14 @@ serve(async (req) => {
         console.log('Invalid session for hash-password');
         return new Response(
           JSON.stringify({ error: 'Invalid or expired session' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { 
+            status: 401, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'Set-Cookie': createLogoutCookie(isSecure),
+            } 
+          }
         );
       }
 
@@ -340,7 +504,7 @@ serve(async (req) => {
 
     // ========== CHANGE PASSWORD ==========
     if (action === 'change-password') {
-      const token = body?.token;
+      const token = getTokenFromCookie(req) || body?.token;
       const userId = body?.userId;
       const newPassword = body?.newPassword;
       console.log('Processing CHANGE-PASSWORD for user:', userId);
@@ -348,7 +512,7 @@ serve(async (req) => {
       // Validate required fields
       if (!token || !userId || !newPassword) {
         return new Response(
-          JSON.stringify({ error: 'Token, user ID, and new password are required' }),
+          JSON.stringify({ error: 'Session, user ID, and new password are required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -360,7 +524,14 @@ serve(async (req) => {
         console.log('Invalid session for password change');
         return new Response(
           JSON.stringify({ error: 'Unauthorized - invalid or expired session' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { 
+            status: 401, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'Set-Cookie': createLogoutCookie(isSecure),
+            } 
+          }
         );
       }
 
@@ -516,7 +687,7 @@ serve(async (req) => {
 
     // Generate session token
     const token = crypto.randomUUID() + '-' + crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 hours
+    const expiresAt = new Date(Date.now() + SESSION_DURATION_HOURS * 60 * 60 * 1000);
 
     console.log('Creating session for user:', user.id);
 
@@ -540,10 +711,10 @@ serve(async (req) => {
     const duration = Date.now() - startTime;
     console.log('Login successful for user:', username, 'Duration:', duration, 'ms');
 
+    // Return success with httpOnly cookie - token is NOT returned in body
     return new Response(
       JSON.stringify({
         success: true,
-        token,
         user: {
           id: user.id,
           username: user.username,
@@ -552,7 +723,14 @@ serve(async (req) => {
         },
         expiresAt: expiresAt.toISOString(),
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 200, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Set-Cookie': createSessionCookie(token, expiresAt, isSecure),
+        } 
+      }
     );
 
   } catch (error) {
