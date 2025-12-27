@@ -19,6 +19,7 @@ interface ResidentProfile {
   religion?: string;
   educationAttainment?: string;
   employmentStatus?: string;
+  approvalStatus?: string;
 }
 
 export const useResidentAuth = () => {
@@ -99,6 +100,7 @@ export const useResidentAuth = () => {
           religion: data.religion || undefined,
           educationAttainment: data.education_attainment || undefined,
           employmentStatus: data.employment_status || undefined,
+          approvalStatus: data.approval_status || undefined,
         });
       }
     } catch (error) {
