@@ -125,3 +125,9 @@ export const getStaffMessages = async (staffId?: string) => {
   const result = await callStaffApi('get-staff-messages', { staffId });
   return result.data || [];
 };
+
+// Audit logs (admin only)
+export const getAuditLogs = async (entityFilter?: string, actionFilter?: string, limit?: number) => {
+  const result = await callStaffApi('get-audit-logs', { entityFilter, actionFilter, limit });
+  return result.data || [];
+};
