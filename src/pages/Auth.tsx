@@ -165,6 +165,46 @@ const Auth = () => {
       }
 
       if (data.user) {
+        // Check approval status before allowing access
+        const { data: resident } = await supabase
+          .from("residents")
+          .select("approval_status")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+
+        // If no resident found by user_id, try by email
+        const approvalStatus = resident?.approval_status || 
+          (await supabase
+            .from("residents")
+            .select("approval_status")
+            .eq("email", data.user.email)
+            .maybeSingle()
+          ).data?.approval_status;
+
+        if (approvalStatus === "pending") {
+          await supabase.auth.signOut();
+          toast.error("Your account is pending approval. Please wait for admin approval before logging in.", {
+            duration: 5000,
+          });
+          return;
+        }
+
+        if (approvalStatus === "rejected") {
+          await supabase.auth.signOut();
+          toast.error("Your registration was rejected. Please contact the Barangay office for more information.", {
+            duration: 5000,
+          });
+          return;
+        }
+
+        if (approvalStatus !== "approved") {
+          await supabase.auth.signOut();
+          toast.error("Your account status is unknown. Please contact the Barangay office.", {
+            duration: 5000,
+          });
+          return;
+        }
+
         toast.success("Login successful!");
         navigate("/resident/dashboard");
       }
