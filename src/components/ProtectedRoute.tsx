@@ -59,22 +59,34 @@ export const ResidentProtectedRoute = ({
   const navigate = useNavigate();
   const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
   const [isCheckingApproval, setIsCheckingApproval] = useState(true);
+  const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
 
   useEffect(() => {
+    // Skip if still loading auth state
+    if (isLoading) {
+      return;
+    }
+
+    // If not authenticated, stop checking
+    if (!isAuthenticated) {
+      setIsCheckingApproval(false);
+      return;
+    }
+
+    // If profile has approval status, use it directly (no async needed)
+    if (profile?.approvalStatus) {
+      setApprovalStatus(profile.approvalStatus);
+      setIsCheckingApproval(false);
+      setHasCheckedOnce(true);
+      return;
+    }
+
+    // Only fetch from database once if profile doesn't have status yet
+    if (hasCheckedOnce) {
+      return;
+    }
+
     const checkApprovalStatus = async () => {
-      if (!isAuthenticated || isLoading) {
-        setIsCheckingApproval(false);
-        return;
-      }
-
-      // If profile has approval status, use it
-      if (profile?.approvalStatus) {
-        setApprovalStatus(profile.approvalStatus);
-        setIsCheckingApproval(false);
-        return;
-      }
-
-      // Otherwise fetch from database
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: resident } = await supabase
@@ -97,10 +109,11 @@ export const ResidentProtectedRoute = ({
         }
       }
       setIsCheckingApproval(false);
+      setHasCheckedOnce(true);
     };
 
     checkApprovalStatus();
-  }, [isAuthenticated, isLoading, profile]);
+  }, [isAuthenticated, isLoading, profile?.approvalStatus, hasCheckedOnce]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
