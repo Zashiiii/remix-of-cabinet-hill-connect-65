@@ -12,22 +12,38 @@ const SESSION_DURATION_HOURS = 8;
 
 // Get allowed origins for CORS - environment-aware configuration
 function getAllowedOrigins(): string[] {
-  // Check if we're in development mode (Deno.env or default to production)
+  // Check for custom origins from environment
   const customOrigins = Deno.env.get('ALLOWED_ORIGINS');
   if (customOrigins) {
     return customOrigins.split(',').map(o => o.trim()).filter(Boolean);
   }
   
-  // Production-only origins by default (no localhost in production)
+  // Default allowed origins (production + Lovable preview domains)
   return [
     'https://xzyqcnapqfiawjmgfxws.lovableproject.com',
     // Add any custom production domains here
   ];
 }
 
-function getCorsHeaders(origin: string | null): Record<string, string> {
+// Check if origin matches allowed patterns (including Lovable preview UUIDs)
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  
   const allowedOrigins = getAllowedOrigins();
-  const corsOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  
+  // Check exact match first
+  if (allowedOrigins.includes(origin)) return true;
+  
+  // Allow any Lovable preview origin (UUID-based subdomains)
+  const lovablePreviewPattern = /^https:\/\/[a-f0-9-]+\.lovableproject\.com$/;
+  if (lovablePreviewPattern.test(origin)) return true;
+  
+  return false;
+}
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  // Use the origin if it's allowed, otherwise fall back to primary production origin
+  const corsOrigin = isAllowedOrigin(origin) && origin ? origin : 'https://xzyqcnapqfiawjmgfxws.lovableproject.com';
   
   return {
     'Access-Control-Allow-Origin': corsOrigin,
