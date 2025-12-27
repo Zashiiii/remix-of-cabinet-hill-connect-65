@@ -24,11 +24,18 @@ export interface RequestStatus {
 /**
  * Generate a control number for certificate requests
  */
+/**
+ * Generate a cryptographically secure control number (UUID-based, not guessable)
+ */
 const generateControlNumber = (): string => {
-  const now = new Date();
-  const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
-  const randomNum = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-  return `CERT-${dateStr}-${randomNum}`;
+  // Generate UUID-like control number that's not enumerable
+  const randomBytes = new Uint8Array(6);
+  crypto.getRandomValues(randomBytes);
+  const randomPart = Array.from(randomBytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+  return `CERT-${randomPart}`;
 };
 
 /**

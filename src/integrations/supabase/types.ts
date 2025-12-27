@@ -124,6 +124,30 @@ export type Database = {
           },
         ]
       }
+      certificate_rate_limits: {
+        Row: {
+          created_at: string | null
+          id: string
+          ip_address: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ip_address: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ip_address?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       certificate_requests: {
         Row: {
           birth_date: string | null
@@ -765,6 +789,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_certificate_rate_limit: {
+        Args: { p_ip_address: string }
+        Returns: {
+          allowed: boolean
+          remaining_requests: number
+          retry_after_seconds: number
+        }[]
+      }
       check_login_rate_limit: {
         Args: { p_ip_address: string }
         Returns: number
@@ -778,6 +810,13 @@ export type Database = {
           last_name: string
           status: string
           submitted_at: string
+        }[]
+      }
+      check_tracking_rate_limit: {
+        Args: { p_ip_address: string }
+        Returns: {
+          allowed: boolean
+          retry_after_seconds: number
         }[]
       }
       get_active_announcements: {

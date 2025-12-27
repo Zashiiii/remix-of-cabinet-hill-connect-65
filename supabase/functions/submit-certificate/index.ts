@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Version 5.0 - Added rate limiting for certificate requests
+// Version 6.0 - Uses persistent database rate limiting and UUID-based control numbers
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,13 +20,6 @@ interface CertificateRequestData {
   preferredPickupDate: string;
 }
 
-// Rate limiting configuration
-const RATE_LIMIT_WINDOW_MINUTES = 60; // 1 hour window
-const MAX_REQUESTS_PER_WINDOW = 5; // 5 requests per hour per IP
-
-// In-memory rate limit store (resets on function cold start)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
 function getClientIP(req: Request): string {
   // Try to get the real IP from various headers
   const forwardedFor = req.headers.get('x-forwarded-for');
@@ -43,30 +36,15 @@ function getClientIP(req: Request): string {
   return 'unknown';
 }
 
-function checkRateLimit(ip: string): { allowed: boolean; remainingRequests: number; retryAfterSeconds?: number } {
-  const now = Date.now();
-  const windowMs = RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
-  
-  const record = rateLimitStore.get(ip);
-  
-  if (!record || now > record.resetTime) {
-    // First request or window expired
-    rateLimitStore.set(ip, { count: 1, resetTime: now + windowMs });
-    return { allowed: true, remainingRequests: MAX_REQUESTS_PER_WINDOW - 1 };
-  }
-  
-  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
-    const retryAfterSeconds = Math.ceil((record.resetTime - now) / 1000);
-    return { allowed: false, remainingRequests: 0, retryAfterSeconds };
-  }
-  
-  record.count++;
-  return { allowed: true, remainingRequests: MAX_REQUESTS_PER_WINDOW - record.count };
+// Generate cryptographically secure control number (UUID-based)
+function generateSecureControlNumber(): string {
+  const uuid = crypto.randomUUID().replace(/-/g, '').substring(0, 12).toUpperCase();
+  return `CERT-${uuid}`;
 }
 
 serve(async (req) => {
   const startTime = Date.now();
-  console.log('=== Submit Certificate Function v5.0 Started ===');
+  console.log('=== Submit Certificate Function v6.0 Started ===');
   console.log('Timestamp:', new Date().toISOString());
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
@@ -78,32 +56,6 @@ serve(async (req) => {
   }
 
   try {
-    // Check rate limit before processing
-    const clientIP = getClientIP(req);
-    console.log('Client IP:', clientIP);
-    
-    const rateLimit = checkRateLimit(clientIP);
-    console.log('Rate limit check:', { ip: clientIP, allowed: rateLimit.allowed, remaining: rateLimit.remainingRequests });
-    
-    if (!rateLimit.allowed) {
-      console.warn('Rate limit exceeded for IP:', clientIP);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Too many requests. Please try again later.', 
-          success: false,
-          retryAfterSeconds: rateLimit.retryAfterSeconds
-        }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json',
-            'Retry-After': String(rateLimit.retryAfterSeconds)
-          } 
-        }
-      );
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -121,6 +73,37 @@ serve(async (req) => {
     // Create Supabase client with service role (bypasses RLS)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     console.log('Supabase client created successfully');
+
+    // Check persistent rate limit using database
+    const clientIP = getClientIP(req);
+    console.log('Client IP:', clientIP);
+    
+    const { data: rateLimit, error: rateLimitError } = await supabase
+      .rpc('check_certificate_rate_limit', { p_ip_address: clientIP });
+    
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+      // Don't block on rate limit errors - log and continue
+    } else if (rateLimit && rateLimit.length > 0 && !rateLimit[0].allowed) {
+      console.warn('Rate limit exceeded for IP:', clientIP);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Too many requests. Please try again later.', 
+          success: false,
+          retryAfterSeconds: rateLimit[0].retry_after_seconds
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimit[0].retry_after_seconds)
+          } 
+        }
+      );
+    }
+    
+    console.log('Rate limit check passed:', { ip: clientIP, remaining: rateLimit?.[0]?.remaining_requests });
 
     // Parse request body safely
     let data: CertificateRequestData;
@@ -208,12 +191,9 @@ serve(async (req) => {
       );
     }
 
-    // Generate control number
-    const now = new Date();
-    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
-    const randomNum = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-    const controlNumber = `CERT-${dateStr}-${randomNum}`;
-    console.log('Generated control number:', controlNumber);
+    // Generate secure UUID-based control number (not guessable)
+    const controlNumber = generateSecureControlNumber();
+    console.log('Generated secure control number:', controlNumber);
 
     // Capitalize priority
     const normalizedPriority = data.priority 
