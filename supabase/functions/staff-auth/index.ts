@@ -4,8 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // Use hashSync and compareSync to avoid Worker dependency issue in Supabase Edge Runtime
 import { hashSync, compareSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
-// Version 8.0 - Security: httpOnly cookie-based session management
-// Tokens are now stored in secure httpOnly cookies instead of being returned to client
+// Version 9.0 - Security: httpOnly cookie-ONLY session management
+// Tokens are stored ONLY in secure httpOnly cookies - never exposed to JavaScript
 
 const COOKIE_NAME = 'bris_staff_session';
 const SESSION_DURATION_HOURS = 8;
@@ -154,7 +154,8 @@ serve(async (req) => {
 
     // ========== LOGOUT ==========
     if (action === 'logout') {
-      const token = getTokenFromCookie(req) || body?.token;
+      // Security: Only accept token from httpOnly cookie, not request body
+      const token = getTokenFromCookie(req);
       console.log('Processing LOGOUT - token present:', !!token);
 
       if (token) {
@@ -185,7 +186,8 @@ serve(async (req) => {
 
     // ========== EXTEND SESSION ==========
     if (action === 'extend') {
-      const token = getTokenFromCookie(req) || body?.token;
+      // Security: Only accept token from httpOnly cookie, not request body
+      const token = getTokenFromCookie(req);
       console.log('Processing EXTEND - token present:', !!token);
 
       if (!token) {
@@ -248,13 +250,10 @@ serve(async (req) => {
 
     // ========== VALIDATE ==========
     if (action === 'validate') {
-      // Priority: cookie > body > auth header
-      const authHeader = req.headers.get('Authorization');
-      const token = getTokenFromCookie(req) || body?.token || authHeader?.replace('Bearer ', '');
+      // Security: Only accept token from httpOnly cookie
+      const token = getTokenFromCookie(req);
 
-      console.log('Processing VALIDATE - token source:', 
-        getTokenFromCookie(req) ? 'cookie' : (body?.token ? 'body' : (authHeader ? 'header' : 'none'))
-      );
+      console.log('Processing VALIDATE - token source:', token ? 'cookie' : 'none');
 
       if (!token) {
         return new Response(
@@ -299,9 +298,9 @@ serve(async (req) => {
 
     // ========== GET SESSION (for client to get current user info) ==========
     if (action === 'get-session') {
-      // Accept token from body (localStorage) or cookie
-      const token = body?.token || getTokenFromCookie(req);
-      console.log('Processing GET-SESSION - token source:', body?.token ? 'body' : (getTokenFromCookie(req) ? 'cookie' : 'none'));
+      // Security: Only accept token from httpOnly cookie
+      const token = getTokenFromCookie(req);
+      console.log('Processing GET-SESSION - token source:', token ? 'cookie' : 'none');
 
       if (!token) {
         return new Response(
@@ -465,7 +464,8 @@ serve(async (req) => {
 
     // ========== HASH PASSWORD ==========
     if (action === 'hash-password') {
-      const token = getTokenFromCookie(req) || body?.token;
+      // Security: Only accept token from httpOnly cookie
+      const token = getTokenFromCookie(req);
       const password = body?.password;
       console.log('Processing HASH-PASSWORD');
 
@@ -523,7 +523,8 @@ serve(async (req) => {
 
     // ========== CHANGE PASSWORD ==========
     if (action === 'change-password') {
-      const token = getTokenFromCookie(req) || body?.token;
+      // Security: Only accept token from httpOnly cookie
+      const token = getTokenFromCookie(req);
       const userId = body?.userId;
       const newPassword = body?.newPassword;
       console.log('Processing CHANGE-PASSWORD for user:', userId);
@@ -621,7 +622,8 @@ serve(async (req) => {
 
     // Get pending registrations
     if (action === 'get-pending-registrations') {
-      const token = body?.token || getTokenFromCookie(req);
+      // Security: Only accept token from httpOnly cookie
+      const token = getTokenFromCookie(req);
       const session = await validateStaffSession(token);
       
       if (!session) {
@@ -654,7 +656,7 @@ serve(async (req) => {
 
     // Approve resident
     if (action === 'approve-resident') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       const residentId = body?.residentId;
       const approvedBy = body?.approvedBy;
       
@@ -699,7 +701,7 @@ serve(async (req) => {
 
     // Reject resident
     if (action === 'reject-resident') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       const residentId = body?.residentId;
       const rejectedBy = body?.rejectedBy;
       const rejectionReason = body?.rejectionReason;
@@ -744,7 +746,7 @@ serve(async (req) => {
 
     // Get all certificate requests for staff
     if (action === 'get-certificate-requests') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       const statusFilter = body?.statusFilter;
       
       const session = await validateStaffSession(token);
@@ -782,7 +784,7 @@ serve(async (req) => {
 
     // Update certificate request status
     if (action === 'update-request-status') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       const requestId = body?.requestId;
       const status = body?.status;
       const processedBy = body?.processedBy;
@@ -832,7 +834,7 @@ serve(async (req) => {
 
     // Get all announcements for staff
     if (action === 'get-announcements') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       
       const session = await validateStaffSession(token);
       if (!session) {
@@ -863,7 +865,7 @@ serve(async (req) => {
 
     // Create announcement
     if (action === 'create-announcement') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       const { title, content, titleTl, contentTl, type } = body;
       
       const session = await validateStaffSession(token);
@@ -905,7 +907,7 @@ serve(async (req) => {
 
     // Update announcement
     if (action === 'update-announcement') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       const { id, title, content, titleTl, contentTl, type, isActive } = body;
       
       const session = await validateStaffSession(token);
@@ -953,7 +955,7 @@ serve(async (req) => {
 
     // Delete announcement
     if (action === 'delete-announcement') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       const { id } = body;
       
       const session = await validateStaffSession(token);
@@ -993,7 +995,7 @@ serve(async (req) => {
 
     // Get resident count
     if (action === 'get-resident-count') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       
       const session = await validateStaffSession(token);
       if (!session) {
@@ -1025,7 +1027,7 @@ serve(async (req) => {
 
     // Get pending registration count
     if (action === 'get-pending-registration-count') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       
       const session = await validateStaffSession(token);
       if (!session) {
@@ -1057,7 +1059,7 @@ serve(async (req) => {
 
     // Get staff messages
     if (action === 'get-staff-messages') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       const staffId = body?.staffId;
       
       const session = await validateStaffSession(token);
@@ -1090,7 +1092,7 @@ serve(async (req) => {
 
     // Get audit logs (admin only)
     if (action === 'get-audit-logs') {
-      const token = body?.token || getTokenFromCookie(req);
+      const token = getTokenFromCookie(req);
       const { entityFilter, actionFilter, limit } = body;
       
       const session = await validateStaffSession(token);
@@ -1276,7 +1278,7 @@ serve(async (req) => {
     const duration = Date.now() - startTime;
     console.log('Login successful for user:', username, 'Duration:', duration, 'ms');
 
-    // Return success with token in body (for localStorage storage) AND httpOnly cookie as backup
+    // Security: Return success WITHOUT token in body - token is ONLY in httpOnly cookie
     return new Response(
       JSON.stringify({
         success: true,
@@ -1287,7 +1289,8 @@ serve(async (req) => {
           role: user.role,
         },
         expiresAt: expiresAt.toISOString(),
-        token: token, // Return token for client-side storage
+        // Token is intentionally NOT included in response body for security
+        // It's set in the httpOnly cookie which cannot be accessed by JavaScript
       }),
       { 
         status: 200, 

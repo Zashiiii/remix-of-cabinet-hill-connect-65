@@ -16,9 +16,9 @@ interface StaffAuthState {
 }
 
 const WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before expiry
-const STORAGE_KEY = 'bris_staff_session';
 
 // Helper function to call staff-auth edge function
+// Session tokens are managed via httpOnly cookies - no token in request body
 const callStaffAuthFunction = async (body: Record<string, unknown>): Promise<{ data: any; error: any }> => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -31,7 +31,7 @@ const callStaffAuthFunction = async (body: Record<string, unknown>): Promise<{ d
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`,
       },
-      credentials: 'include',
+      credentials: 'include', // Important: sends httpOnly cookies
       body: JSON.stringify(body),
     });
     
@@ -47,41 +47,6 @@ const callStaffAuthFunction = async (body: Record<string, unknown>): Promise<{ d
   }
 };
 
-// Get stored token from localStorage
-const getStoredToken = (): string | null => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored);
-    // Check if token is expired
-    if (parsed.expiresAt && new Date(parsed.expiresAt) < new Date()) {
-      localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-    return parsed.token;
-  } catch {
-    return null;
-  }
-};
-
-// Store token in localStorage
-const storeToken = (token: string, expiresAt: string) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, expiresAt }));
-  } catch (error) {
-    console.error('Failed to store session token:', error);
-  }
-};
-
-// Clear stored token
-const clearStoredToken = () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.error('Failed to clear session token:', error);
-  }
-};
-
 export const useStaffAuth = () => {
   const [authState, setAuthState] = useState<StaffAuthState>({
     user: null,
@@ -94,34 +59,22 @@ export const useStaffAuth = () => {
   const warningShownRef = useRef(false);
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check session on mount
+  // Check session on mount using httpOnly cookie
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
     const checkSession = async () => {
       try {
-        const storedToken = getStoredToken();
-        console.log('Checking session - stored token present:', !!storedToken);
+        console.log('Checking session via httpOnly cookie...');
         
-        if (!storedToken) {
-          setAuthState({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            expiresAt: null,
-          });
-          return;
-        }
-
+        // Call get-session - the server will read the httpOnly cookie
         const { data, error } = await callStaffAuthFunction({ 
-          action: 'get-session',
-          token: storedToken 
+          action: 'get-session'
         });
         
         if (error) {
           console.log('Session check error:', error);
-          clearStoredToken();
           setAuthState({
             user: null,
             isAuthenticated: false,
@@ -141,7 +94,6 @@ export const useStaffAuth = () => {
           });
         } else {
           console.log('No valid session found');
-          clearStoredToken();
           setAuthState({
             user: null,
             isAuthenticated: false,
@@ -151,7 +103,6 @@ export const useStaffAuth = () => {
         }
       } catch (error) {
         console.error('Session check error:', error);
-        clearStoredToken();
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -185,7 +136,6 @@ export const useStaffAuth = () => {
         toast.error('Your session has expired. Please login again.', {
           duration: 5000,
         });
-        clearStoredToken();
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -227,19 +177,13 @@ export const useStaffAuth = () => {
 
   const extendSession = useCallback(async () => {
     try {
-      const storedToken = getStoredToken();
+      // Session token is in httpOnly cookie - no need to send it
       const { data, error } = await callStaffAuthFunction({ 
-        action: 'extend',
-        token: storedToken 
+        action: 'extend'
       });
 
       if (data?.success && data?.expiresAt) {
         const newExpiresAt = new Date(data.expiresAt);
-        
-        // Update stored token expiry
-        if (storedToken) {
-          storeToken(storedToken, data.expiresAt);
-        }
         
         setAuthState(prev => ({
           ...prev,
@@ -259,13 +203,10 @@ export const useStaffAuth = () => {
 
   const validateSession = useCallback(async (): Promise<boolean> => {
     try {
-      const storedToken = getStoredToken();
-      if (!storedToken) return false;
-      
       console.log('Validating session with server...');
+      // Session token is in httpOnly cookie - no need to send it
       const { data, error } = await callStaffAuthFunction({ 
-        action: 'validate',
-        token: storedToken 
+        action: 'validate'
       });
 
       console.log('Validation response:', { data, error });
@@ -292,7 +233,7 @@ export const useStaffAuth = () => {
         password 
       });
 
-      console.log('Login response:', { data, error });
+      console.log('Login response:', { data: data ? { ...data, token: '[REDACTED]' } : null, error });
 
       if (error) {
         console.error('Login invoke error:', error);
@@ -303,13 +244,11 @@ export const useStaffAuth = () => {
         return { success: false, error: data.error, code: data.code };
       }
 
-      if (!data?.success || !data?.user || !data?.token) {
+      if (!data?.success || !data?.user) {
         return { success: false, error: 'Invalid response from server' };
       }
 
-      // Store token in localStorage
-      storeToken(data.token, data.expiresAt);
-
+      // Token is now set via httpOnly cookie by the server - no localStorage needed
       setAuthState({
         user: data.user,
         isAuthenticated: true,
@@ -328,10 +267,9 @@ export const useStaffAuth = () => {
   const logout = useCallback(async () => {
     try {
       console.log('Logging out...');
-      const storedToken = getStoredToken();
+      // Session token is in httpOnly cookie - server will clear it
       await callStaffAuthFunction({ 
-        action: 'logout',
-        token: storedToken 
+        action: 'logout'
       });
     } catch (error) {
       console.error('Logout error:', error);
@@ -339,7 +277,6 @@ export const useStaffAuth = () => {
       if (warningTimerRef.current) {
         clearTimeout(warningTimerRef.current);
       }
-      clearStoredToken();
       setAuthState({
         user: null,
         isAuthenticated: false,
