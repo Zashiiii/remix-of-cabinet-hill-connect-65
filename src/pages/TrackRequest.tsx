@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Search, Loader2 } from "lucide-react";
 import RequestStatusCard, { RequestData } from "@/components/RequestStatusCard";
 import { toast } from "sonner";
-import { trackRequest } from "@/utils/api";
+import { trackRequest, checkTrackingRateLimit } from "@/utils/api";
 import { supabase } from "@/integrations/supabase/client";
 
-// Client-side rate limiting for tracking requests
+// Client-side rate limiting for tracking requests (additional layer)
 const TRACK_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_TRACK_REQUESTS = 5; // 5 requests per minute
 
@@ -81,6 +81,15 @@ const TrackRequest = () => {
 
     try {
       setIsSearching(true);
+      
+      // Server-side rate limiting check
+      const rateLimitResult = await checkTrackingRateLimit();
+      if (!rateLimitResult.allowed) {
+        toast.error(`Too many requests. Please wait ${Math.ceil(rateLimitResult.retryAfterSeconds / 60)} minute(s) before trying again.`);
+        setIsSearching(false);
+        return;
+      }
+      
       const request = await trackRequest(controlNumber.trim());
       
       if (request) {

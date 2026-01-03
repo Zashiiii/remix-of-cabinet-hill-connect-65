@@ -1,5 +1,35 @@
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * Check server-side rate limiting for tracking requests
+ * Returns whether the request is allowed and retry time if not
+ */
+export const checkTrackingRateLimit = async (): Promise<{ allowed: boolean; retryAfterSeconds: number }> => {
+  try {
+    // Get client IP hint (will be replaced by actual IP on server)
+    const { data, error } = await supabase.rpc('check_tracking_rate_limit', {
+      p_ip_address: 'client' // Server will use actual IP from request headers
+    });
+
+    if (error) {
+      console.warn('Rate limit check failed, allowing request:', error);
+      return { allowed: true, retryAfterSeconds: 0 };
+    }
+
+    if (data && data.length > 0) {
+      return {
+        allowed: data[0].allowed,
+        retryAfterSeconds: data[0].retry_after_seconds || 0
+      };
+    }
+
+    return { allowed: true, retryAfterSeconds: 0 };
+  } catch (e) {
+    console.warn('Rate limit check error:', e);
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+};
+
 export interface CertificateRequestData {
   certificateType: string;
   fullName: string;
@@ -109,38 +139,11 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
     console.warn('Edge function unavailable, trying direct insert...', edgeFunctionError);
   }
 
-  // Fallback: Direct Supabase insert if edge function failed
+  // If edge function failed completely, throw an error - no fallback to direct insert
+  // This ensures rate limiting is always enforced via the edge function
   if (!controlNumber) {
-    console.log('Using fallback direct Supabase insert...');
-    
-    controlNumber = generateControlNumber();
-    
-    // Capitalize priority
-    const normalizedPriority = data.priority 
-      ? data.priority.charAt(0).toUpperCase() + data.priority.slice(1).toLowerCase()
-      : 'Regular';
-
-    const { error: insertError } = await supabase
-      .from('certificate_requests')
-      .insert({
-        control_number: controlNumber,
-        certificate_type: data.certificateType,
-        full_name: data.fullName,
-        contact_number: data.contactNumber,
-        email: data.email || null,
-        purpose: data.purpose,
-        priority: normalizedPriority,
-        status: 'Pending',
-        preferred_pickup_date: data.preferredPickupDate.toISOString().split('T')[0],
-        household_number: data.householdNumber || null,
-      });
-
-    if (insertError) {
-      console.error('Direct insert failed:', insertError);
-      throw new Error('Failed to submit request. Please try again or visit the barangay hall.');
-    }
-
-    console.log('Direct insert successful:', controlNumber);
+    console.error('Edge function submission failed - no fallback available');
+    throw new Error('Service temporarily unavailable. Please try again later or visit the barangay hall.');
   }
 
   // Store in localStorage for backward compatibility
