@@ -37,10 +37,10 @@ const AuditLogsTab = () => {
   const [entityFilter, setEntityFilter] = useState<string>("all");
   const [actionFilter, setActionFilter] = useState<string>("all");
 
-  const loadLogs = useCallback(async () => {
+  const loadLogs = useCallback(async (entity?: string, action?: string) => {
     setIsLoading(true);
     try {
-      const data = await getAuditLogs(entityFilter, actionFilter, 100);
+      const data = await getAuditLogs(entity || "all", action || "all", 50);
 
       if (data) {
         setLogs(data.map((log: any) => ({
@@ -60,11 +60,15 @@ const AuditLogsTab = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [entityFilter, actionFilter]);
+  }, []);
 
   useEffect(() => {
     loadLogs();
   }, [loadLogs]);
+
+  const handleApplyFilters = () => {
+    loadLogs(entityFilter, actionFilter);
+  };
 
   const filteredLogs = logs.filter(log =>
     log.performedBy.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -92,7 +96,7 @@ const AuditLogsTab = () => {
                 Track all system activities and changes
               </CardDescription>
             </div>
-            <Button variant="outline" onClick={loadLogs}>
+            <Button variant="outline" onClick={() => loadLogs(entityFilter, actionFilter)}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
@@ -137,6 +141,9 @@ const AuditLogsTab = () => {
                 <SelectItem value="reject">Reject</SelectItem>
               </SelectContent>
             </Select>
+            <Button onClick={handleApplyFilters} size="sm">
+              Apply
+            </Button>
           </div>
 
           {/* Logs Table */}
