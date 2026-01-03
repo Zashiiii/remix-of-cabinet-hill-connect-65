@@ -1,30 +1,12 @@
 /**
  * Staff API utilities
- * These functions call the staff-auth edge function with the stored session token
- * to perform database operations that bypass RLS
+ * These functions call the staff-auth edge function with httpOnly cookie-based authentication
+ * Session tokens are managed securely via cookies - not exposed to JavaScript
  */
-
-const STORAGE_KEY = 'bris_staff_session';
-
-const getStoredToken = (): string | null => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored);
-    if (parsed.expiresAt && new Date(parsed.expiresAt) < new Date()) {
-      localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-    return parsed.token;
-  } catch {
-    return null;
-  }
-};
 
 const callStaffApi = async (action: string, body: Record<string, unknown> = {}): Promise<any> => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  const token = getStoredToken();
 
   const response = await fetch(`${supabaseUrl}/functions/v1/staff-auth`, {
     method: 'POST',
@@ -33,8 +15,8 @@ const callStaffApi = async (action: string, body: Record<string, unknown> = {}):
       'apikey': supabaseKey,
       'Authorization': `Bearer ${supabaseKey}`,
     },
-    credentials: 'include',
-    body: JSON.stringify({ action, token, ...body }),
+    credentials: 'include', // Important: sends httpOnly cookies for authentication
+    body: JSON.stringify({ action, ...body }),
   });
 
   const data = await response.json();
