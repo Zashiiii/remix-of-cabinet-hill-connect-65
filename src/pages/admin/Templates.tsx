@@ -134,12 +134,28 @@ const AdminTemplates = () => {
       return;
     }
 
+    // Validate template content length
+    if (formData.templateContent.length > 50000) {
+      toast.error("Template content is too long (max 50,000 characters)");
+      return;
+    }
+
     setIsSaving(true);
     try {
+      // Sanitize template content before storing (defense-in-depth)
+      const sanitizedContent = DOMPurify.sanitize(formData.templateContent, {
+        ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'em', 'u', 
+          'span', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'ul', 'ol', 'li',
+          'img', 'hr', 'blockquote', 'pre', 'code', 'a', 'b', 'i', 'small', 'sub', 'sup'],
+        ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'href', 'target', 'colspan', 'rowspan', 
+          'width', 'height', 'align', 'valign', 'border', 'cellpadding', 'cellspacing'],
+        ALLOW_DATA_ATTR: false,
+      });
+
       const templateData = {
-        name: formData.name,
+        name: formData.name.slice(0, 100), // Limit name length
         certificate_type: formData.certificateType,
-        template_content: formData.templateContent,
+        template_content: sanitizedContent,
         is_active: formData.isActive,
         updated_at: new Date().toISOString(),
       };
