@@ -34,7 +34,7 @@ import { toast } from "sonner";
 import { useResidentAuth } from "@/hooks/useResidentAuth";
 import { supabase } from "@/integrations/supabase/client";
 import IncidentRequestForm from "@/components/resident/IncidentRequestForm";
-import { Home, User, FileText, Settings, LogOut } from "lucide-react";
+import { Home, User, FileText, Settings, LogOut, MessageSquare } from "lucide-react";
 import { logResidentLogout } from "@/utils/auditLog";
 
 interface Incident {
@@ -55,11 +55,13 @@ interface Incident {
 const ResidentSidebar = ({ 
   activeTab, 
   setActiveTab, 
-  onLogout 
+  onLogout,
+  unreadMessageCount,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
   onLogout: () => void;
+  unreadMessageCount?: number;
 }) => {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -69,6 +71,7 @@ const ResidentSidebar = ({
     { title: "My Profile", icon: User, tab: "profile" },
     { title: "Request Certificate", icon: FileText, tab: "request" },
     { title: "My Requests", icon: Clock, tab: "requests" },
+    { title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessageCount },
     { title: "Incident Reports", icon: AlertTriangle, tab: "incidents" },
     { title: "Settings", icon: Settings, tab: "settings" },
   ];
@@ -95,7 +98,21 @@ const ResidentSidebar = ({
                     className={`hover:bg-muted/50 ${activeTab === item.tab ? "bg-muted text-primary font-medium" : ""}`}
                   >
                     <item.icon className="h-4 w-4" />
-                    {!isCollapsed && <span>{item.title}</span>}
+                    {!isCollapsed && (
+                      <span className="flex items-center justify-between flex-1">
+                        {item.title}
+                        {item.badge && item.badge > 0 && (
+                          <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1.5 text-xs">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </span>
+                    )}
+                    {isCollapsed && item.badge && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
+                        {item.badge}
+                      </span>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -125,6 +142,7 @@ const ResidentIncidents = () => {
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [residentId, setResidentId] = useState<string | null>(null);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -135,8 +153,18 @@ const ResidentIncidents = () => {
   useEffect(() => {
     if (isAuthenticated && user) {
       loadResidentId();
+      loadUnreadMessageCount();
     }
   }, [isAuthenticated, user]);
+
+  const loadUnreadMessageCount = async () => {
+    if (user?.id) {
+      const { data: msgCount } = await supabase.rpc("get_resident_unread_message_count", {
+        p_user_id: user.id,
+      });
+      setUnreadMessageCount(msgCount || 0);
+    }
+  };
 
   const loadResidentId = async () => {
     try {
@@ -247,6 +275,8 @@ const ResidentIncidents = () => {
       navigate("/resident/settings");
     } else if (tab === "request") {
       navigate("/resident/dashboard");
+    } else if (tab === "messages") {
+      navigate("/resident/messages");
     }
   };
 
@@ -311,6 +341,7 @@ const ResidentIncidents = () => {
           activeTab="incidents" 
           setActiveTab={handleTabChange}
           onLogout={handleLogout}
+          unreadMessageCount={unreadMessageCount}
         />
         
         <main className="flex-1 p-4 md:p-6 overflow-auto">

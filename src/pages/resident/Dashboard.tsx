@@ -61,11 +61,13 @@ interface Announcement {
 const ResidentSidebar = ({ 
   activeTab, 
   setActiveTab, 
-  onLogout 
+  onLogout,
+  unreadMessageCount,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
   onLogout: () => void;
+  unreadMessageCount?: number;
 }) => {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -75,6 +77,7 @@ const ResidentSidebar = ({
     { title: "My Profile", icon: User, tab: "profile" },
     { title: "Request Certificate", icon: FileText, tab: "request" },
     { title: "My Requests", icon: Clock, tab: "requests" },
+    { title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessageCount },
     { title: "Incident Reports", icon: AlertCircle, tab: "incidents" },
     { title: "Settings", icon: Settings, tab: "settings" },
   ];
@@ -101,7 +104,21 @@ const ResidentSidebar = ({
                     className={`hover:bg-muted/50 ${activeTab === item.tab ? "bg-muted text-primary font-medium" : ""}`}
                   >
                     <item.icon className="h-4 w-4" />
-                    {!isCollapsed && <span>{item.title}</span>}
+                    {!isCollapsed && (
+                      <span className="flex items-center justify-between flex-1">
+                        {item.title}
+                        {item.badge && item.badge > 0 && (
+                          <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1.5 text-xs">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </span>
+                    )}
+                    {isCollapsed && item.badge && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
+                        {item.badge}
+                      </span>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -131,6 +148,7 @@ const ResidentDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submittedControlNumber, setSubmittedControlNumber] = useState("");
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   // Auth is now handled by ResidentProtectedRoute wrapper
 
@@ -173,6 +191,14 @@ const ResidentDashboard = () => {
           createdAt: new Date(a.created_at).toLocaleDateString(),
         })));
       }
+
+      // Load unread message count
+      if (user?.id) {
+        const { data: msgCount } = await supabase.rpc("get_resident_unread_message_count", {
+          p_user_id: user.id,
+        });
+        setUnreadMessageCount(msgCount || 0);
+      }
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -202,6 +228,8 @@ const ResidentDashboard = () => {
       navigate("/resident/settings");
     } else if (tab === "incidents") {
       navigate("/resident/incidents");
+    } else if (tab === "messages") {
+      navigate("/resident/messages");
     } else {
       setActiveTab(tab);
     }
@@ -256,6 +284,7 @@ const ResidentDashboard = () => {
           activeTab={activeTab} 
           setActiveTab={handleTabChange}
           onLogout={handleLogout}
+          unreadMessageCount={unreadMessageCount}
         />
         
         <main className="flex-1 p-4 md:p-6 overflow-auto">

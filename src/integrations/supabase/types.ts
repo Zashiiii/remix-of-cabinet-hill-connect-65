@@ -1181,6 +1181,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_resident_unread_message_count: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       get_residents_for_messaging_staff: {
         Args: { p_staff_id: string }
         Returns: {
@@ -1211,6 +1215,10 @@ export type Database = {
           sender_type: string
           subject: string
         }[]
+      }
+      get_staff_unread_message_count: {
+        Args: { p_staff_id: string }
+        Returns: number
       }
       has_role: {
         Args: {
