@@ -49,6 +49,7 @@ interface Incident {
   approvalStatus: string;
   rejectionReason?: string;
   createdAt: string;
+  photoEvidenceUrl?: string;
 }
 
 const ResidentSidebar = ({ 
@@ -180,6 +181,7 @@ const ResidentIncidents = () => {
           approvalStatus: i.approval_status || "pending",
           rejectionReason: i.rejection_reason || undefined,
           createdAt: new Date(i.created_at || "").toLocaleDateString(),
+          photoEvidenceUrl: i.photo_evidence_url || undefined,
         })));
       }
     } catch (error) {
@@ -406,10 +408,11 @@ const ResidentIncidents = () => {
                   Submit a new incident or complaint to the barangay
                 </DialogDescription>
               </DialogHeader>
-              {residentId && (
+              {residentId && user && (
                 <IncidentRequestForm
                   residentId={residentId}
                   residentName={residentName}
+                  userId={user.id}
                   onSuccess={handleSuccess}
                 />
               )}
@@ -468,6 +471,17 @@ const ResidentIncidents = () => {
                     <p className="text-muted-foreground text-sm mb-1">Description</p>
                     <p className="bg-muted p-3 rounded-lg text-sm">{selectedIncident.incidentDescription}</p>
                   </div>
+
+                  {selectedIncident.photoEvidenceUrl && (
+                    <div>
+                      <p className="text-muted-foreground text-sm mb-2">Photo Evidence</p>
+                      <img 
+                        src={selectedIncident.photoEvidenceUrl} 
+                        alt="Incident evidence" 
+                        className="max-h-64 rounded-lg object-contain border"
+                      />
+                    </div>
+                  )}
 
                   <div className="text-xs text-muted-foreground">
                     Submitted on {selectedIncident.createdAt}

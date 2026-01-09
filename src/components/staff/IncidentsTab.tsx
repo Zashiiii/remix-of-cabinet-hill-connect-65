@@ -63,6 +63,7 @@ interface Incident {
   reviewedBy?: string;
   reviewedAt?: string;
   rejectionReason?: string;
+  photoEvidenceUrl?: string;
 }
 
 const IncidentsTab = () => {
@@ -140,6 +141,7 @@ const IncidentsTab = () => {
           reviewedBy: i.reviewed_by || undefined,
           reviewedAt: i.reviewed_at ? new Date(i.reviewed_at).toLocaleDateString() : undefined,
           rejectionReason: i.rejection_reason || undefined,
+          photoEvidenceUrl: i.photo_evidence_url || undefined,
         })));
       }
     } catch (error) {
@@ -728,6 +730,16 @@ const IncidentsTab = () => {
                 <Label className="text-muted-foreground">Description</Label>
                 <p className="mt-1 bg-muted p-3 rounded-lg text-sm">{selectedIncident.incidentDescription}</p>
               </div>
+              {selectedIncident.photoEvidenceUrl && (
+                <div>
+                  <Label className="text-muted-foreground">Photo Evidence</Label>
+                  <img 
+                    src={selectedIncident.photoEvidenceUrl} 
+                    alt="Incident evidence" 
+                    className="mt-2 max-h-64 rounded-lg object-contain border"
+                  />
+                </div>
+              )}
               {selectedIncident.actionTaken && (
                 <div>
                   <Label className="text-muted-foreground">Action Taken</Label>
