@@ -120,6 +120,7 @@ import IncidentsTab from "@/components/staff/IncidentsTab";
 import SettingsTab from "@/components/staff/SettingsTab";
 import AuditLogsTab from "@/components/staff/AuditLogsTab";
 import ViewReportsTab from "@/components/staff/ViewReportsTab";
+import NameChangeRequestsTab from "@/components/staff/NameChangeRequestsTab";
 
 interface PendingRequest {
   id: string;
@@ -183,6 +184,7 @@ const StaffSidebar = ({
 
   const adminMenuItems = [
     { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount },
+    { title: "Name Change Requests", icon: User, tab: "name-change-requests" },
     { title: "Certificate Templates", icon: FileText, route: "/admin/templates" },
     { title: "Staff Management", icon: Shield, route: "/admin/staff" },
     { title: "Audit Logs", icon: History, tab: "audit-logs" },
@@ -2050,6 +2052,8 @@ const StaffDashboard = () => {
             {activeTab === "settings" && <SettingsTab />}
 
             {activeTab === "audit-logs" && <AuditLogsTab />}
+
+            {activeTab === "name-change-requests" && <NameChangeRequestsTab />}
           </main>
         </div>
       </div>

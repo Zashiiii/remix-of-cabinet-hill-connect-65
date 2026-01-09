@@ -605,6 +605,74 @@ export type Database = {
           },
         ]
       }
+      name_change_requests: {
+        Row: {
+          created_at: string | null
+          current_first_name: string
+          current_last_name: string
+          current_middle_name: string | null
+          current_suffix: string | null
+          id: string
+          reason: string
+          rejection_reason: string | null
+          requested_first_name: string
+          requested_last_name: string
+          requested_middle_name: string | null
+          requested_suffix: string | null
+          resident_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_first_name: string
+          current_last_name: string
+          current_middle_name?: string | null
+          current_suffix?: string | null
+          id?: string
+          reason: string
+          rejection_reason?: string | null
+          requested_first_name: string
+          requested_last_name: string
+          requested_middle_name?: string | null
+          requested_suffix?: string | null
+          resident_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_first_name?: string
+          current_last_name?: string
+          current_middle_name?: string | null
+          current_suffix?: string | null
+          id?: string
+          reason?: string
+          rejection_reason?: string | null
+          requested_first_name?: string
+          requested_last_name?: string
+          requested_middle_name?: string | null
+          requested_suffix?: string | null
+          resident_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "name_change_requests_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       residents: {
         Row: {
           approval_status: string | null
@@ -1036,6 +1104,29 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_name_change_requests_for_staff: {
+        Args: { p_status?: string }
+        Returns: {
+          created_at: string
+          current_first_name: string
+          current_last_name: string
+          current_middle_name: string
+          current_suffix: string
+          id: string
+          reason: string
+          rejection_reason: string
+          requested_first_name: string
+          requested_last_name: string
+          requested_middle_name: string
+          requested_suffix: string
+          resident_contact: string
+          resident_email: string
+          resident_id: string
+          reviewed_at: string
+          reviewed_by: string
+          status: string
+        }[]
+      }
       get_pending_registration_count: { Args: never; Returns: number }
       get_pending_registrations: {
         Args: never
@@ -1148,6 +1239,10 @@ export type Database = {
         Args: { p_incident_id: string; p_reviewed_by: string }
         Returns: undefined
       }
+      staff_approve_name_change: {
+        Args: { p_request_id: string; p_reviewed_by: string }
+        Returns: undefined
+      }
       staff_approve_resident: {
         Args: { p_approved_by: string; p_resident_id: string }
         Returns: undefined
@@ -1209,6 +1304,14 @@ export type Database = {
         Args: {
           p_incident_id: string
           p_rejection_reason: string
+          p_reviewed_by: string
+        }
+        Returns: undefined
+      }
+      staff_reject_name_change: {
+        Args: {
+          p_rejection_reason: string
+          p_request_id: string
           p_reviewed_by: string
         }
         Returns: undefined
