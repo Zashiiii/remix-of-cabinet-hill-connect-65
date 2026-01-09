@@ -96,29 +96,19 @@ const IncidentsTab = () => {
   const loadIncidents = useCallback(async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from("incidents")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Use RPC function to bypass RLS for staff session-based auth
+      const approvalFilter = activeTab === "all" ? null : activeTab;
+      const statusParam = activeTab === "approved" && statusFilter !== "all" ? statusFilter : null;
 
-      // Filter based on active tab
-      if (activeTab === "pending") {
-        query = query.eq("approval_status", "pending");
-      } else if (activeTab === "approved") {
-        query = query.eq("approval_status", "approved");
-        if (statusFilter !== "all") {
-          query = query.eq("status", statusFilter);
-        }
-      } else if (activeTab === "rejected") {
-        query = query.eq("approval_status", "rejected");
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc("get_all_incidents_for_staff", {
+        p_approval_status: approvalFilter,
+        p_status: statusParam,
+      });
 
       if (error) throw error;
 
       if (data) {
-        setIncidents(data.map(i => ({
+        setIncidents(data.map((i: any) => ({
           id: i.id,
           incidentNumber: i.incident_number,
           incidentDate: new Date(i.incident_date).toLocaleDateString(),
@@ -194,23 +184,18 @@ const IncidentsTab = () => {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase.from("incidents").insert({
-        incident_number: generateIncidentNumber(),
-        incident_date: formData.incidentDate,
-        incident_type: formData.incidentType,
-        complainant_name: formData.complainantName,
-        complainant_address: formData.complainantAddress || null,
-        complainant_contact: formData.complainantContact || null,
-        respondent_name: formData.respondentName || null,
-        respondent_address: formData.respondentAddress || null,
-        incident_location: formData.incidentLocation || null,
-        incident_description: formData.incidentDescription,
-        action_taken: formData.actionTaken || null,
-        status: "open",
-        reported_by: user?.fullName,
-        approval_status: "approved", // Staff-created incidents are auto-approved
-        reviewed_by: user?.fullName,
-        reviewed_at: new Date().toISOString(),
+      const { error } = await supabase.rpc("staff_create_incident", {
+        p_incident_type: formData.incidentType,
+        p_incident_date: formData.incidentDate,
+        p_complainant_name: formData.complainantName,
+        p_complainant_address: formData.complainantAddress || null,
+        p_complainant_contact: formData.complainantContact || null,
+        p_respondent_name: formData.respondentName || null,
+        p_respondent_address: formData.respondentAddress || null,
+        p_incident_location: formData.incidentLocation || null,
+        p_incident_description: formData.incidentDescription,
+        p_action_taken: formData.actionTaken || null,
+        p_reported_by: user?.fullName || "Staff",
       });
 
       if (error) throw error;
@@ -229,14 +214,10 @@ const IncidentsTab = () => {
 
   const handleApproveIncident = async (incident: Incident) => {
     try {
-      const { error } = await supabase
-        .from("incidents")
-        .update({
-          approval_status: "approved",
-          reviewed_by: user?.fullName,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq("id", incident.id);
+      const { error } = await supabase.rpc("staff_approve_incident", {
+        p_incident_id: incident.id,
+        p_reviewed_by: user?.fullName || "Staff",
+      });
 
       if (error) throw error;
 
@@ -256,15 +237,11 @@ const IncidentsTab = () => {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from("incidents")
-        .update({
-          approval_status: "rejected",
-          reviewed_by: user?.fullName,
-          reviewed_at: new Date().toISOString(),
-          rejection_reason: rejectionReason,
-        })
-        .eq("id", selectedIncident.id);
+      const { error } = await supabase.rpc("staff_reject_incident", {
+        p_incident_id: selectedIncident.id,
+        p_reviewed_by: user?.fullName || "Staff",
+        p_rejection_reason: rejectionReason,
+      });
 
       if (error) throw error;
 
@@ -283,19 +260,11 @@ const IncidentsTab = () => {
 
   const handleUpdateStatus = async (incident: Incident, newStatus: string) => {
     try {
-      const updateData: any = {
-        status: newStatus,
-        handled_by: user?.fullName,
-      };
-
-      if (newStatus === "resolved") {
-        updateData.resolution_date = new Date().toISOString();
-      }
-
-      const { error } = await supabase
-        .from("incidents")
-        .update(updateData)
-        .eq("id", incident.id);
+      const { error } = await supabase.rpc("staff_update_incident_status", {
+        p_incident_id: incident.id,
+        p_status: newStatus,
+        p_handled_by: user?.fullName || "Staff",
+      });
 
       if (error) throw error;
 
