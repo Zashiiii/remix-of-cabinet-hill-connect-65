@@ -116,11 +116,6 @@ const ResidentProfile = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.firstName || !formData.lastName) {
-      toast.error("First name and last name are required");
-      return;
-    }
-
     setIsSaving(true);
     try {
       // Check if profile exists
@@ -130,12 +125,9 @@ const ResidentProfile = () => {
         .eq("user_id", user?.id)
         .maybeSingle();
 
+      // Note: Name fields (first_name, middle_name, last_name, suffix) are NOT included
+      // Only staff can update name fields
       const profileData = {
-        user_id: user?.id,
-        first_name: formData.firstName,
-        middle_name: formData.middleName || null,
-        last_name: formData.lastName,
-        suffix: formData.suffix || null,
         gender: formData.gender || null,
         birth_date: formData.birthDate || null,
         civil_status: formData.civilStatus || null,
@@ -164,11 +156,11 @@ const ResidentProfile = () => {
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from("residents")
-          .insert(profileData);
-
-        if (error) throw error;
+        // Residents must have a profile created by staff/registration
+        // They can only update existing profiles, not create new ones
+        toast.error("Profile not found. Please contact barangay staff.");
+        setIsSaving(false);
+        return;
       }
 
       toast.success("Profile saved successfully");
@@ -231,30 +223,31 @@ const ResidentProfile = () => {
               <TabsContent value="personal" className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name *</Label>
+                    <Label htmlFor="firstName">First Name</Label>
                     <Input
                       id="firstName"
                       value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      placeholder="Juan"
+                      disabled
+                      className="bg-muted cursor-not-allowed"
                     />
+                    <p className="text-xs text-muted-foreground">Contact barangay staff to update your name</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="middleName">Middle Name</Label>
                     <Input
                       id="middleName"
                       value={formData.middleName}
-                      onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
-                      placeholder="Santos"
+                      disabled
+                      className="bg-muted cursor-not-allowed"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Label htmlFor="lastName">Last Name</Label>
                     <Input
                       id="lastName"
                       value={formData.lastName}
-                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      placeholder="Dela Cruz"
+                      disabled
+                      className="bg-muted cursor-not-allowed"
                     />
                   </div>
                   <div className="space-y-2">
@@ -262,8 +255,8 @@ const ResidentProfile = () => {
                     <Input
                       id="suffix"
                       value={formData.suffix}
-                      onChange={(e) => setFormData({ ...formData, suffix: e.target.value })}
-                      placeholder="Jr., Sr., III"
+                      disabled
+                      className="bg-muted cursor-not-allowed"
                     />
                   </div>
                 </div>
