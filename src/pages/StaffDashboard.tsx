@@ -1398,8 +1398,8 @@ const StaffDashboard = () => {
                   </div>
                 </div>
 
-                {/* Recent Activity Tables */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Recent Activity Tables - Stacked Vertically */}
+                <div className="space-y-6">
                   {/* Recent Certificate Requests */}
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
