@@ -161,14 +161,12 @@ const StaffSidebar = ({
   onLogout,
   userRole,
   pendingRegistrationCount,
-  unreadMessageCount,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
   onLogout: () => void;
   userRole?: string;
   pendingRegistrationCount?: number;
-  unreadMessageCount?: number;
 }) => {
   const { state } = useSidebar();
   const navigate = useNavigate();
@@ -180,7 +178,6 @@ const StaffSidebar = ({
     { title: "Manage Announcements", icon: Bell, tab: "announcements" },
     { title: "Manage Residents", icon: Users, tab: "residents" },
     { title: "Manage Households", icon: Home, tab: "households" },
-    { title: "Messages", icon: Mail, tab: "messages", route: "/staff/messages", badge: unreadMessageCount },
     { title: "View Reports", icon: BarChart3, tab: "view-reports" },
     { title: "Settings", icon: Settings, tab: "settings" },
   ];
@@ -226,21 +223,7 @@ const StaffSidebar = ({
                     className={`hover:bg-muted/50 ${activeTab === item.tab ? "bg-muted text-primary font-medium" : ""}`}
                   >
                     <item.icon className="h-4 w-4" />
-                    {!isCollapsed && (
-                      <span className="flex items-center justify-between flex-1">
-                        {item.title}
-                        {item.badge && item.badge > 0 && (
-                          <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1.5 text-xs">
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </span>
-                    )}
-                    {isCollapsed && item.badge && item.badge > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
-                        {item.badge}
-                      </span>
-                    )}
+                    {!isCollapsed && <span>{item.title}</span>}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -328,7 +311,6 @@ const StaffDashboard = () => {
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
   const [totalResidents, setTotalResidents] = useState(0);
   const [pendingRegistrationCount, setPendingRegistrationCount] = useState(0);
-  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   // Recent incidents state for home page
   interface RecentIncident {
@@ -461,13 +443,6 @@ const StaffDashboard = () => {
       const pendingCount = await getPendingRegistrationCount();
       setPendingRegistrationCount(pendingCount || 0);
 
-      // Get unread message count for staff
-      if (user?.id) {
-        const { data: msgCount } = await supabase.rpc("get_staff_unread_message_count", {
-          p_staff_id: user.id,
-        });
-        setUnreadMessageCount(msgCount || 0);
-      }
 
       // Load incidents for home page
       const { data: incidentData } = await supabase.rpc("get_all_incidents_for_staff", {
@@ -1292,7 +1267,7 @@ const StaffDashboard = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} unreadMessageCount={unreadMessageCount} />
+        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} />
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}

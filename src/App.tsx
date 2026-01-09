@@ -25,7 +25,7 @@ import StaffIncidents from "./pages/staff/Incidents";
 import StaffSettings from "./pages/staff/Settings";
 import StaffResidents from "./pages/staff/Residents";
 import StaffHouseholds from "./pages/staff/Households";
-import StaffMessages from "./pages/staff/Messages";
+
 import AdminTemplates from "./pages/admin/Templates";
 import AdminStaffManagement from "./pages/admin/StaffManagement";
 import AdminAuditLogs from "./pages/admin/AuditLogs";
@@ -92,11 +92,6 @@ const AppContent = () => {
         <Route path="/staff/households" element={
           <StaffProtectedRoute>
             <StaffHouseholds />
-          </StaffProtectedRoute>
-        } />
-        <Route path="/staff/messages" element={
-          <StaffProtectedRoute>
-            <StaffMessages />
           </StaffProtectedRoute>
         } />
         
