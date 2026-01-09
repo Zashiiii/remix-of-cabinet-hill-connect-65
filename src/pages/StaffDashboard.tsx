@@ -318,8 +318,10 @@ const StaffDashboard = () => {
     incidentType: string;
     incidentDate: string;
     approvalStatus: string;
+    reviewedAt?: string;
   }
   const [recentIncidents, setRecentIncidents] = useState<RecentIncident[]>([]);
+  const [allIncidents, setAllIncidents] = useState<RecentIncident[]>([]);
 
   // View Details Dialog state
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -439,20 +441,23 @@ const StaffDashboard = () => {
       const pendingCount = await getPendingRegistrationCount();
       setPendingRegistrationCount(pendingCount || 0);
 
-      // Load recent incidents for home page
+      // Load incidents for home page
       const { data: incidentData } = await supabase.rpc("get_all_incidents_for_staff", {
         p_approval_status: null,
         p_status: null,
       });
       if (incidentData) {
-        setRecentIncidents(incidentData.slice(0, 5).map((i: any) => ({
+        const mappedIncidents = incidentData.map((i: any) => ({
           id: i.id,
           incidentNumber: i.incident_number,
           complainantName: i.complainant_name,
           incidentType: i.incident_type,
           incidentDate: new Date(i.incident_date).toLocaleDateString(),
           approvalStatus: i.approval_status || "pending",
-        })));
+          reviewedAt: i.reviewed_at,
+        }));
+        setAllIncidents(mappedIncidents);
+        setRecentIncidents(mappedIncidents.slice(0, 5));
       }
 
     } catch (error) {
@@ -1328,14 +1333,22 @@ const StaffDashboard = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">
-                        {requests.filter(r => {
-                          if (r.status !== "approved" && r.status !== "rejected") return false;
+                        {(() => {
                           const today = new Date().toDateString();
-                          const processedDate = r.processedDate ? new Date(r.processedDate).toDateString() : null;
-                          return processedDate === today;
-                        }).length}
+                          const certCount = requests.filter(r => {
+                            if (r.status !== "approved" && r.status !== "rejected") return false;
+                            const processedDate = r.processedDate ? new Date(r.processedDate).toDateString() : null;
+                            return processedDate === today;
+                          }).length;
+                          const incidentCount = allIncidents.filter(i => {
+                            if (i.approvalStatus !== "approved" && i.approvalStatus !== "rejected") return false;
+                            const reviewedDate = i.reviewedAt ? new Date(i.reviewedAt).toDateString() : null;
+                            return reviewedDate === today;
+                          }).length;
+                          return certCount + incidentCount;
+                        })()}
                       </div>
-                      <p className="text-xs text-muted-foreground">Certificates processed</p>
+                      <p className="text-xs text-muted-foreground">Certificates & incidents processed</p>
                     </CardContent>
                   </Card>
 
