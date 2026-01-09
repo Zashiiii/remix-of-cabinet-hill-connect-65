@@ -83,9 +83,12 @@ const StaffChatWidget = () => {
   }, [selectedConversation?.replies]);
 
   const loadResidents = async () => {
+    if (!user?.id) return;
     setIsLoadingResidents(true);
     try {
-      const { data, error } = await supabase.rpc("get_residents_for_messaging");
+      const { data, error } = await supabase.rpc("get_residents_for_messaging_staff", {
+        p_staff_id: user.id,
+      });
       if (error) throw error;
       setResidents(data || []);
     } catch (error) {
