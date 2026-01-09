@@ -8,7 +8,9 @@ import {
   Eye,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  UserCheck,
+  UserX
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,6 +58,11 @@ interface Incident {
   handledBy?: string;
   resolutionDate?: string;
   resolutionNotes?: string;
+  submittedByResidentId?: string;
+  approvalStatus?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
 }
 
 const IncidentsTab = () => {
@@ -63,10 +71,13 @@ const IncidentsTab = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState("pending");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const [formData, setFormData] = useState({
     incidentType: "",
@@ -89,8 +100,16 @@ const IncidentsTab = () => {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
+      // Filter based on active tab
+      if (activeTab === "pending") {
+        query = query.eq("approval_status", "pending");
+      } else if (activeTab === "approved") {
+        query = query.eq("approval_status", "approved");
+        if (statusFilter !== "all") {
+          query = query.eq("status", statusFilter);
+        }
+      } else if (activeTab === "rejected") {
+        query = query.eq("approval_status", "rejected");
       }
 
       const { data, error } = await query;
@@ -116,6 +135,11 @@ const IncidentsTab = () => {
           handledBy: i.handled_by || undefined,
           resolutionDate: i.resolution_date ? new Date(i.resolution_date).toLocaleDateString() : undefined,
           resolutionNotes: i.resolution_notes || undefined,
+          submittedByResidentId: i.submitted_by_resident_id || undefined,
+          approvalStatus: i.approval_status || "pending",
+          reviewedBy: i.reviewed_by || undefined,
+          reviewedAt: i.reviewed_at ? new Date(i.reviewed_at).toLocaleDateString() : undefined,
+          rejectionReason: i.rejection_reason || undefined,
         })));
       }
     } catch (error) {
@@ -124,10 +148,32 @@ const IncidentsTab = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter]);
+  }, [activeTab, statusFilter]);
 
   useEffect(() => {
     loadIncidents();
+  }, [loadIncidents]);
+
+  // Realtime subscription for incidents
+  useEffect(() => {
+    const channel = supabase
+      .channel('staff-incidents')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'incidents'
+        },
+        () => {
+          loadIncidents();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [loadIncidents]);
 
   const generateIncidentNumber = () => {
@@ -160,6 +206,9 @@ const IncidentsTab = () => {
         action_taken: formData.actionTaken || null,
         status: "open",
         reported_by: user?.fullName,
+        approval_status: "approved", // Staff-created incidents are auto-approved
+        reviewed_by: user?.fullName,
+        reviewed_at: new Date().toISOString(),
       });
 
       if (error) throw error;
@@ -171,6 +220,60 @@ const IncidentsTab = () => {
     } catch (error: any) {
       console.error("Error creating incident:", error);
       toast.error(error.message || "Failed to create incident");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleApproveIncident = async (incident: Incident) => {
+    try {
+      const { error } = await supabase
+        .from("incidents")
+        .update({
+          approval_status: "approved",
+          reviewed_by: user?.fullName,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", incident.id);
+
+      if (error) throw error;
+
+      toast.success("Incident report approved");
+      loadIncidents();
+    } catch (error: any) {
+      console.error("Error approving incident:", error);
+      toast.error("Failed to approve incident");
+    }
+  };
+
+  const handleRejectIncident = async () => {
+    if (!selectedIncident || !rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("incidents")
+        .update({
+          approval_status: "rejected",
+          reviewed_by: user?.fullName,
+          reviewed_at: new Date().toISOString(),
+          rejection_reason: rejectionReason,
+        })
+        .eq("id", selectedIncident.id);
+
+      if (error) throw error;
+
+      toast.success("Incident report rejected");
+      setShowRejectDialog(false);
+      setRejectionReason("");
+      setSelectedIncident(null);
+      loadIncidents();
+    } catch (error: any) {
+      console.error("Error rejecting incident:", error);
+      toast.error("Failed to reject incident");
     } finally {
       setIsSaving(false);
     }
@@ -235,11 +338,30 @@ const IncidentsTab = () => {
     );
   };
 
+  const getApprovalBadge = (status: string) => {
+    const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
+      pending: { variant: "secondary", icon: <Clock className="h-3 w-3 mr-1" /> },
+      approved: { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" /> },
+      rejected: { variant: "destructive", icon: <XCircle className="h-3 w-3 mr-1" /> },
+    };
+
+    const { variant, icon } = config[status] || config.pending;
+
+    return (
+      <Badge variant={variant} className="capitalize">
+        {icon}
+        {status}
+      </Badge>
+    );
+  };
+
   const filteredIncidents = incidents.filter(i => 
     i.complainantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     i.incidentNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
     i.incidentType.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const pendingCount = incidents.filter(i => i.approvalStatus === "pending").length;
 
   return (
     <Card>
@@ -261,6 +383,21 @@ const IncidentsTab = () => {
         </div>
       </CardHeader>
       <CardContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+          <TabsList>
+            <TabsTrigger value="pending" className="relative">
+              Pending Review
+              {pendingCount > 0 && (
+                <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {pendingCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="approved">Approved</TabsTrigger>
+            <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -271,19 +408,21 @@ const IncidentsTab = () => {
               className="pl-10"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="investigating">Investigating</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
+          {activeTab === "approved" && (
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="investigating">Investigating</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {isLoading ? (
@@ -295,9 +434,11 @@ const IncidentsTab = () => {
             <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
             <h3 className="font-medium text-lg mb-2">No Incidents Found</h3>
             <p className="text-muted-foreground">
-              {searchQuery || statusFilter !== "all" 
+              {searchQuery 
                 ? "No incidents match your search criteria."
-                : "No incidents have been logged yet."}
+                : activeTab === "pending" 
+                  ? "No pending incident reports to review."
+                  : "No incidents in this category."}
             </p>
           </div>
         ) : (
@@ -309,7 +450,8 @@ const IncidentsTab = () => {
                   <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Complainant</TableHead>
-                  <TableHead>Status</TableHead>
+                  {activeTab === "approved" && <TableHead>Status</TableHead>}
+                  {activeTab === "pending" && <TableHead>Source</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -320,7 +462,16 @@ const IncidentsTab = () => {
                     <TableCell>{incident.incidentDate}</TableCell>
                     <TableCell>{incident.incidentType}</TableCell>
                     <TableCell>{incident.complainantName}</TableCell>
-                    <TableCell>{getStatusBadge(incident.status)}</TableCell>
+                    {activeTab === "approved" && (
+                      <TableCell>{getStatusBadge(incident.status)}</TableCell>
+                    )}
+                    {activeTab === "pending" && (
+                      <TableCell>
+                        <Badge variant="outline">
+                          {incident.submittedByResidentId ? "Resident" : "Staff"}
+                        </Badge>
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
@@ -333,23 +484,52 @@ const IncidentsTab = () => {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {incident.status === "open" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUpdateStatus(incident, "investigating")}
-                          >
-                            Investigate
-                          </Button>
+                        
+                        {activeTab === "pending" && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-green-600 hover:text-green-700"
+                              onClick={() => handleApproveIncident(incident)}
+                            >
+                              <UserCheck className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => {
+                                setSelectedIncident(incident);
+                                setShowRejectDialog(true);
+                              }}
+                            >
+                              <UserX className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
-                        {incident.status === "investigating" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUpdateStatus(incident, "resolved")}
-                          >
-                            Resolve
-                          </Button>
+                        
+                        {activeTab === "approved" && (
+                          <>
+                            {incident.status === "open" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleUpdateStatus(incident, "investigating")}
+                              >
+                                Investigate
+                              </Button>
+                            )}
+                            {incident.status === "investigating" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleUpdateStatus(incident, "resolved")}
+                              >
+                                Resolve
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </TableCell>
@@ -500,10 +680,25 @@ const IncidentsTab = () => {
           </DialogHeader>
           {selectedIncident && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="font-medium">{selectedIncident.incidentNumber}</span>
-                {getStatusBadge(selectedIncident.status)}
+                <div className="flex gap-2">
+                  {getApprovalBadge(selectedIncident.approvalStatus || "pending")}
+                  {selectedIncident.approvalStatus === "approved" && getStatusBadge(selectedIncident.status)}
+                </div>
               </div>
+              
+              {selectedIncident.submittedByResidentId && (
+                <Badge variant="outline" className="text-xs">Submitted by Resident</Badge>
+              )}
+
+              {selectedIncident.rejectionReason && (
+                <div className="bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+                  <p className="font-medium text-destructive text-sm">Rejection Reason:</p>
+                  <p className="text-sm">{selectedIncident.rejectionReason}</p>
+                </div>
+              )}
+
               <Separator />
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -522,10 +717,16 @@ const IncidentsTab = () => {
                   <Label className="text-muted-foreground">Respondent</Label>
                   <p>{selectedIncident.respondentName || "N/A"}</p>
                 </div>
+                {selectedIncident.incidentLocation && (
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">Location</Label>
+                    <p>{selectedIncident.incidentLocation}</p>
+                  </div>
+                )}
               </div>
               <div>
                 <Label className="text-muted-foreground">Description</Label>
-                <p className="mt-1">{selectedIncident.incidentDescription}</p>
+                <p className="mt-1 bg-muted p-3 rounded-lg text-sm">{selectedIncident.incidentDescription}</p>
               </div>
               {selectedIncident.actionTaken && (
                 <div>
@@ -533,8 +734,51 @@ const IncidentsTab = () => {
                   <p className="mt-1">{selectedIncident.actionTaken}</p>
                 </div>
               )}
+              {selectedIncident.reviewedBy && (
+                <div className="text-xs text-muted-foreground">
+                  Reviewed by {selectedIncident.reviewedBy} on {selectedIncident.reviewedAt}
+                </div>
+              )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Incident Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Incident Report</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this incident report.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label>Rejection Reason *</Label>
+            <Textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Explain why this incident report is being rejected..."
+              rows={4}
+              className="mt-2"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowRejectDialog(false);
+              setRejectionReason("");
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleRejectIncident} 
+              disabled={isSaving || !rejectionReason.trim()}
+            >
+              {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Reject Report
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
