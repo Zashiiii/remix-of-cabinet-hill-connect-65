@@ -554,11 +554,16 @@ const StaffChatWidget = () => {
                               {message.content}
                             </p>
                           </div>
-                          {message.replies && message.replies.length > 0 && (
-                            <Badge variant="outline" className="text-[10px] shrink-0">
-                              {message.replies.length} replies
-                            </Badge>
-                          )}
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {message.createdAt}
+                            </span>
+                            {message.replies && message.replies.length > 0 && (
+                              <Badge variant="outline" className="text-[10px]">
+                                {message.replies.length} replies
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
