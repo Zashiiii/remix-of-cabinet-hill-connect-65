@@ -965,6 +965,42 @@ export type Database = {
           suffix: string
         }[]
       }
+      get_incidents_for_staff: {
+        Args: { p_status_filter?: string }
+        Returns: {
+          action_taken: string | null
+          approval_status: string | null
+          complainant_address: string | null
+          complainant_contact: string | null
+          complainant_name: string
+          created_at: string | null
+          handled_by: string | null
+          id: string
+          incident_date: string
+          incident_description: string
+          incident_location: string | null
+          incident_number: string
+          incident_type: string
+          photo_evidence_url: string | null
+          rejection_reason: string | null
+          reported_by: string | null
+          resolution_date: string | null
+          resolution_notes: string | null
+          respondent_address: string | null
+          respondent_name: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          submitted_by_resident_id: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "incidents"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_pending_registration_count: { Args: never; Returns: number }
       get_pending_registrations: {
         Args: never

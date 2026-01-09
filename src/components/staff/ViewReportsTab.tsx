@@ -89,21 +89,15 @@ const ViewReportsTab = () => {
 
   const loadIncidents = useCallback(async () => {
     try {
-      let query = supabase
-        .from("incidents")
-        .select("*")
-        .not("submitted_by_resident_id", "is", null)
-        .order("created_at", { ascending: false });
+      const filterToSend = statusFilter !== "all" ? statusFilter : null;
+      const { data, error } = await supabase.rpc("get_incidents_for_staff", {
+        p_status_filter: filterToSend,
+      });
 
-      if (statusFilter !== "all") {
-        query = query.eq("approval_status", statusFilter);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
 
       if (data) {
-        setIncidents(data.map(i => ({
+        setIncidents(data.map((i: any) => ({
           id: i.id,
           incidentNumber: i.incident_number,
           incidentDate: new Date(i.incident_date).toLocaleDateString(),
