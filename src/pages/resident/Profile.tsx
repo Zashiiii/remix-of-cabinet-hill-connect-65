@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Loader2, User, Home, Phone, Mail, Calendar, Briefcase, GraduationCap, Heart, Users } from "lucide-react";
+import { ArrowLeft, Save, Loader2, User, Home, Phone, Mail, Calendar, Briefcase, GraduationCap, Heart, Users, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useResidentAuth } from "@/hooks/useResidentAuth";
 import { supabase } from "@/integrations/supabase/client";
+import NameChangeRequestForm from "@/components/resident/NameChangeRequestForm";
 
 const RELATIONS = ["Head", "Spouse", "Son", "Daughter", "Father", "Mother", "Brother", "Sister", "Grandchild", "Other Relative", "Non-Relative"];
 const CIVIL_STATUS = ["Single", "Married", "Widowed", "Separated", "Divorced", "Common Law"];
@@ -26,6 +27,8 @@ const ResidentProfile = () => {
   const { user, profile, isAuthenticated, isLoading: authLoading, refetchProfile } = useResidentAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [residentId, setResidentId] = useState<string | null>(null);
+  const [showNameChangeForm, setShowNameChangeForm] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -76,6 +79,7 @@ const ResidentProfile = () => {
         .maybeSingle();
 
       if (data) {
+        setResidentId(data.id);
         setFormData({
           firstName: data.first_name || "",
           middleName: data.middle_name || "",
@@ -230,7 +234,6 @@ const ResidentProfile = () => {
                       disabled
                       className="bg-muted cursor-not-allowed"
                     />
-                    <p className="text-xs text-muted-foreground">Contact barangay staff to update your name</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="middleName">Middle Name</Label>
@@ -260,6 +263,22 @@ const ResidentProfile = () => {
                     />
                   </div>
                 </div>
+
+                {residentId && (
+                  <div className="p-3 bg-muted/50 rounded-lg border">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Found a typo in your name? You can request a correction.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowNameChangeForm(true)}
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Request Name Change
+                    </Button>
+                  </div>
+                )}
 
                 <Separator />
 
@@ -519,6 +538,22 @@ const ResidentProfile = () => {
             </Tabs>
           </CardContent>
         </Card>
+
+        {/* Name Change Request Form */}
+        {residentId && (
+          <NameChangeRequestForm
+            open={showNameChangeForm}
+            onOpenChange={setShowNameChangeForm}
+            residentId={residentId}
+            currentName={{
+              firstName: formData.firstName,
+              middleName: formData.middleName,
+              lastName: formData.lastName,
+              suffix: formData.suffix,
+            }}
+            onSuccess={loadProfile}
+          />
+        )}
       </div>
     </div>
   );
