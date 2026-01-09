@@ -457,6 +457,7 @@ export type Database = {
           incident_location: string | null
           incident_number: string
           incident_type: string
+          photo_evidence_url: string | null
           rejection_reason: string | null
           reported_by: string | null
           resolution_date: string | null
@@ -483,6 +484,7 @@ export type Database = {
           incident_location?: string | null
           incident_number: string
           incident_type: string
+          photo_evidence_url?: string | null
           rejection_reason?: string | null
           reported_by?: string | null
           resolution_date?: string | null
@@ -509,6 +511,7 @@ export type Database = {
           incident_location?: string | null
           incident_number?: string
           incident_type?: string
+          photo_evidence_url?: string | null
           rejection_reason?: string | null
           reported_by?: string | null
           resolution_date?: string | null
