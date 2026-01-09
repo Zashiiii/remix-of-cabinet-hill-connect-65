@@ -310,6 +310,17 @@ const StaffDashboard = () => {
   const [totalResidents, setTotalResidents] = useState(0);
   const [pendingRegistrationCount, setPendingRegistrationCount] = useState(0);
 
+  // Recent incidents state for home page
+  interface RecentIncident {
+    id: string;
+    incidentNumber: string;
+    complainantName: string;
+    incidentType: string;
+    incidentDate: string;
+    approvalStatus: string;
+  }
+  const [recentIncidents, setRecentIncidents] = useState<RecentIncident[]>([]);
+
   // View Details Dialog state
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [detailsRequest, setDetailsRequest] = useState<PendingRequest | null>(null);
@@ -428,9 +439,25 @@ const StaffDashboard = () => {
       const pendingCount = await getPendingRegistrationCount();
       setPendingRegistrationCount(pendingCount || 0);
 
+      // Load recent incidents for home page
+      const { data: incidentData } = await supabase.rpc("get_all_incidents_for_staff", {
+        p_approval_status: null,
+        p_status: null,
+      });
+      if (incidentData) {
+        setRecentIncidents(incidentData.slice(0, 5).map((i: any) => ({
+          id: i.id,
+          incidentNumber: i.incident_number,
+          complainantName: i.complainant_name,
+          incidentType: i.incident_type,
+          incidentDate: new Date(i.incident_date).toLocaleDateString(),
+          approvalStatus: i.approval_status || "pending",
+        })));
+      }
+
     } catch (error) {
       console.error("Error loading requests:", error);
-      toast.error("Failed to load certificate requests");
+      toast.error("Failed to load data");
     } finally {
       setIsDataLoading(false);
     }
@@ -1371,44 +1398,114 @@ const StaffDashboard = () => {
                   </div>
                 </div>
 
-                {/* Recent Requests */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Recent Certificate Requests</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {requests.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p>No certificate requests yet</p>
-                        <p className="text-sm">Requests submitted by residents will appear here</p>
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Request ID</TableHead>
-                            <TableHead>Resident Name</TableHead>
-                            <TableHead>Certificate Type</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {requests.slice(0, 5).map((request) => (
-                            <TableRow key={request.id}>
-                              <TableCell className="font-medium">{request.id}</TableCell>
-                              <TableCell>{request.residentName}</TableCell>
-                              <TableCell>{request.certificateType}</TableCell>
-                              <TableCell>{request.dateSubmitted}</TableCell>
-                              <TableCell>{getStatusBadge(request.status)}</TableCell>
+                {/* Recent Activity Tables */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Recent Certificate Requests */}
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle className="text-lg">Recent Certificate Requests</CardTitle>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setActiveTab("certificate-requests")}
+                        className="text-primary hover:text-primary/80"
+                      >
+                        View All →
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      {requests.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground">
+                          <FileText className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No certificate requests yet</p>
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Request ID</TableHead>
+                              <TableHead>Resident</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Status</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
+                          </TableHeader>
+                          <TableBody>
+                            {requests.slice(0, 5).map((request) => (
+                              <TableRow key={request.id}>
+                                <TableCell className="font-medium text-xs">{request.id}</TableCell>
+                                <TableCell className="text-sm">{request.residentName}</TableCell>
+                                <TableCell className="text-sm">{request.certificateType}</TableCell>
+                                <TableCell className="text-sm">{request.dateSubmitted}</TableCell>
+                                <TableCell>{getStatusBadge(request.status)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Recent Incident/Blotter Reports */}
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle className="text-lg">Recent Incident/Blotter Reports</CardTitle>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setActiveTab("incidents")}
+                        className="text-primary hover:text-primary/80"
+                      >
+                        View All →
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      {recentIncidents.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground">
+                          <AlertTriangle className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No incident reports yet</p>
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Report ID</TableHead>
+                              <TableHead>Complainant</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {recentIncidents.map((incident) => (
+                              <TableRow key={incident.id}>
+                                <TableCell className="font-medium text-xs">{incident.incidentNumber}</TableCell>
+                                <TableCell className="text-sm">{incident.complainantName}</TableCell>
+                                <TableCell className="text-sm">{incident.incidentType}</TableCell>
+                                <TableCell className="text-sm">{incident.incidentDate}</TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={
+                                      incident.approvalStatus === "approved" ? "outline" :
+                                      incident.approvalStatus === "rejected" ? "destructive" :
+                                      "secondary"
+                                    }
+                                    className="capitalize"
+                                  >
+                                    {incident.approvalStatus === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
+                                    {incident.approvalStatus === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
+                                    {incident.approvalStatus === "pending" && <Clock className="h-3 w-3 mr-1" />}
+                                    {incident.approvalStatus}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </>
             )}
 
