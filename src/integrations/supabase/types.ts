@@ -917,6 +917,42 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_all_incidents_for_staff: {
+        Args: { p_approval_status?: string; p_status?: string }
+        Returns: {
+          action_taken: string | null
+          approval_status: string | null
+          complainant_address: string | null
+          complainant_contact: string | null
+          complainant_name: string
+          created_at: string | null
+          handled_by: string | null
+          id: string
+          incident_date: string
+          incident_description: string
+          incident_location: string | null
+          incident_number: string
+          incident_type: string
+          photo_evidence_url: string | null
+          rejection_reason: string | null
+          reported_by: string | null
+          resolution_date: string | null
+          resolution_notes: string | null
+          respondent_address: string | null
+          respondent_name: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          submitted_by_resident_id: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "incidents"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_all_residents_for_staff: {
         Args: never
         Returns: {
@@ -1145,6 +1181,22 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      staff_create_incident: {
+        Args: {
+          p_action_taken?: string
+          p_complainant_address?: string
+          p_complainant_contact?: string
+          p_complainant_name: string
+          p_incident_date: string
+          p_incident_description?: string
+          p_incident_location?: string
+          p_incident_type: string
+          p_reported_by?: string
+          p_respondent_address?: string
+          p_respondent_name?: string
+        }
+        Returns: string
+      }
       staff_delete_announcement: { Args: { p_id: string }; Returns: undefined }
       staff_delete_resident: {
         Args: { p_resident_id: string }
@@ -1203,6 +1255,10 @@ export type Database = {
           p_title_tl?: string
           p_type?: string
         }
+        Returns: undefined
+      }
+      staff_update_incident_status: {
+        Args: { p_handled_by: string; p_incident_id: string; p_status: string }
         Returns: undefined
       }
       staff_update_request_status: {
