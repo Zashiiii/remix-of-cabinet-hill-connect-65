@@ -186,19 +186,16 @@ const ViewReportsTab = () => {
   const handleApproveIncident = async (incident: IncidentReport) => {
     setIsProcessing(true);
     try {
-      const { error } = await supabase
-        .from("incidents")
-        .update({
-          approval_status: "approved",
-          reviewed_by: user?.fullName,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq("id", incident.id);
+      const { error } = await supabase.rpc("staff_approve_incident", {
+        p_incident_id: incident.id,
+        p_reviewed_by: user?.fullName || "Staff",
+      });
 
       if (error) throw error;
       toast.success("Incident report approved");
       loadIncidents();
     } catch (error) {
+      console.error("Error approving incident:", error);
       toast.error("Failed to approve incident");
     } finally {
       setIsProcessing(false);
@@ -213,15 +210,11 @@ const ViewReportsTab = () => {
 
     setIsProcessing(true);
     try {
-      const { error } = await supabase
-        .from("incidents")
-        .update({
-          approval_status: "rejected",
-          reviewed_by: user?.fullName,
-          reviewed_at: new Date().toISOString(),
-          rejection_reason: incidentRejectionReason,
-        })
-        .eq("id", selectedIncident.id);
+      const { error } = await supabase.rpc("staff_reject_incident", {
+        p_incident_id: selectedIncident.id,
+        p_reviewed_by: user?.fullName || "Staff",
+        p_rejection_reason: incidentRejectionReason,
+      });
 
       if (error) throw error;
       toast.success("Incident report rejected");
@@ -230,6 +223,7 @@ const ViewReportsTab = () => {
       setSelectedIncident(null);
       loadIncidents();
     } catch (error) {
+      console.error("Error rejecting incident:", error);
       toast.error("Failed to reject incident");
     } finally {
       setIsProcessing(false);

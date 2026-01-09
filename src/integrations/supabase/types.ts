@@ -1109,6 +1109,10 @@ export type Database = {
         }
         Returns: string
       }
+      staff_approve_incident: {
+        Args: { p_incident_id: string; p_reviewed_by: string }
+        Returns: undefined
+      }
       staff_approve_resident: {
         Args: { p_approved_by: string; p_resident_id: string }
         Returns: undefined
@@ -1148,6 +1152,14 @@ export type Database = {
       }
       staff_mark_message_read: {
         Args: { p_message_id: string }
+        Returns: undefined
+      }
+      staff_reject_incident: {
+        Args: {
+          p_incident_id: string
+          p_rejection_reason: string
+          p_reviewed_by: string
+        }
         Returns: undefined
       }
       staff_reject_resident: {
