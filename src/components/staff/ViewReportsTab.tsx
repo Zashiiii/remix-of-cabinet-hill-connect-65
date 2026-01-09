@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { format } from "date-fns";
 import { 
   FileText, 
   AlertTriangle, 
@@ -11,7 +12,8 @@ import {
   Filter,
   UserCheck,
   UserX,
-  Image as ImageIcon
+  CalendarIcon,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,10 +26,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getCertificateRequests, updateCertificateRequestStatus } from "@/utils/staffApi";
+import { cn } from "@/lib/utils";
 
 interface IncidentReport {
   id: string;
@@ -70,6 +75,10 @@ const ViewReportsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Date range filter state
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   
   // Incidents state
   const [incidents, setIncidents] = useState<IncidentReport[]>([]);
@@ -288,17 +297,60 @@ const ViewReportsTab = () => {
     );
   };
 
-  const filteredIncidents = incidents.filter(i =>
-    i.complainantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    i.incidentNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    i.incidentType.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Helper to parse date strings for comparison
+  const parseDate = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    const parsed = new Date(dateStr);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
 
-  const filteredCertificates = certificates.filter(c =>
-    c.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.controlNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.certificateType.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter by date range
+  const isWithinDateRange = (dateStr: string): boolean => {
+    if (!startDate && !endDate) return true;
+    const date = parseDate(dateStr);
+    if (!date) return true;
+    
+    // Normalize dates to start of day for comparison
+    const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+    if (startDate && endDate) {
+      const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+      return normalizedDate >= start && normalizedDate <= end;
+    }
+    if (startDate) {
+      const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      return normalizedDate >= start;
+    }
+    if (endDate) {
+      const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+      return normalizedDate <= end;
+    }
+    return true;
+  };
+
+  const filteredIncidents = incidents.filter(i => {
+    const matchesSearch = 
+      i.complainantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      i.incidentNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      i.incidentType.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDate = isWithinDateRange(i.createdAt);
+    return matchesSearch && matchesDate;
+  });
+
+  const filteredCertificates = certificates.filter(c => {
+    const matchesSearch = 
+      c.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.controlNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.certificateType.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDate = isWithinDateRange(c.createdAt);
+    return matchesSearch && matchesDate;
+  });
+
+  const clearDateFilters = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
 
   const pendingIncidentsCount = incidents.filter(i => i.approvalStatus === "pending").length;
   const pendingCertificatesCount = certificates.filter(c => c.status === "pending").length;
@@ -338,28 +390,99 @@ const ViewReportsTab = () => {
           </TabsList>
         </Tabs>
 
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={activeTab === "incidents" ? "Search incidents..." : "Search certificates..."}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={activeTab === "incidents" ? "Search incidents..." : "Search certificates..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
+          
+          {/* Date Range Filter */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground whitespace-nowrap">Date Range:</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[140px] justify-start text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "MMM d, yyyy") : "Start date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              <span className="text-muted-foreground">to</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[140px] justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "MMM d, yyyy") : "End date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              {(startDate || endDate) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearDateFilters}
+                  className="h-9 w-9"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {(startDate || endDate) && (
+              <Badge variant="secondary" className="text-xs">
+                Filtering by date
+              </Badge>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
