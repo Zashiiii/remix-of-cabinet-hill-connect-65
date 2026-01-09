@@ -119,6 +119,7 @@ import HouseholdsTab from "@/components/staff/HouseholdsTab";
 import IncidentsTab from "@/components/staff/IncidentsTab";
 import SettingsTab from "@/components/staff/SettingsTab";
 import AuditLogsTab from "@/components/staff/AuditLogsTab";
+import ViewReportsTab from "@/components/staff/ViewReportsTab";
 
 interface PendingRequest {
   id: string;
@@ -1928,20 +1929,7 @@ const StaffDashboard = () => {
               </Card>
             )}
 
-            {activeTab === "view-reports" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Reports & Analytics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12 text-muted-foreground">
-                    <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium">Reports & Analytics</p>
-                    <p className="text-sm">Feature coming in Phase 2</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {activeTab === "view-reports" && <ViewReportsTab />}
 
             {activeTab === "residents" && <ResidentsTab />}
 
