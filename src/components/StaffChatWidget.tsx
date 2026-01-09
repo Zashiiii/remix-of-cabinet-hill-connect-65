@@ -219,7 +219,7 @@ const StaffChatWidget = () => {
 
     if (!message.isRead) {
       try {
-        await supabase.rpc("staff_mark_message_read", { p_message_id: message.id });
+        await supabase.rpc("staff_mark_message_read", { p_staff_id: user.id, p_message_id: message.id });
         setMessages((prev) =>
           prev.map((m) => (m.id === message.id ? { ...m, isRead: true } : m))
         );
