@@ -10,8 +10,6 @@ import {
   Clock,
   Loader2,
   Filter,
-  UserCheck,
-  UserX,
   CalendarIcon,
   X
 } from "lucide-react";
@@ -20,18 +18,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { getCertificateRequests, updateCertificateRequestStatus } from "@/utils/staffApi";
+import { getCertificateRequests } from "@/utils/staffApi";
 import { cn } from "@/lib/utils";
 
 interface IncidentReport {
@@ -70,7 +66,6 @@ interface CertificateRequest {
 }
 
 const ViewReportsTab = () => {
-  const { user } = useStaffAuthContext();
   const [activeTab, setActiveTab] = useState("incidents");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -84,17 +79,11 @@ const ViewReportsTab = () => {
   const [incidents, setIncidents] = useState<IncidentReport[]>([]);
   const [selectedIncident, setSelectedIncident] = useState<IncidentReport | null>(null);
   const [showIncidentDialog, setShowIncidentDialog] = useState(false);
-  const [showRejectIncidentDialog, setShowRejectIncidentDialog] = useState(false);
-  const [incidentRejectionReason, setIncidentRejectionReason] = useState("");
   
   // Certificates state
   const [certificates, setCertificates] = useState<CertificateRequest[]>([]);
   const [selectedCertificate, setSelectedCertificate] = useState<CertificateRequest | null>(null);
   const [showCertificateDialog, setShowCertificateDialog] = useState(false);
-  const [showRejectCertificateDialog, setShowRejectCertificateDialog] = useState(false);
-  const [certificateRejectionReason, setCertificateRejectionReason] = useState("");
-  
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const loadIncidents = useCallback(async () => {
     try {
@@ -190,94 +179,6 @@ const ViewReportsTab = () => {
       supabase.removeChannel(certificateChannel);
     };
   }, [loadIncidents, loadCertificates]);
-
-  // Incident actions
-  const handleApproveIncident = async (incident: IncidentReport) => {
-    setIsProcessing(true);
-    try {
-      const { error } = await supabase.rpc("staff_approve_incident", {
-        p_incident_id: incident.id,
-        p_reviewed_by: user?.fullName || "Staff",
-      });
-
-      if (error) throw error;
-      toast.success("Incident report approved");
-      loadIncidents();
-    } catch (error) {
-      console.error("Error approving incident:", error);
-      toast.error("Failed to approve incident");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleRejectIncident = async () => {
-    if (!selectedIncident || !incidentRejectionReason.trim()) {
-      toast.error("Please provide a rejection reason");
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      const { error } = await supabase.rpc("staff_reject_incident", {
-        p_incident_id: selectedIncident.id,
-        p_reviewed_by: user?.fullName || "Staff",
-        p_rejection_reason: incidentRejectionReason,
-      });
-
-      if (error) throw error;
-      toast.success("Incident report rejected");
-      setShowRejectIncidentDialog(false);
-      setIncidentRejectionReason("");
-      setSelectedIncident(null);
-      loadIncidents();
-    } catch (error) {
-      console.error("Error rejecting incident:", error);
-      toast.error("Failed to reject incident");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Certificate actions
-  const handleApproveCertificate = async (certificate: CertificateRequest) => {
-    setIsProcessing(true);
-    try {
-      await updateCertificateRequestStatus(certificate.id, "approved", user?.fullName || "Staff");
-      toast.success("Certificate request approved");
-      loadCertificates();
-    } catch (error) {
-      toast.error("Failed to approve certificate request");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleRejectCertificate = async () => {
-    if (!selectedCertificate || !certificateRejectionReason.trim()) {
-      toast.error("Please provide a rejection reason");
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      await updateCertificateRequestStatus(
-        selectedCertificate.id, 
-        "rejected", 
-        user?.fullName || "Staff",
-        certificateRejectionReason
-      );
-      toast.success("Certificate request rejected");
-      setShowRejectCertificateDialog(false);
-      setCertificateRejectionReason("");
-      setSelectedCertificate(null);
-      loadCertificates();
-    } catch (error) {
-      toast.error("Failed to reject certificate request");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   const getApprovalBadge = (status: string) => {
     const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
@@ -521,43 +422,16 @@ const ViewReportsTab = () => {
                           <TableCell>{incident.complainantName}</TableCell>
                           <TableCell>{getApprovalBadge(incident.approvalStatus)}</TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedIncident(incident);
-                                  setShowIncidentDialog(true);
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              {incident.approvalStatus === "pending" && (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-green-600 hover:text-green-700"
-                                    onClick={() => handleApproveIncident(incident)}
-                                    disabled={isProcessing}
-                                  >
-                                    <UserCheck className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-red-600 hover:text-red-700"
-                                    onClick={() => {
-                                      setSelectedIncident(incident);
-                                      setShowRejectIncidentDialog(true);
-                                    }}
-                                    disabled={isProcessing}
-                                  >
-                                    <UserX className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedIncident(incident);
+                                setShowIncidentDialog(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -597,43 +471,16 @@ const ViewReportsTab = () => {
                           <TableCell>{cert.fullName}</TableCell>
                           <TableCell>{getApprovalBadge(cert.status)}</TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedCertificate(cert);
-                                  setShowCertificateDialog(true);
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              {cert.status === "pending" && (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-green-600 hover:text-green-700"
-                                    onClick={() => handleApproveCertificate(cert)}
-                                    disabled={isProcessing}
-                                  >
-                                    <UserCheck className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-red-600 hover:text-red-700"
-                                    onClick={() => {
-                                      setSelectedCertificate(cert);
-                                      setShowRejectCertificateDialog(true);
-                                    }}
-                                    disabled={isProcessing}
-                                  >
-                                    <UserX className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedCertificate(cert);
+                                setShowCertificateDialog(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -794,82 +641,6 @@ const ViewReportsTab = () => {
               )}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Reject Incident Dialog */}
-      <Dialog open={showRejectIncidentDialog} onOpenChange={setShowRejectIncidentDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Incident Report</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejecting this incident report.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label>Rejection Reason *</Label>
-            <Textarea
-              value={incidentRejectionReason}
-              onChange={(e) => setIncidentRejectionReason(e.target.value)}
-              placeholder="Explain why this report is being rejected..."
-              rows={4}
-              className="mt-2"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowRejectIncidentDialog(false);
-              setIncidentRejectionReason("");
-            }}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleRejectIncident}
-              disabled={isProcessing || !incidentRejectionReason.trim()}
-            >
-              {isProcessing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Reject Report
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reject Certificate Dialog */}
-      <Dialog open={showRejectCertificateDialog} onOpenChange={setShowRejectCertificateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Certificate Request</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejecting this certificate request.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label>Rejection Reason *</Label>
-            <Textarea
-              value={certificateRejectionReason}
-              onChange={(e) => setCertificateRejectionReason(e.target.value)}
-              placeholder="Explain why this request is being rejected..."
-              rows={4}
-              className="mt-2"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowRejectCertificateDialog(false);
-              setCertificateRejectionReason("");
-            }}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleRejectCertificate}
-              disabled={isProcessing || !certificateRejectionReason.trim()}
-            >
-              {isProcessing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Reject Request
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
