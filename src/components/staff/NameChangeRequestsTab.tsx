@@ -108,6 +108,56 @@ const NameChangeRequestsTab = () => {
     return [firstName, middleName, lastName, suffix].filter(Boolean).join(" ");
   };
 
+  const sendNotificationEmail = async (
+    request: NameChangeRequest,
+    status: "approved" | "rejected",
+    rejectionReason?: string
+  ) => {
+    if (!request.resident_email) {
+      console.log("No email address for resident, skipping notification");
+      return;
+    }
+
+    try {
+      const staffToken = localStorage.getItem("staff_session_token");
+      if (!staffToken) return;
+
+      const currentName = formatFullName(
+        request.current_first_name,
+        request.current_middle_name,
+        request.current_last_name,
+        request.current_suffix
+      );
+      const requestedName = formatFullName(
+        request.requested_first_name,
+        request.requested_middle_name,
+        request.requested_last_name,
+        request.requested_suffix
+      );
+
+      const response = await supabase.functions.invoke("send-name-change-notification", {
+        body: {
+          recipientEmail: request.resident_email,
+          currentName,
+          requestedName,
+          status,
+          rejectionReason,
+        },
+        headers: {
+          Authorization: `Bearer ${staffToken}`,
+        },
+      });
+
+      if (response.error) {
+        console.error("Failed to send notification email:", response.error);
+      } else {
+        console.log("Notification email sent successfully");
+      }
+    } catch (error) {
+      console.error("Error sending notification email:", error);
+    }
+  };
+
   const handleApprove = async (request: NameChangeRequest) => {
     setIsProcessing(true);
     try {
@@ -117,6 +167,9 @@ const NameChangeRequestsTab = () => {
       });
 
       if (error) throw error;
+
+      // Send email notification
+      await sendNotificationEmail(request, "approved");
 
       toast.success("Name change approved successfully!");
       setShowViewDialog(false);
@@ -146,6 +199,9 @@ const NameChangeRequestsTab = () => {
       });
 
       if (error) throw error;
+
+      // Send email notification
+      await sendNotificationEmail(selectedRequest, "rejected", rejectionReason.trim());
 
       toast.success("Name change request rejected");
       setShowRejectDialog(false);
