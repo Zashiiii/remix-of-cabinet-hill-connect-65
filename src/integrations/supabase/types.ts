@@ -445,6 +445,7 @@ export type Database = {
       incidents: {
         Row: {
           action_taken: string | null
+          approval_status: string | null
           complainant_address: string | null
           complainant_contact: string | null
           complainant_name: string
@@ -456,16 +457,21 @@ export type Database = {
           incident_location: string | null
           incident_number: string
           incident_type: string
+          rejection_reason: string | null
           reported_by: string | null
           resolution_date: string | null
           resolution_notes: string | null
           respondent_address: string | null
           respondent_name: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string | null
+          submitted_by_resident_id: string | null
           updated_at: string | null
         }
         Insert: {
           action_taken?: string | null
+          approval_status?: string | null
           complainant_address?: string | null
           complainant_contact?: string | null
           complainant_name: string
@@ -477,16 +483,21 @@ export type Database = {
           incident_location?: string | null
           incident_number: string
           incident_type: string
+          rejection_reason?: string | null
           reported_by?: string | null
           resolution_date?: string | null
           resolution_notes?: string | null
           respondent_address?: string | null
           respondent_name?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
+          submitted_by_resident_id?: string | null
           updated_at?: string | null
         }
         Update: {
           action_taken?: string | null
+          approval_status?: string | null
           complainant_address?: string | null
           complainant_contact?: string | null
           complainant_name?: string
@@ -498,15 +509,27 @@ export type Database = {
           incident_location?: string | null
           incident_number?: string
           incident_type?: string
+          rejection_reason?: string | null
           reported_by?: string | null
           resolution_date?: string | null
           resolution_notes?: string | null
           respondent_address?: string | null
           respondent_name?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
+          submitted_by_resident_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "incidents_submitted_by_resident_id_fkey"
+            columns: ["submitted_by_resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       login_attempts: {
         Row: {

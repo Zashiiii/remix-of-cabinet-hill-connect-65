@@ -20,6 +20,7 @@ import ResidentProfile from "./pages/resident/Profile";
 import ResidentRequests from "./pages/resident/Requests";
 import ResidentMessages from "./pages/resident/Messages";
 import ResidentSettings from "./pages/resident/Settings";
+import ResidentIncidents from "./pages/resident/Incidents";
 import StaffIncidents from "./pages/staff/Incidents";
 import StaffSettings from "./pages/staff/Settings";
 import StaffResidents from "./pages/staff/Residents";
@@ -145,6 +146,11 @@ const AppContent = () => {
         <Route path="/resident/settings" element={
           <ResidentProtectedRoute>
             <ResidentSettings />
+          </ResidentProtectedRoute>
+        } />
+        <Route path="/resident/incidents" element={
+          <ResidentProtectedRoute>
+            <ResidentIncidents />
           </ResidentProtectedRoute>
         } />
         
