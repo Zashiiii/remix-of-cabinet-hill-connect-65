@@ -978,7 +978,6 @@ export type Database = {
           monthly_income_kind: string
           occupation: string
           place_of_origin: string
-          privacy_consent_given_at: string
           relation_to_head: string
           religion: string
           schooling_status: string
