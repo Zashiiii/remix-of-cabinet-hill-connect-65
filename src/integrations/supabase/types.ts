@@ -1181,8 +1181,8 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_residents_for_messaging: {
-        Args: never
+      get_residents_for_messaging_staff: {
+        Args: { p_staff_id: string }
         Returns: {
           email: string
           full_name: string
