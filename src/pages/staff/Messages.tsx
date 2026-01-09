@@ -119,7 +119,7 @@ const StaffMessages = () => {
     if (!message.isRead) {
       try {
         // Use RPC to mark as read (bypasses RLS)
-        await supabase.rpc('staff_mark_message_read', { p_message_id: message.id });
+        await supabase.rpc('staff_mark_message_read', { p_staff_id: user!.id, p_message_id: message.id });
         
         setMessages(prev => prev.map(m => 
           m.id === message.id ? { ...m, isRead: true } : m

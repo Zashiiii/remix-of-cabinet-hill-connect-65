@@ -1297,7 +1297,7 @@ export type Database = {
         Returns: undefined
       }
       staff_mark_message_read: {
-        Args: { p_message_id: string }
+        Args: { p_message_id: string; p_staff_id: string }
         Returns: undefined
       }
       staff_reject_incident: {
