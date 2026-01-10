@@ -985,6 +985,47 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_all_households_for_staff: {
+        Args: never
+        Returns: {
+          address: string | null
+          barangay: string | null
+          city: string | null
+          communication_services: Json | null
+          created_at: string | null
+          district: string | null
+          drainage_facilities: Json | null
+          dwelling_type: string | null
+          ethnic_group: string | null
+          food_service: Json | null
+          food_storage_type: Json | null
+          garbage_disposal: Json | null
+          house_number: string | null
+          house_ownership: string | null
+          household_number: string
+          household_storage: Json | null
+          id: string
+          info_sources: Json | null
+          interview_date: string | null
+          lighting_source: string | null
+          lot_ownership: string | null
+          means_of_transport: Json | null
+          place_of_origin: string | null
+          province: string | null
+          street_purok: string | null
+          toilet_facilities: Json | null
+          updated_at: string | null
+          water_storage: Json | null
+          water_supply_level: string | null
+          years_staying: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "households"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_all_incidents_for_staff: {
         Args: { p_approval_status?: string; p_status?: string }
         Returns: {
@@ -1066,6 +1107,36 @@ export type Database = {
           last_name: string
           middle_name: string
           suffix: string
+        }[]
+      }
+      get_households_paginated_for_staff: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_purok_filter?: string
+          p_search?: string
+        }
+        Returns: {
+          address: string
+          barangay: string
+          city: string
+          created_at: string
+          district: string
+          dwelling_type: string
+          ethnic_group: string
+          house_number: string
+          house_ownership: string
+          household_number: string
+          id: string
+          lighting_source: string
+          lot_ownership: string
+          place_of_origin: string
+          province: string
+          street_purok: string
+          total_count: number
+          updated_at: string
+          water_supply_level: string
+          years_staying: number
         }[]
       }
       get_incidents_for_staff: {
@@ -1283,6 +1354,27 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      staff_create_household: {
+        Args: {
+          p_address?: string
+          p_barangay?: string
+          p_city?: string
+          p_district?: string
+          p_dwelling_type?: string
+          p_ethnic_group?: string
+          p_house_number?: string
+          p_house_ownership?: string
+          p_household_number: string
+          p_lighting_source?: string
+          p_lot_ownership?: string
+          p_place_of_origin?: string
+          p_province?: string
+          p_street_purok?: string
+          p_water_supply_level?: string
+          p_years_staying?: number
+        }
+        Returns: string
+      }
       staff_create_incident: {
         Args: {
           p_action_taken?: string
@@ -1300,6 +1392,10 @@ export type Database = {
         Returns: string
       }
       staff_delete_announcement: { Args: { p_id: string }; Returns: undefined }
+      staff_delete_household: {
+        Args: { p_household_id: string }
+        Returns: undefined
+      }
       staff_delete_resident: {
         Args: { p_resident_id: string }
         Returns: undefined
@@ -1364,6 +1460,28 @@ export type Database = {
           p_title?: string
           p_title_tl?: string
           p_type?: string
+        }
+        Returns: undefined
+      }
+      staff_update_household: {
+        Args: {
+          p_address?: string
+          p_barangay?: string
+          p_city?: string
+          p_district?: string
+          p_dwelling_type?: string
+          p_ethnic_group?: string
+          p_house_number?: string
+          p_house_ownership?: string
+          p_household_id: string
+          p_household_number?: string
+          p_lighting_source?: string
+          p_lot_ownership?: string
+          p_place_of_origin?: string
+          p_province?: string
+          p_street_purok?: string
+          p_water_supply_level?: string
+          p_years_staying?: number
         }
         Returns: undefined
       }

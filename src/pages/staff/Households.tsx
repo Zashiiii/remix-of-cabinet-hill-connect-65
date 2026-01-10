@@ -370,43 +370,51 @@ const StaffHouseholds = () => {
 
     setIsSaving(true);
     try {
-      const payload = {
-        household_number: formData.household_number.trim(),
-        house_number: formData.house_number.trim() || null,
-        street_purok: formData.street_purok.trim() || null,
-        district: formData.district.trim() || null,
-        address: formData.address.trim() || null,
-        barangay: formData.barangay.trim() || null,
-        city: formData.city.trim() || null,
-        province: formData.province.trim() || null,
-        place_of_origin: formData.place_of_origin.trim() || null,
-        ethnic_group: formData.ethnic_group.trim() || null,
-        years_staying: formData.years_staying ? parseInt(formData.years_staying) : null,
-        house_ownership: formData.house_ownership || null,
-        lot_ownership: formData.lot_ownership || null,
-        dwelling_type: formData.dwelling_type || null,
-        lighting_source: formData.lighting_source || null,
-        water_supply_level: formData.water_supply_level || null,
-        toilet_facilities: formData.toilet_facilities,
-        drainage_facilities: formData.drainage_facilities,
-        garbage_disposal: formData.garbage_disposal,
-        water_storage: formData.water_storage,
-        food_storage_type: formData.food_storage_type,
-        communication_services: formData.communication_services,
-        means_of_transport: formData.means_of_transport,
-        info_sources: formData.info_sources,
-      };
-
       if (editingHousehold) {
-        const { error } = await supabase
-          .from("households")
-          .update(payload)
-          .eq("id", editingHousehold.id);
+        // Use RPC function for update
+        const { error } = await supabase.rpc("staff_update_household", {
+          p_household_id: editingHousehold.id,
+          p_household_number: formData.household_number.trim(),
+          p_house_number: formData.house_number.trim() || null,
+          p_street_purok: formData.street_purok.trim() || null,
+          p_district: formData.district.trim() || null,
+          p_address: formData.address.trim() || null,
+          p_barangay: formData.barangay.trim() || null,
+          p_city: formData.city.trim() || null,
+          p_province: formData.province.trim() || null,
+          p_place_of_origin: formData.place_of_origin.trim() || null,
+          p_ethnic_group: formData.ethnic_group.trim() || null,
+          p_years_staying: formData.years_staying ? parseInt(formData.years_staying) : null,
+          p_house_ownership: formData.house_ownership || null,
+          p_lot_ownership: formData.lot_ownership || null,
+          p_dwelling_type: formData.dwelling_type || null,
+          p_lighting_source: formData.lighting_source || null,
+          p_water_supply_level: formData.water_supply_level || null,
+        });
 
         if (error) throw error;
         toast.success("Household updated successfully");
       } else {
-        const { error } = await supabase.from("households").insert(payload);
+        // Use RPC function for insert
+        const { error } = await supabase.rpc("staff_create_household", {
+          p_household_number: formData.household_number.trim(),
+          p_house_number: formData.house_number.trim() || null,
+          p_street_purok: formData.street_purok.trim() || null,
+          p_district: formData.district.trim() || null,
+          p_address: formData.address.trim() || null,
+          p_barangay: formData.barangay.trim() || null,
+          p_city: formData.city.trim() || null,
+          p_province: formData.province.trim() || null,
+          p_place_of_origin: formData.place_of_origin.trim() || null,
+          p_ethnic_group: formData.ethnic_group.trim() || null,
+          p_years_staying: formData.years_staying ? parseInt(formData.years_staying) : null,
+          p_house_ownership: formData.house_ownership || null,
+          p_lot_ownership: formData.lot_ownership || null,
+          p_dwelling_type: formData.dwelling_type || null,
+          p_lighting_source: formData.lighting_source || null,
+          p_water_supply_level: formData.water_supply_level || null,
+        });
+
         if (error) throw error;
         toast.success("Household created successfully");
       }
@@ -428,17 +436,10 @@ const StaffHouseholds = () => {
     if (!householdToDelete) return;
 
     try {
-      // First, unlink all residents
-      await supabase
-        .from("residents")
-        .update({ household_id: null, is_head_of_household: false })
-        .eq("household_id", householdToDelete.id);
-
-      // Then delete household
-      const { error } = await supabase
-        .from("households")
-        .delete()
-        .eq("id", householdToDelete.id);
+      // Use RPC function for delete (handles unassigning residents)
+      const { error } = await supabase.rpc("staff_delete_household", {
+        p_household_id: householdToDelete.id,
+      });
 
       if (error) throw error;
 
