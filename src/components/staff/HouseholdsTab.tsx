@@ -169,46 +169,38 @@ const HouseholdsTab = () => {
   const loadHouseholds = useCallback(async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from("households")
-        .select("*", { count: "exact" });
-
-      if (searchQuery) {
-        query = query.or(`household_number.ilike.%${searchQuery}%,address.ilike.%${searchQuery}%,street_purok.ilike.%${searchQuery}%`);
-      }
-
-      if (purokFilter && purokFilter !== "all") {
-        query = query.ilike("street_purok", `%${purokFilter}%`);
-      }
-
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
 
-      const { data, count, error } = await query
-        .order("household_number", { ascending: true })
-        .range(from, to);
+      // Use RPC function to bypass RLS (staff use custom auth, not Supabase Auth)
+      const { data, error } = await supabase.rpc("get_households_paginated_for_staff", {
+        p_search: searchQuery || null,
+        p_purok_filter: purokFilter === "all" ? null : purokFilter,
+        p_limit: ITEMS_PER_PAGE,
+        p_offset: from,
+      });
 
       if (error) throw error;
 
-      const householdsWithMembers = await Promise.all(
-        (data || []).map(async (household) => {
-          const { data: members } = await supabase
-            .from("residents")
-            .select("id, first_name, middle_name, last_name, suffix, birth_date, gender, contact_number, relation_to_head, is_head_of_household, household_id")
-            .eq("household_id", household.id);
+      const totalCount = data?.[0]?.total_count || 0;
 
-          const head = members?.find((m) => m.is_head_of_household) || null;
+      // Fetch members for each household using RPC
+      const householdsWithMembers = await Promise.all(
+        (data || []).map(async (household: any) => {
+          const { data: members } = await supabase.rpc("get_all_residents_for_staff");
+          
+          const householdMembers = (members || []).filter((m: any) => m.household_id === household.id);
+          const head = householdMembers.find((m: any) => m.is_head_of_household) || null;
 
           return {
             ...household,
-            members: members || [],
+            members: householdMembers,
             head,
           } as Household;
         })
       );
 
       setHouseholds(householdsWithMembers);
-      setTotalCount(count || 0);
+      setTotalCount(Number(totalCount));
     } catch (error) {
       console.error("Error loading households:", error);
       toast.error("Failed to load households");

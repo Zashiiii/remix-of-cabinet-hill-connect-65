@@ -226,55 +226,44 @@ const StaffHouseholds = () => {
   const loadHouseholds = useCallback(async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from("households")
-        .select("*", { count: "exact" });
-
-      if (searchQuery) {
-        query = query.or(`household_number.ilike.%${searchQuery}%,address.ilike.%${searchQuery}%,street_purok.ilike.%${searchQuery}%`);
-      }
-
-      if (purokFilter && purokFilter !== "all") {
-        query = query.ilike("street_purok", `%${purokFilter}%`);
-      }
-
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
 
-      const { data, count, error } = await query
-        .order("household_number", { ascending: true })
-        .range(from, to);
+      // Use RPC function to bypass RLS (staff use custom auth, not Supabase Auth)
+      const { data, error } = await supabase.rpc("get_households_paginated_for_staff", {
+        p_search: searchQuery || null,
+        p_purok_filter: purokFilter === "all" ? null : purokFilter,
+        p_limit: ITEMS_PER_PAGE,
+        p_offset: from,
+      });
 
       if (error) throw error;
 
-      // Fetch members and head for each household
-      const householdsWithMembers = await Promise.all(
-        (data || []).map(async (household) => {
-          const { data: members } = await supabase
-            .from("residents")
-            .select("id, first_name, middle_name, last_name, suffix, birth_date, gender, contact_number, relation_to_head, is_head_of_household, household_id")
-            .eq("household_id", household.id);
+      const totalCount = data?.[0]?.total_count || 0;
 
-          const head = members?.find((m) => m.is_head_of_household) || null;
+      // Fetch members for each household using RPC
+      const { data: allResidents } = await supabase.rpc("get_all_residents_for_staff");
 
-          return {
-            ...household,
-            toilet_facilities: (household.toilet_facilities as string[]) || [],
-            drainage_facilities: (household.drainage_facilities as string[]) || [],
-            garbage_disposal: (household.garbage_disposal as string[]) || [],
-            water_storage: (household.water_storage as string[]) || [],
-            food_storage_type: (household.food_storage_type as string[]) || [],
-            communication_services: (household.communication_services as string[]) || [],
-            means_of_transport: (household.means_of_transport as string[]) || [],
-            info_sources: (household.info_sources as string[]) || [],
-            members: members || [],
-            head,
-          } as Household;
-        })
-      );
+      const householdsWithMembers = (data || []).map((household: any) => {
+        const members = (allResidents || []).filter((m: any) => m.household_id === household.id);
+        const head = members.find((m: any) => m.is_head_of_household) || null;
+
+        return {
+          ...household,
+          toilet_facilities: [],
+          drainage_facilities: [],
+          garbage_disposal: [],
+          water_storage: [],
+          food_storage_type: [],
+          communication_services: [],
+          means_of_transport: [],
+          info_sources: [],
+          members,
+          head,
+        } as Household;
+      });
 
       setHouseholds(householdsWithMembers);
-      setTotalCount(count || 0);
+      setTotalCount(Number(totalCount));
     } catch (error) {
       console.error("Error loading households:", error);
       toast.error("Failed to load households");
