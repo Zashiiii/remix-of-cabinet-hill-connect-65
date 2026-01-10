@@ -210,20 +210,17 @@ const EcologicalProfileTab = () => {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch households with residents
-      const { data: householdsData, error: householdsError } = await supabase
-        .from("households")
-        .select("*")
-        .order("household_number");
+      // Fetch households using RPC function (bypasses RLS for staff)
+      const { data: householdsData, error: householdsError } = await supabase.rpc(
+        "get_all_households_for_staff"
+      );
 
       if (householdsError) throw householdsError;
 
-      // Fetch residents
-      const { data: residentsData, error: residentsError } = await supabase
-        .from("residents")
-        .select("*")
-        .is("deleted_at", null)
-        .eq("approval_status", "approved");
+      // Fetch residents using RPC function
+      const { data: residentsData, error: residentsError } = await supabase.rpc(
+        "get_all_residents_for_staff"
+      );
 
       if (residentsError) throw residentsError;
 
