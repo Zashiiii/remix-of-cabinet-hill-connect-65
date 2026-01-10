@@ -121,6 +121,7 @@ import SettingsTab from "@/components/staff/SettingsTab";
 import AuditLogsTab from "@/components/staff/AuditLogsTab";
 import ViewReportsTab from "@/components/staff/ViewReportsTab";
 import NameChangeRequestsTab from "@/components/staff/NameChangeRequestsTab";
+import EcologicalProfileTab from "@/components/staff/EcologicalProfileTab";
 
 interface PendingRequest {
   id: string;
@@ -175,6 +176,7 @@ const StaffSidebar = ({
     { title: "Home", icon: Home, tab: "home" },
     { title: "Certificate Requests", icon: FileText, tab: "certificate-requests" },
     { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents" },
+    { title: "Ecological Profile Census", icon: FileText, tab: "ecological-profile" },
     { title: "Manage Announcements", icon: Bell, tab: "announcements" },
     { title: "Manage Residents", icon: Users, tab: "residents" },
     { title: "Manage Households", icon: Home, tab: "households" },
@@ -2055,6 +2057,8 @@ const StaffDashboard = () => {
             {activeTab === "audit-logs" && <AuditLogsTab />}
 
             {activeTab === "name-change-requests" && <NameChangeRequestsTab />}
+
+            {activeTab === "ecological-profile" && <EcologicalProfileTab />}
           </main>
         </div>
       </div>
