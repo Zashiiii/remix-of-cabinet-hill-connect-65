@@ -500,64 +500,39 @@ const EcologicalProfileTab = () => {
     }
   };
 
-  // Generate report HTML matching the PDF template
-  const generateReportHTML = (): string => {
-    if (!selectedHousehold) return "";
-
-    const household = selectedHousehold;
-    const residents = household.residents || [];
-    const headOfHousehold = residents.find((r) => r.is_head_of_household) || residents[0];
-
+  // Styles for the report (used in both preview and print)
+  const getReportStyles = (): string => {
     return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Barangay Ecological Profile Census - ${household.household_number}</title>
-  <style>
-    @page {
-      size: A4;
-      margin: 15mm;
-    }
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
+    .report-container {
       font-family: Arial, sans-serif;
       font-size: 11px;
       line-height: 1.4;
       color: #000;
+      background: white;
     }
-    .page {
-      page-break-after: always;
+    .report-container .page {
       padding: 10px;
+      margin-bottom: 20px;
+      border-bottom: 1px dashed #ccc;
     }
-    .page:last-child {
-      page-break-after: auto;
+    .report-container .page:last-child {
+      border-bottom: none;
     }
-    .header {
+    .report-container .header {
       text-align: center;
       margin-bottom: 15px;
       border-bottom: 2px solid #000;
       padding-bottom: 10px;
     }
-    .header h1 {
+    .report-container .header h1 {
       font-size: 16px;
       font-weight: bold;
       text-transform: uppercase;
     }
-    .header h2 {
-      font-size: 14px;
-      font-weight: bold;
-      margin-top: 5px;
-    }
-    .section {
+    .report-container .section {
       margin-bottom: 15px;
     }
-    .section-title {
+    .report-container .section-title {
       font-weight: bold;
       font-size: 12px;
       background: #f0f0f0;
@@ -565,61 +540,61 @@ const EcologicalProfileTab = () => {
       margin-bottom: 8px;
       border-left: 3px solid #333;
     }
-    .field-row {
+    .report-container .field-row {
       display: flex;
       margin-bottom: 5px;
       align-items: flex-start;
     }
-    .field-label {
+    .report-container .field-label {
       font-weight: bold;
       min-width: 150px;
     }
-    .field-value {
+    .report-container .field-value {
       border-bottom: 1px solid #333;
       flex: 1;
       min-height: 18px;
       padding-left: 5px;
     }
-    .checkbox-group {
+    .report-container .checkbox-group {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
     }
-    .checkbox-item {
+    .report-container .checkbox-item {
       display: flex;
       align-items: center;
       gap: 3px;
     }
-    .checkbox {
+    .report-container .checkbox {
       width: 12px;
       height: 12px;
       border: 1px solid #333;
       display: inline-block;
     }
-    .checkbox.checked {
+    .report-container .checkbox.checked {
       background: #333;
     }
-    table {
+    .report-container table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 10px;
       font-size: 10px;
     }
-    th, td {
+    .report-container th, .report-container td {
       border: 1px solid #333;
       padding: 4px;
       text-align: left;
     }
-    th {
+    .report-container th {
       background: #f0f0f0;
       font-weight: bold;
     }
-    .two-column {
+    .report-container .two-column {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
     }
-    .household-number {
+    .report-container .household-number {
       position: absolute;
       top: 10px;
       right: 10px;
@@ -627,7 +602,7 @@ const EcologicalProfileTab = () => {
       border: 1px solid #333;
       padding: 5px 10px;
     }
-    .footer {
+    .report-container .footer {
       margin-top: 20px;
       text-align: center;
       font-size: 10px;
@@ -635,12 +610,19 @@ const EcologicalProfileTab = () => {
       border-top: 1px solid #ccc;
       padding-top: 10px;
     }
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
+    `;
+  };
+
+  // Generate body content (reusable for both preview and full report)
+  const generateBodyContent = (): string => {
+    if (!selectedHousehold) return "";
+
+    const household = selectedHousehold;
+    const residents = household.residents || [];
+    const headOfHousehold = residents.find((r) => r.is_head_of_household) || residents[0];
+
+    return `
+  <div class="report-container">
   <!-- Page 1: Household & Respondent Information -->
   <div class="page">
     <div class="header">
@@ -1087,6 +1069,60 @@ const EcologicalProfileTab = () => {
       Generated on ${format(new Date(), "MMMM dd, yyyy 'at' h:mm a")}
     </div>
   </div>
+  </div>
+    `;
+  };
+
+  // Generate preview content with inline styles (for dialog preview)
+  const generatePreviewContent = (): string => {
+    if (!selectedHousehold) return "<p class='text-muted-foreground'>No household selected</p>";
+    return `<style>${getReportStyles()}</style>${generateBodyContent()}`;
+  };
+
+  // Generate full HTML for print/export (opens in new window)
+  const generateReportHTML = (): string => {
+    if (!selectedHousehold) return "";
+    
+    const household = selectedHousehold;
+    
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barangay Ecological Profile Census - ${household.household_number}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #000;
+      background: white;
+    }
+    ${getReportStyles()}
+    .report-container .page {
+      page-break-after: always;
+    }
+    .report-container .page:last-child {
+      page-break-after: auto;
+    }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  ${generateBodyContent()}
 </body>
 </html>
     `;
@@ -2019,8 +2055,8 @@ const EcologicalProfileTab = () => {
             </DialogDescription>
           </DialogHeader>
           <div 
-            className="border rounded-lg p-4 bg-white text-black"
-            dangerouslySetInnerHTML={{ __html: generateReportHTML() }}
+            className="border rounded-lg p-4 bg-white text-black overflow-auto"
+            dangerouslySetInnerHTML={{ __html: generatePreviewContent() }}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPreview(false)}>
