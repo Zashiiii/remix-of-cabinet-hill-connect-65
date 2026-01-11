@@ -27,7 +27,6 @@ import StaffSettings from "./pages/staff/Settings";
 import StaffResidents from "./pages/staff/Residents";
 import StaffHouseholds from "./pages/staff/Households";
 
-import AdminTemplates from "./pages/admin/Templates";
 import AdminStaffManagement from "./pages/admin/StaffManagement";
 import AdminAuditLogs from "./pages/admin/AuditLogs";
 import AdminResidentApproval from "./pages/admin/ResidentApproval";
@@ -97,11 +96,6 @@ const AppContent = () => {
         } />
         
         {/* Admin Protected Routes */}
-        <Route path="/admin/templates" element={
-          <StaffProtectedRoute requiredRole="admin">
-            <AdminTemplates />
-          </StaffProtectedRoute>
-        } />
         <Route path="/admin/staff" element={
           <StaffProtectedRoute requiredRole="admin">
             <AdminStaffManagement />

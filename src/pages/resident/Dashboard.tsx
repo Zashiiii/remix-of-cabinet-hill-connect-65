@@ -77,7 +77,7 @@ const ResidentSidebar = ({
     { title: "My Profile", icon: User, tab: "profile" },
     { title: "Request Certificate", icon: FileText, tab: "request" },
     { title: "My Requests", icon: Clock, tab: "requests" },
-    { title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessageCount },
+    { title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessageCount > 0 ? unreadMessageCount : undefined },
     { title: "Incident Reports", icon: AlertCircle, tab: "incidents" },
     { title: "Settings", icon: Settings, tab: "settings" },
   ];
