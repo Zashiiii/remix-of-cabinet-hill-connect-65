@@ -184,9 +184,8 @@ const StaffSidebar = ({
   ];
 
   const adminMenuItems = [
-    { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount },
+    { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined },
     { title: "Name Change Requests", icon: User, tab: "name-change-requests" },
-    { title: "Certificate Templates", icon: FileText, route: "/admin/templates" },
     { title: "Staff Management", icon: Shield, route: "/admin/staff" },
     { title: "Audit Logs", icon: History, tab: "audit-logs" },
   ];

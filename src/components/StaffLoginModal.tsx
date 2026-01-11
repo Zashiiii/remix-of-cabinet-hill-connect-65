@@ -42,15 +42,15 @@ const StaffLoginForm = ({ onOpenChange }: { onOpenChange: (open: boolean) => voi
         let errorMessage = result.error || "Invalid credentials";
         let toastDescription = "Please check your credentials";
         
-        if (result.code === 'USER_NOT_FOUND') {
-          errorMessage = "User not found";
-          toastDescription = "No account exists with this username";
-        } else if (result.code === 'INVALID_PASSWORD') {
-          errorMessage = "Incorrect password";
-          toastDescription = "The password you entered is incorrect";
+        if (result.code === 'INVALID_CREDENTIALS') {
+          errorMessage = "Invalid credentials";
+          toastDescription = "Username or password is incorrect";
         } else if (result.code === 'ACCOUNT_INACTIVE') {
           errorMessage = "Account is deactivated";
           toastDescription = "Please contact an administrator";
+        } else if (result.code === 'RATE_LIMITED') {
+          errorMessage = "Too many login attempts";
+          toastDescription = "Please try again in 15 minutes";
         }
         
         setError(errorMessage);
