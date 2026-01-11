@@ -87,6 +87,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
+import { useBarangayStats } from "@/context/BarangayStatsContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchActiveAnnouncements,
@@ -98,8 +99,6 @@ import {
   createAnnouncementStaff,
   updateAnnouncementStaff,
   deleteAnnouncementStaff,
-  getResidentCount,
-  getPendingRegistrationCount,
   getPendingRegistrations,
   approveResident,
   rejectResident,
@@ -293,6 +292,7 @@ const StaffSidebar = ({
 const StaffDashboard = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading: authLoading, logout } = useStaffAuthContext();
+  const { totalResidents, pendingRegistrationCount, refreshStats } = useBarangayStats();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeTab, setActiveTab] = useState("home");
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -311,8 +311,6 @@ const StaffDashboard = () => {
   const [recentRequests, setRecentRequests] = useState<PendingRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
-  const [totalResidents, setTotalResidents] = useState(0);
-  const [pendingRegistrationCount, setPendingRegistrationCount] = useState(0);
 
   // Recent incidents state for home page
   interface RecentIncident {
@@ -437,14 +435,6 @@ const StaffDashboard = () => {
         setRecentRequests(mappedRecent);
       }
 
-      // Get resident count using staff API
-      const residentCount = await getResidentCount();
-      setTotalResidents(residentCount || 0);
-
-      // Get pending registration count
-      const pendingCount = await getPendingRegistrationCount();
-      setPendingRegistrationCount(pendingCount || 0);
-
 
       // Load incidents for home page
       const { data: incidentData } = await supabase.rpc("get_all_incidents_for_staff", {
@@ -490,27 +480,8 @@ const StaffDashboard = () => {
         })
         .subscribe();
 
-      // Real-time subscription for residents count and pending registrations
-      const residentsChannel = supabase
-        .channel('residents-changes')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'residents'
-        }, async () => {
-          console.log('Residents changed, updating counts...');
-          const [residentCount, pendingCount] = await Promise.all([
-            supabase.rpc('get_resident_count'),
-            supabase.rpc('get_pending_registration_count'),
-          ]);
-          setTotalResidents(residentCount.data || 0);
-          setPendingRegistrationCount(pendingCount.data || 0);
-        })
-        .subscribe();
-
       return () => {
         supabase.removeChannel(requestsChannel);
-        supabase.removeChannel(residentsChannel);
       };
     }
   }, [isAuthenticated, loadRequests]);
@@ -561,9 +532,8 @@ const StaffDashboard = () => {
       toast.success(`${resident.first_name} ${resident.last_name}'s registration has been approved`);
       loadPendingResidents();
       
-      // Update pending count
-      const pendingCount = await getPendingRegistrationCount();
-      setPendingRegistrationCount(pendingCount || 0);
+      // Refresh stats from context (handles real-time updates)
+      refreshStats();
     } catch (error) {
       console.error('Error approving resident:', error);
       toast.error("Failed to approve registration");
@@ -611,9 +581,8 @@ const StaffDashboard = () => {
       setResidentRejectDialogOpen(false);
       loadPendingResidents();
       
-      // Update pending count
-      const pendingCount = await getPendingRegistrationCount();
-      setPendingRegistrationCount(pendingCount || 0);
+      // Refresh stats from context (handles real-time updates)
+      refreshStats();
     } catch (error) {
       console.error('Error rejecting resident:', error);
       toast.error("Failed to reject registration");

@@ -38,6 +38,7 @@ import {
   Phone,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBarangayStats } from "@/context/BarangayStatsContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -148,6 +149,15 @@ const INCOME_RANGES = ["3,000 & below", "3,001-4,999", "5,000-6,999", "7,000-8,9
 const FAMILY_PLANNING_TYPES = ["Pills", "IUD", "Condom", "Injectable", "Implant", "BTL", "Vasectomy", "Natural", "Others"];
 
 const EcologicalProfileTab = () => {
+  // Get synchronized stats from context
+  const { 
+    totalResidents, 
+    totalHouseholds, 
+    maleCount, 
+    femaleCount, 
+    refreshStats: refreshGlobalStats 
+  } = useBarangayStats();
+
   const [isLoading, setIsLoading] = useState(true);
   const [households, setHouseholds] = useState<HouseholdData[]>([]);
   const [selectedHousehold, setSelectedHousehold] = useState<HouseholdData | null>(null);
@@ -2326,35 +2336,35 @@ const EcologicalProfileTab = () => {
             Generate official ecological profile reports following the standard template
           </p>
         </div>
-        <Button variant="outline" onClick={loadData}>
+        <Button variant="outline" onClick={() => { loadData(); refreshGlobalStats(); }}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh Data
         </Button>
       </div>
 
-      {/* Summary Stats */}
+      {/* Summary Stats - Using synchronized context values */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{households.length}</div>
+            <div className="text-2xl font-bold">{totalHouseholds || households.length}</div>
             <p className="text-xs text-muted-foreground">Total Households</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{populationStats.total}</div>
+            <div className="text-2xl font-bold">{totalResidents}</div>
             <p className="text-xs text-muted-foreground">Total Population</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">{populationStats.male}</div>
+            <div className="text-2xl font-bold text-blue-600">{maleCount}</div>
             <p className="text-xs text-muted-foreground">Male</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-pink-600">{populationStats.female}</div>
+            <div className="text-2xl font-bold text-pink-600">{femaleCount}</div>
             <p className="text-xs text-muted-foreground">Female</p>
           </CardContent>
         </Card>
