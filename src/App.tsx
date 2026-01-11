@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import { StaffAuthProvider } from "@/context/StaffAuthContext";
+import { BarangayStatsProvider } from "@/context/BarangayStatsContext";
 import { StaffProtectedRoute, ResidentProtectedRoute } from "@/components/ProtectedRoute";
 import DataPrivacyModal from "@/components/DataPrivacyModal";
 import Index from "./pages/Index";
@@ -167,13 +168,15 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="bris-theme">
       <StaffAuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </TooltipProvider>
+        <BarangayStatsProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </TooltipProvider>
+        </BarangayStatsProvider>
       </StaffAuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
