@@ -162,12 +162,14 @@ const StaffSidebar = ({
   onLogout,
   userRole,
   pendingRegistrationCount,
+  pendingEcologicalCount,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
   onLogout: () => void;
   userRole?: string;
   pendingRegistrationCount?: number;
+  pendingEcologicalCount?: number;
 }) => {
   const { state } = useSidebar();
   const navigate = useNavigate();
@@ -185,7 +187,7 @@ const StaffSidebar = ({
   ];
 
   const adminMenuItems = [
-    { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions" },
+    { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions", badge: pendingEcologicalCount && pendingEcologicalCount > 0 ? pendingEcologicalCount : undefined },
     { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined },
     { title: "Name Change Requests", icon: User, tab: "name-change-requests" },
     { title: "Staff Management", icon: Shield, route: "/admin/staff" },
@@ -297,6 +299,7 @@ const StaffDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeTab, setActiveTab] = useState("home");
   const [isDataLoading, setIsDataLoading] = useState(true);
+  const [pendingEcologicalCount, setPendingEcologicalCount] = useState(0);
 
   // Auth is now handled by ProtectedRoute wrapper
 
@@ -468,6 +471,19 @@ const StaffDashboard = () => {
     if (isAuthenticated) {
       loadRequests();
       
+      // Load pending ecological submissions count
+      const loadEcologicalCount = async () => {
+        try {
+          const { data, error } = await supabase.rpc("get_pending_ecological_submissions_count");
+          if (!error && data !== null) {
+            setPendingEcologicalCount(data);
+          }
+        } catch (err) {
+          console.error("Error loading ecological count:", err);
+        }
+      };
+      loadEcologicalCount();
+      
       // Real-time subscription for certificate requests
       const requestsChannel = supabase
         .channel('certificate-requests-changes')
@@ -481,8 +497,22 @@ const StaffDashboard = () => {
         })
         .subscribe();
 
+      // Real-time subscription for ecological submissions
+      const ecologicalChannel = supabase
+        .channel('ecological-submissions-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'ecological_profile_submissions'
+        }, () => {
+          console.log('Ecological submission changed, reloading count...');
+          loadEcologicalCount();
+        })
+        .subscribe();
+
       return () => {
         supabase.removeChannel(requestsChannel);
+        supabase.removeChannel(ecologicalChannel);
       };
     }
   }, [isAuthenticated, loadRequests]);
@@ -1239,7 +1269,7 @@ const StaffDashboard = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} />
+        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} />
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}
