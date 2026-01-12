@@ -164,6 +164,7 @@ const StaffSidebar = ({
   pendingRegistrationCount,
   pendingEcologicalCount,
   pendingNameChangeCount,
+  pendingIncidentsCount,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
@@ -172,6 +173,7 @@ const StaffSidebar = ({
   pendingRegistrationCount?: number;
   pendingEcologicalCount?: number;
   pendingNameChangeCount?: number;
+  pendingIncidentsCount?: number;
 }) => {
   const { state } = useSidebar();
   const navigate = useNavigate();
@@ -179,7 +181,7 @@ const StaffSidebar = ({
   const mainMenuItems = [
     { title: "Home", icon: Home, tab: "home" },
     { title: "Certificate Requests", icon: FileText, tab: "certificate-requests" },
-    { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents" },
+    { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", badge: pendingIncidentsCount && pendingIncidentsCount > 0 ? pendingIncidentsCount : undefined },
     { title: "Ecological Profile Census", icon: FileText, tab: "ecological-profile" },
     { title: "Manage Announcements", icon: Bell, tab: "announcements" },
     { title: "Manage Residents", icon: Users, tab: "residents" },
@@ -229,7 +231,21 @@ const StaffSidebar = ({
                     className={`hover:bg-muted/50 ${activeTab === item.tab ? "bg-muted text-primary font-medium" : ""}`}
                   >
                     <item.icon className="h-4 w-4" />
-                    {!isCollapsed && <span>{item.title}</span>}
+                    {!isCollapsed && (
+                      <span className="flex items-center justify-between flex-1">
+                        {item.title}
+                        {item.badge && item.badge > 0 && (
+                          <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1.5 text-xs">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </span>
+                    )}
+                    {isCollapsed && item.badge && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
+                        {item.badge}
+                      </span>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -303,6 +319,7 @@ const StaffDashboard = () => {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [pendingEcologicalCount, setPendingEcologicalCount] = useState(0);
   const [pendingNameChangeCount, setPendingNameChangeCount] = useState(0);
+  const [pendingIncidentsCount, setPendingIncidentsCount] = useState(0);
 
   // Auth is now handled by ProtectedRoute wrapper
 
@@ -499,6 +516,19 @@ const StaffDashboard = () => {
         }
       };
       loadNameChangeCount();
+
+      // Load pending incidents count
+      const loadIncidentsCount = async () => {
+        try {
+          const { data, error } = await supabase.rpc("get_pending_incidents_count");
+          if (!error && data !== null) {
+            setPendingIncidentsCount(data);
+          }
+        } catch (err) {
+          console.error("Error loading incidents count:", err);
+        }
+      };
+      loadIncidentsCount();
       
       // Real-time subscription for certificate requests
       const requestsChannel = supabase
@@ -539,10 +569,24 @@ const StaffDashboard = () => {
         })
         .subscribe();
 
+      // Real-time subscription for incidents
+      const incidentsChannel = supabase
+        .channel('incidents-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'incidents'
+        }, () => {
+          console.log('Incident changed, reloading count...');
+          loadIncidentsCount();
+        })
+        .subscribe();
+
       return () => {
         supabase.removeChannel(requestsChannel);
         supabase.removeChannel(ecologicalChannel);
         supabase.removeChannel(nameChangeChannel);
+        supabase.removeChannel(incidentsChannel);
       };
     }
   }, [isAuthenticated, loadRequests]);
@@ -1299,7 +1343,7 @@ const StaffDashboard = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} pendingNameChangeCount={pendingNameChangeCount} />
+        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} pendingNameChangeCount={pendingNameChangeCount} pendingIncidentsCount={pendingIncidentsCount} />
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}

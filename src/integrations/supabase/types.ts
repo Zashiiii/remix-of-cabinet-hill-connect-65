@@ -1451,6 +1451,7 @@ export type Database = {
         }[]
       }
       get_pending_ecological_submissions_count: { Args: never; Returns: number }
+      get_pending_incidents_count: { Args: never; Returns: number }
       get_pending_name_change_requests_count: { Args: never; Returns: number }
       get_pending_registration_count: { Args: never; Returns: number }
       get_pending_registrations: {
