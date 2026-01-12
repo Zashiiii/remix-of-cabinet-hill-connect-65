@@ -386,7 +386,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
               ))}
             </TabsList>
 
-            <ScrollArea className="h-[400px] pr-4">
+            <ScrollArea className="h-[500px] pr-4">
               {/* Basic Info Tab */}
               <TabsContent value="basic-info" className="space-y-4 mt-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
