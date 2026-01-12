@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { 
   Loader2, 
   Home, 
@@ -25,7 +27,8 @@ import {
   Clock,
   Plus,
   Trash2,
-  UserPlus
+  UserPlus,
+  Edit
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -50,16 +53,25 @@ const GENDERS = ["Male", "Female"];
 const RELATIONSHIPS = ["Head", "Spouse", "Son", "Daughter", "Father", "Mother", "Brother", "Sister", "Grandfather", "Grandmother", "Grandson", "Granddaughter", "Son-in-law", "Daughter-in-law", "Other Relative", "Non-relative"];
 const EDUCATION_LEVELS = ["No formal education", "Elementary level", "Elementary graduate", "High school level", "High school graduate", "Vocational", "College level", "College graduate", "Post-graduate"];
 const CIVIL_STATUSES = ["Single", "Married", "Widowed", "Separated", "Divorced", "Live-in"];
+const RELIGIONS = ["Roman Catholic", "Protestant", "Iglesia ni Cristo", "Islam", "Buddhist", "Others"];
+const SCHOOLING_STATUSES = ["In School", "Out of School", "Not Yet in School", "Graduate"];
+const EMPLOYMENT_STATUSES = ["Employed", "Unemployed", "Self-employed", "Student", "Retired", "Housewife/Househusband"];
+const INCOME_RANGES = ["3,000 & below", "3,001-4,999", "5,000-6,999", "7,000-8,999", "9,000-10,999", "11,000-14,999", "15,000-19,999", "20,000 & above", "None"];
 
 interface HouseholdMember {
   id: string;
   full_name: string;
+  birth_date: string;
   age: number | null;
   gender: string;
   relationship_to_head: string;
   civil_status: string;
-  occupation: string;
+  religion: string;
+  schooling_status: string;
   education_level: string;
+  employment_status: string;
+  occupation: string;
+  monthly_income: string;
   is_pwd: boolean;
   is_solo_parent: boolean;
 }
@@ -335,15 +347,72 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
   const createEmptyMember = (): HouseholdMember => ({
     id: crypto.randomUUID(),
     full_name: "",
+    birth_date: "",
     age: null,
     gender: "",
     relationship_to_head: "",
     civil_status: "",
-    occupation: "",
+    religion: "",
+    schooling_status: "",
     education_level: "",
+    employment_status: "",
+    occupation: "",
+    monthly_income: "",
     is_pwd: false,
     is_solo_parent: false,
   });
+
+  const calculateAgeFromBirthDate = (birthDate: string): number | null => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const handleBirthDateChange = (memberId: string, birthDate: string) => {
+    const age = calculateAgeFromBirthDate(birthDate);
+    setFormData(prev => ({
+      ...prev,
+      household_members: prev.household_members.map((m: HouseholdMember) => 
+        m.id === memberId ? { ...m, birth_date: birthDate, age } : m
+      )
+    }));
+  };
+
+  const [editingMember, setEditingMember] = useState<HouseholdMember | null>(null);
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [newMember, setNewMember] = useState<HouseholdMember>(createEmptyMember());
+
+  const handleSaveNewMember = () => {
+    if (!newMember.full_name) {
+      toast.error("Please enter the member's full name");
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      household_members: [...prev.household_members, newMember]
+    }));
+    setNewMember(createEmptyMember());
+    setIsAddMemberOpen(false);
+    toast.success("Household member added");
+  };
+
+  const handleUpdateMember = () => {
+    if (!editingMember) return;
+    setFormData(prev => ({
+      ...prev,
+      household_members: prev.household_members.map((m: HouseholdMember) => 
+        m.id === editingMember.id ? editingMember : m
+      )
+    }));
+    setEditingMember(null);
+    toast.success("Member updated");
+  };
 
   const addHouseholdMember = () => {
     setFormData(prev => ({
@@ -545,12 +614,15 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
               <TabsContent value="members" className="space-y-4 mt-0">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-medium">Household Members</h3>
+                    <h3 className="text-lg font-medium flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Household Members ({formData.household_members.length})
+                    </h3>
                     <p className="text-sm text-muted-foreground">
-                      Add all family members living in this household ({formData.household_members.length} member{formData.household_members.length !== 1 ? 's' : ''})
+                      Complete list of all members in household {formData.household_number || "N/A"}
                     </p>
                   </div>
-                  <Button type="button" onClick={addHouseholdMember} size="sm">
+                  <Button type="button" onClick={() => { setNewMember(createEmptyMember()); setIsAddMemberOpen(true); }} size="sm">
                     <Plus className="h-4 w-4 mr-1" />
                     Add Member
                   </Button>
@@ -560,142 +632,398 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                   <div className="text-center py-8 border-2 border-dashed rounded-lg">
                     <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
                     <p className="text-muted-foreground mb-3">No household members added yet</p>
-                    <Button type="button" onClick={addHouseholdMember} variant="outline">
+                    <Button type="button" onClick={() => { setNewMember(createEmptyMember()); setIsAddMemberOpen(true); }} variant="outline">
                       <UserPlus className="h-4 w-4 mr-2" />
                       Add First Member
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {(formData.household_members as HouseholdMember[]).map((member, index) => (
-                      <Card key={member.id} className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <Badge variant="outline">Member {index + 1}</Badge>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => removeHouseholdMember(member.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Full Name *</Label>
-                            <Input
-                              value={member.full_name}
-                              onChange={(e) => updateHouseholdMember(member.id, 'full_name', e.target.value)}
-                              placeholder="Full name"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Age</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="150"
-                              value={member.age || ""}
-                              onChange={(e) => updateHouseholdMember(member.id, 'age', e.target.value ? parseInt(e.target.value) : null)}
-                              placeholder="Age"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Gender</Label>
-                            <Select
-                              value={member.gender}
-                              onValueChange={(v) => updateHouseholdMember(member.id, 'gender', v)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {GENDERS.map((g) => (
-                                  <SelectItem key={g} value={g}>{g}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Relationship to Head</Label>
-                            <Select
-                              value={member.relationship_to_head}
-                              onValueChange={(v) => updateHouseholdMember(member.id, 'relationship_to_head', v)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {RELATIONSHIPS.map((r) => (
-                                  <SelectItem key={r} value={r}>{r}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Civil Status</Label>
-                            <Select
-                              value={member.civil_status}
-                              onValueChange={(v) => updateHouseholdMember(member.id, 'civil_status', v)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {CIVIL_STATUSES.map((s) => (
-                                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Education Level</Label>
-                            <Select
-                              value={member.education_level}
-                              onValueChange={(v) => updateHouseholdMember(member.id, 'education_level', v)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {EDUCATION_LEVELS.map((e) => (
-                                  <SelectItem key={e} value={e}>{e}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1 md:col-span-2">
-                            <Label className="text-xs">Occupation</Label>
-                            <Input
-                              value={member.occupation}
-                              onChange={(e) => updateHouseholdMember(member.id, 'occupation', e.target.value)}
-                              placeholder="e.g., Farmer, Teacher, Student, None"
-                            />
-                          </div>
-                          <div className="flex items-center gap-4 md:col-span-1">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`pwd-${member.id}`}
-                                checked={member.is_pwd}
-                                onCheckedChange={(checked) => updateHouseholdMember(member.id, 'is_pwd', !!checked)}
-                              />
-                              <label htmlFor={`pwd-${member.id}`} className="text-xs">PWD</label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`solo-${member.id}`}
-                                checked={member.is_solo_parent}
-                                onCheckedChange={(checked) => updateHouseholdMember(member.id, 'is_solo_parent', !!checked)}
-                              />
-                              <label htmlFor={`solo-${member.id}`} className="text-xs">Solo Parent</label>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+                  <Card>
+                    <CardContent className="p-0">
+                      <ScrollArea className="h-[350px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-10">#</TableHead>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Relation</TableHead>
+                              <TableHead>Birth Date</TableHead>
+                              <TableHead>Age</TableHead>
+                              <TableHead>Sex</TableHead>
+                              <TableHead>Civil Status</TableHead>
+                              <TableHead>Religion</TableHead>
+                              <TableHead>Schooling</TableHead>
+                              <TableHead>Education</TableHead>
+                              <TableHead>Employment</TableHead>
+                              <TableHead>Income</TableHead>
+                              <TableHead className="w-20">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {(formData.household_members as HouseholdMember[]).map((member, index) => (
+                              <TableRow key={member.id}>
+                                <TableCell>{index + 1}</TableCell>
+                                <TableCell className="font-medium">
+                                  {member.full_name || "-"}
+                                  {member.relationship_to_head === "Head" && (
+                                    <Badge variant="outline" className="ml-2 text-xs">Head</Badge>
+                                  )}
+                                  {member.is_pwd && (
+                                    <Badge variant="secondary" className="ml-1 text-xs">PWD</Badge>
+                                  )}
+                                  {member.is_solo_parent && (
+                                    <Badge variant="secondary" className="ml-1 text-xs">Solo Parent</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>{member.relationship_to_head || "-"}</TableCell>
+                                <TableCell>{member.birth_date ? format(new Date(member.birth_date), "MM/dd/yyyy") : "-"}</TableCell>
+                                <TableCell>{member.age ?? "-"}</TableCell>
+                                <TableCell>{member.gender?.charAt(0).toUpperCase() || "-"}</TableCell>
+                                <TableCell>{member.civil_status || "-"}</TableCell>
+                                <TableCell>{member.religion || "-"}</TableCell>
+                                <TableCell>{member.schooling_status || "-"}</TableCell>
+                                <TableCell>{member.education_level || "-"}</TableCell>
+                                <TableCell>{member.employment_status || "-"}</TableCell>
+                                <TableCell>{member.monthly_income || "-"}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setEditingMember(member)}
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() => removeHouseholdMember(member.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
                 )}
+
+                {/* Legend */}
+                {formData.household_members.length > 0 && (
+                  <Card className="mt-4">
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-sm">Equivalents Legend</CardTitle>
+                    </CardHeader>
+                    <CardContent className="py-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-muted-foreground">
+                        <div>
+                          <p><strong>Sex:</strong> M - Male, F - Female</p>
+                          <p><strong>Civil Status:</strong> S - Single, M - Married, W - Widowed, Sep - Separated</p>
+                        </div>
+                        <div>
+                          <p><strong>Schooling:</strong> IS - In school, OS - Out of school, NYS - Not yet in school, G - Graduate</p>
+                          <p><strong>Income Ranges:</strong> 3k & below, 3001-4999, 5000-6999, etc.</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Add Member Dialog */}
+                <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add Household Member</DialogTitle>
+                      <DialogDescription>Enter the details of the household member</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Full Name *</Label>
+                        <Input
+                          value={newMember.full_name}
+                          onChange={(e) => setNewMember({ ...newMember, full_name: e.target.value })}
+                          placeholder="Last Name, First Name Middle Name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Birth Date</Label>
+                        <Input
+                          type="date"
+                          value={newMember.birth_date}
+                          onChange={(e) => {
+                            const age = calculateAgeFromBirthDate(e.target.value);
+                            setNewMember({ ...newMember, birth_date: e.target.value, age });
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Age</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="150"
+                          value={newMember.age ?? ""}
+                          onChange={(e) => setNewMember({ ...newMember, age: e.target.value ? parseInt(e.target.value) : null })}
+                          placeholder="Auto-calculated from birth date"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Gender</Label>
+                        <Select value={newMember.gender} onValueChange={(v) => setNewMember({ ...newMember, gender: v })}>
+                          <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent>
+                            {GENDERS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Relationship to Head</Label>
+                        <Select value={newMember.relationship_to_head} onValueChange={(v) => setNewMember({ ...newMember, relationship_to_head: v })}>
+                          <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent>
+                            {RELATIONSHIPS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Civil Status</Label>
+                        <Select value={newMember.civil_status} onValueChange={(v) => setNewMember({ ...newMember, civil_status: v })}>
+                          <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent>
+                            {CIVIL_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Religion</Label>
+                        <Select value={newMember.religion} onValueChange={(v) => setNewMember({ ...newMember, religion: v })}>
+                          <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent>
+                            {RELIGIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Schooling Status</Label>
+                        <Select value={newMember.schooling_status} onValueChange={(v) => setNewMember({ ...newMember, schooling_status: v })}>
+                          <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent>
+                            {SCHOOLING_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Education Level</Label>
+                        <Select value={newMember.education_level} onValueChange={(v) => setNewMember({ ...newMember, education_level: v })}>
+                          <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent>
+                            {EDUCATION_LEVELS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Employment Status</Label>
+                        <Select value={newMember.employment_status} onValueChange={(v) => setNewMember({ ...newMember, employment_status: v })}>
+                          <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent>
+                            {EMPLOYMENT_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Occupation</Label>
+                        <Input
+                          value={newMember.occupation}
+                          onChange={(e) => setNewMember({ ...newMember, occupation: e.target.value })}
+                          placeholder="e.g., Farmer, Teacher"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Monthly Income (Cash)</Label>
+                        <Select value={newMember.monthly_income} onValueChange={(v) => setNewMember({ ...newMember, monthly_income: v })}>
+                          <SelectTrigger><SelectValue placeholder="Select range..." /></SelectTrigger>
+                          <SelectContent>
+                            {INCOME_RANGES.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-6 md:col-span-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="new-pwd"
+                            checked={newMember.is_pwd}
+                            onCheckedChange={(checked) => setNewMember({ ...newMember, is_pwd: !!checked })}
+                          />
+                          <label htmlFor="new-pwd" className="text-sm">Person with Disability (PWD)</label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="new-solo"
+                            checked={newMember.is_solo_parent}
+                            onCheckedChange={(checked) => setNewMember({ ...newMember, is_solo_parent: !!checked })}
+                          />
+                          <label htmlFor="new-solo" className="text-sm">Solo Parent</label>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsAddMemberOpen(false)}>Cancel</Button>
+                      <Button onClick={handleSaveNewMember}>Add Member</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Edit Member Dialog */}
+                <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Edit Household Member</DialogTitle>
+                      <DialogDescription>Update the details of the household member</DialogDescription>
+                    </DialogHeader>
+                    {editingMember && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                        <div className="space-y-2 md:col-span-2">
+                          <Label>Full Name *</Label>
+                          <Input
+                            value={editingMember.full_name}
+                            onChange={(e) => setEditingMember({ ...editingMember, full_name: e.target.value })}
+                            placeholder="Last Name, First Name Middle Name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Birth Date</Label>
+                          <Input
+                            type="date"
+                            value={editingMember.birth_date}
+                            onChange={(e) => {
+                              const age = calculateAgeFromBirthDate(e.target.value);
+                              setEditingMember({ ...editingMember, birth_date: e.target.value, age });
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Age</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="150"
+                            value={editingMember.age ?? ""}
+                            onChange={(e) => setEditingMember({ ...editingMember, age: e.target.value ? parseInt(e.target.value) : null })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Gender</Label>
+                          <Select value={editingMember.gender} onValueChange={(v) => setEditingMember({ ...editingMember, gender: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent>
+                              {GENDERS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Relationship to Head</Label>
+                          <Select value={editingMember.relationship_to_head} onValueChange={(v) => setEditingMember({ ...editingMember, relationship_to_head: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent>
+                              {RELATIONSHIPS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Civil Status</Label>
+                          <Select value={editingMember.civil_status} onValueChange={(v) => setEditingMember({ ...editingMember, civil_status: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent>
+                              {CIVIL_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Religion</Label>
+                          <Select value={editingMember.religion} onValueChange={(v) => setEditingMember({ ...editingMember, religion: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent>
+                              {RELIGIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Schooling Status</Label>
+                          <Select value={editingMember.schooling_status} onValueChange={(v) => setEditingMember({ ...editingMember, schooling_status: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent>
+                              {SCHOOLING_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Education Level</Label>
+                          <Select value={editingMember.education_level} onValueChange={(v) => setEditingMember({ ...editingMember, education_level: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent>
+                              {EDUCATION_LEVELS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Employment Status</Label>
+                          <Select value={editingMember.employment_status} onValueChange={(v) => setEditingMember({ ...editingMember, employment_status: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent>
+                              {EMPLOYMENT_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Occupation</Label>
+                          <Input
+                            value={editingMember.occupation}
+                            onChange={(e) => setEditingMember({ ...editingMember, occupation: e.target.value })}
+                            placeholder="e.g., Farmer, Teacher"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Monthly Income (Cash)</Label>
+                          <Select value={editingMember.monthly_income} onValueChange={(v) => setEditingMember({ ...editingMember, monthly_income: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select range..." /></SelectTrigger>
+                            <SelectContent>
+                              {INCOME_RANGES.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center gap-6 md:col-span-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="edit-pwd"
+                              checked={editingMember.is_pwd}
+                              onCheckedChange={(checked) => setEditingMember({ ...editingMember, is_pwd: !!checked })}
+                            />
+                            <label htmlFor="edit-pwd" className="text-sm">Person with Disability (PWD)</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="edit-solo"
+                              checked={editingMember.is_solo_parent}
+                              onCheckedChange={(checked) => setEditingMember({ ...editingMember, is_solo_parent: !!checked })}
+                            />
+                            <label htmlFor="edit-solo" className="text-sm">Solo Parent</label>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setEditingMember(null)}>Cancel</Button>
+                      <Button onClick={handleUpdateMember}>Update Member</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </TabsContent>
 
               {/* Housing Tab */}
