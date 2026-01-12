@@ -121,6 +121,7 @@ import AuditLogsTab from "@/components/staff/AuditLogsTab";
 import ViewReportsTab from "@/components/staff/ViewReportsTab";
 import NameChangeRequestsTab from "@/components/staff/NameChangeRequestsTab";
 import EcologicalProfileTab from "@/components/staff/EcologicalProfileTab";
+import EcologicalSubmissionsTab from "@/components/staff/EcologicalSubmissionsTab";
 
 interface PendingRequest {
   id: string;
@@ -184,6 +185,7 @@ const StaffSidebar = ({
   ];
 
   const adminMenuItems = [
+    { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions" },
     { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined },
     { title: "Name Change Requests", icon: User, tab: "name-change-requests" },
     { title: "Staff Management", icon: Shield, route: "/admin/staff" },
@@ -2027,6 +2029,8 @@ const StaffDashboard = () => {
             {activeTab === "name-change-requests" && <NameChangeRequestsTab />}
 
             {activeTab === "ecological-profile" && <EcologicalProfileTab />}
+            
+            {activeTab === "ecological-submissions" && <EcologicalSubmissionsTab />}
           </main>
         </div>
       </div>

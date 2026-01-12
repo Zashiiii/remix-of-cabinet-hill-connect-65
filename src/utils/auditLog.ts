@@ -19,7 +19,8 @@ type EntityType =
   | "announcement"
   | "staff_user"
   | "template"
-  | "message";
+  | "message"
+  | "ecological_submission";
 
 type PerformedByType = "staff" | "admin" | "resident" | "system";
 
