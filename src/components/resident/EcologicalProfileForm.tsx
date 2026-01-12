@@ -19,16 +19,16 @@ import {
   Zap, 
   FileText,
   Send,
-  Save,
   ArrowLeft,
-  ArrowRight,
   CheckCircle,
   AlertCircle,
   Clock,
   Plus,
   Trash2,
   UserPlus,
-  Edit
+  GraduationCap,
+  Leaf,
+  Stethoscope
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -439,11 +439,12 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
 
   const tabs = [
     { id: "basic-info", label: "Basic Info", icon: FileText },
-    { id: "members", label: "Members", icon: Users },
     { id: "housing", label: "Housing", icon: Home },
     { id: "services", label: "Services", icon: Zap },
-    { id: "utilities", label: "Utilities", icon: Droplets },
-    { id: "additional", label: "Additional", icon: UserPlus },
+    { id: "education-health", label: "Education & Health", icon: GraduationCap },
+    { id: "members", label: "Household Members", icon: Users },
+    { id: "environmental", label: "Environmental", icon: Leaf },
+    { id: "health-info", label: "Health Info", icon: Stethoscope },
   ];
 
   if (isLoading) {
@@ -503,12 +504,12 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-6 mb-6">
+            <TabsList className="grid w-full grid-cols-7 mb-6">
               {tabs.map((tab) => (
-                <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-1 text-xs md:text-sm">
-                  <tab.icon className="h-4 w-4 hidden md:block" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">{tab.label.substring(0, 4)}</span>
+                <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-1 text-xs px-1">
+                  <tab.icon className="h-4 w-4 hidden lg:block" />
+                  <span className="hidden md:inline truncate">{tab.label}</span>
+                  <span className="md:hidden text-[10px]">{tab.label.split(' ')[0].substring(0, 4)}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -1149,135 +1150,387 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                 </div>
               </TabsContent>
 
-              {/* Utilities Tab */}
-              <TabsContent value="utilities" className="space-y-4 mt-0">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Water Supply Level</Label>
-                    <Select
-                      value={formData.water_supply_level}
-                      onValueChange={(v) => setFormData({ ...formData, water_supply_level: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {WATER_SOURCES.map((opt) => (
-                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              {/* Education & Health Tab */}
+              <TabsContent value="education-health" className="space-y-4 mt-0">
+                <Card>
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4" />
+                      Education & Family Planning
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <Label className="font-medium">Educational Background (Number in Household)</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[
+                          { key: "preschool", label: "Pre-school/Day care" },
+                          { key: "primary", label: "Primary/Elementary" },
+                          { key: "secondary", label: "Secondary/High School" },
+                          { key: "vocational", label: "Vocational/Technical" },
+                          { key: "college", label: "College/University" },
+                          { key: "postgraduate", label: "Post Graduate" },
+                        ].map((edu) => (
+                          <div key={edu.key} className="flex items-center gap-2">
+                            <span className="text-sm flex-1">{edu.label}</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              className="w-16"
+                              placeholder="0"
+                              value={(formData.health_data as any)?.education?.[edu.key] || ""}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                health_data: {
+                                  ...(formData.health_data as any),
+                                  education: {
+                                    ...((formData.health_data as any)?.education || {}),
+                                    [edu.key]: parseInt(e.target.value) || 0
+                                  }
+                                }
+                              })}
+                            />
+                          </div>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label className="text-sm font-medium">Water Storage</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                      {WATER_STORAGE.map((item) => (
-                        <div key={item} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`water-${item}`}
-                            checked={formData.water_storage.includes(item)}
-                            onCheckedChange={(checked) => handleCheckboxArray("water_storage", item, !!checked)}
-                          />
-                          <label htmlFor={`water-${item}`} className="text-sm">{item}</label>
-                        </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <Label className="text-sm font-medium">Toilet Facilities</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                      {TOILET_FACILITIES.map((item) => (
-                        <div key={item} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`toilet-${item}`}
-                            checked={formData.toilet_facilities.includes(item)}
-                            onCheckedChange={(checked) => handleCheckboxArray("toilet_facilities", item, !!checked)}
-                          />
-                          <label htmlFor={`toilet-${item}`} className="text-sm">{item}</label>
+                    <div className="pt-4 border-t space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="family-planning"
+                          checked={(formData.health_data as any)?.familyPlanningAcceptor || false}
+                          onCheckedChange={(checked) => setFormData({
+                            ...formData,
+                            health_data: {
+                              ...(formData.health_data as any),
+                              familyPlanningAcceptor: !!checked
+                            }
+                          })}
+                        />
+                        <label htmlFor="family-planning" className="text-sm font-medium">Family Planning Acceptor</label>
+                      </div>
+                      {(formData.health_data as any)?.familyPlanningAcceptor && (
+                        <div className="ml-6 space-y-2">
+                          <Label>Type of Family Planning Method</Label>
+                          <Select
+                            value={(formData.health_data as any)?.familyPlanningType || ""}
+                            onValueChange={(v) => setFormData({
+                              ...formData,
+                              health_data: {
+                                ...(formData.health_data as any),
+                                familyPlanningType: v
+                              }
+                            })}
+                          >
+                            <SelectTrigger className="w-[200px]">
+                              <SelectValue placeholder="Select method" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {["Pills", "IUD", "Condom", "Injectable", "Implant", "BTL", "Vasectomy", "Natural", "Others"].map((t) => (
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
 
-                  <div>
-                    <Label className="text-sm font-medium">Garbage Disposal</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                      {GARBAGE_DISPOSAL.map((item) => (
-                        <div key={item} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`garbage-${item}`}
-                            checked={formData.garbage_disposal.includes(item)}
-                            onCheckedChange={(checked) => handleCheckboxArray("garbage_disposal", item, !!checked)}
+                    <div className="pt-4 border-t">
+                      <Label className="font-medium">Special Categories</Label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Senior Citizens (60+)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={(formData.health_data as any)?.seniorCount || ""}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              health_data: {
+                                ...(formData.health_data as any),
+                                seniorCount: parseInt(e.target.value) || 0
+                              }
+                            })}
                           />
-                          <label htmlFor={`garbage-${item}`} className="text-sm">{item}</label>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-sm font-medium">Drainage Facilities</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                      {DRAINAGE_FACILITIES.map((item) => (
-                        <div key={item} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`drain-${item}`}
-                            checked={formData.drainage_facilities.includes(item)}
-                            onCheckedChange={(checked) => handleCheckboxArray("drainage_facilities", item, !!checked)}
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Solo Parents</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={formData.solo_parent_count}
+                            onChange={(e) => setFormData({ ...formData, solo_parent_count: parseInt(e.target.value) || 0 })}
                           />
-                          <label htmlFor={`drain-${item}`} className="text-sm">{item}</label>
                         </div>
-                      ))}
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">PWD</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={formData.pwd_count}
+                            onChange={(e) => setFormData({ ...formData, pwd_count: parseInt(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Pregnant Women</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={(formData.health_data as any)?.pregnantCount || ""}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              health_data: {
+                                ...(formData.health_data as any),
+                                pregnantCount: parseInt(e.target.value) || 0
+                              }
+                            })}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-4">
+                        <Checkbox
+                          id="is_4ps"
+                          checked={formData.is_4ps_beneficiary}
+                          onCheckedChange={(checked) => setFormData({ ...formData, is_4ps_beneficiary: !!checked })}
+                        />
+                        <label htmlFor="is_4ps" className="text-sm font-medium">4Ps Beneficiary</label>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
-              {/* Additional Tab */}
-              <TabsContent value="additional" className="space-y-4 mt-0">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="is_4ps"
-                      checked={formData.is_4ps_beneficiary}
-                      onCheckedChange={(checked) => setFormData({ ...formData, is_4ps_beneficiary: !!checked })}
-                    />
-                    <label htmlFor="is_4ps" className="text-sm font-medium">4Ps Beneficiary</label>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="solo_parent">Solo Parent Count</Label>
-                    <Input
-                      id="solo_parent"
-                      type="number"
-                      min="0"
-                      value={formData.solo_parent_count}
-                      onChange={(e) => setFormData({ ...formData, solo_parent_count: parseInt(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pwd">PWD Count</Label>
-                    <Input
-                      id="pwd"
-                      type="number"
-                      min="0"
-                      value={formData.pwd_count}
-                      onChange={(e) => setFormData({ ...formData, pwd_count: parseInt(e.target.value) || 0 })}
-                    />
-                  </div>
-                </div>
+              {/* Environmental Tab */}
+              <TabsContent value="environmental" className="space-y-4 mt-0">
+                <Card>
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Droplets className="h-4 w-4" />
+                      Water & Sanitation
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Water Supply Source</Label>
+                      <Select
+                        value={formData.water_supply_level}
+                        onValueChange={(v) => setFormData({ ...formData, water_supply_level: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {WATER_SOURCES.map((opt) => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Additional Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.additional_notes}
-                    onChange={(e) => setFormData({ ...formData, additional_notes: e.target.value })}
-                    placeholder="Any additional information about your household..."
-                    rows={4}
-                  />
-                </div>
+                    <div>
+                      <Label className="text-sm font-medium">Water Storage</Label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                        {WATER_STORAGE.map((item) => (
+                          <div key={item} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`water-${item}`}
+                              checked={formData.water_storage.includes(item)}
+                              onCheckedChange={(checked) => handleCheckboxArray("water_storage", item, !!checked)}
+                            />
+                            <label htmlFor={`water-${item}`} className="text-sm">{item}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">Toilet Facilities</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                        {TOILET_FACILITIES.map((item) => (
+                          <div key={item} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`toilet-${item}`}
+                              checked={formData.toilet_facilities.includes(item)}
+                              onCheckedChange={(checked) => handleCheckboxArray("toilet_facilities", item, !!checked)}
+                            />
+                            <label htmlFor={`toilet-${item}`} className="text-sm">{item}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">Garbage Disposal</Label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                        {GARBAGE_DISPOSAL.map((item) => (
+                          <div key={item} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`garbage-${item}`}
+                              checked={formData.garbage_disposal.includes(item)}
+                              onCheckedChange={(checked) => handleCheckboxArray("garbage_disposal", item, !!checked)}
+                            />
+                            <label htmlFor={`garbage-${item}`} className="text-sm">{item}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">Drainage Facilities</Label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                        {DRAINAGE_FACILITIES.map((item) => (
+                          <div key={item} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`drain-${item}`}
+                              checked={formData.drainage_facilities.includes(item)}
+                              onCheckedChange={(checked) => handleCheckboxArray("drainage_facilities", item, !!checked)}
+                            />
+                            <label htmlFor={`drain-${item}`} className="text-sm">{item}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">Food Storage</Label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                        {FOOD_STORAGE.map((item) => (
+                          <div key={item} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`food-${item}`}
+                              checked={formData.food_storage_type.includes(item)}
+                              onCheckedChange={(checked) => handleCheckboxArray("food_storage_type", item, !!checked)}
+                            />
+                            <label htmlFor={`food-${item}`} className="text-sm">{item}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Health Info Tab */}
+              <TabsContent value="health-info" className="space-y-4 mt-0">
+                <Card>
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Stethoscope className="h-4 w-4" />
+                      Health & Nutrition Data
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <Label className="font-medium">Children with Malnutrition (by age group)</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {[
+                          { key: "0-11months", label: "0-11 months" },
+                          { key: "1-4years", label: "1-4 years" },
+                          { key: "5-7years", label: "5-7 years" },
+                        ].map((age) => (
+                          <div key={age.key} className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">{age.label}</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={(formData.health_data as any)?.malnutrition?.[age.key] || ""}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                health_data: {
+                                  ...(formData.health_data as any),
+                                  malnutrition: {
+                                    ...((formData.health_data as any)?.malnutrition || {}),
+                                    [age.key]: parseInt(e.target.value) || 0
+                                  }
+                                }
+                              })}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t space-y-3">
+                      <Label className="font-medium">Disability Data (by type)</Label>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {[
+                          { key: "physical", label: "Physical" },
+                          { key: "mental", label: "Mental" },
+                          { key: "visual", label: "Visual" },
+                          { key: "hearing", label: "Hearing" },
+                          { key: "speech", label: "Speech" },
+                        ].map((disability) => (
+                          <div key={disability.key} className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">{disability.label}</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={(formData.health_data as any)?.disability?.[disability.key] || ""}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                health_data: {
+                                  ...(formData.health_data as any),
+                                  disability: {
+                                    ...((formData.health_data as any)?.disability || {}),
+                                    [disability.key]: parseInt(e.target.value) || 0
+                                  }
+                                }
+                              })}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t space-y-3">
+                      <Label className="font-medium">Death Records (in past year)</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {[
+                          { key: "infant", label: "Infant Deaths" },
+                          { key: "maternal", label: "Maternal Deaths" },
+                          { key: "other", label: "Other Deaths" },
+                        ].map((death) => (
+                          <div key={death.key} className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">{death.label}</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={(formData.health_data as any)?.deaths?.[death.key] || ""}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                health_data: {
+                                  ...(formData.health_data as any),
+                                  deaths: {
+                                    ...((formData.health_data as any)?.deaths || {}),
+                                    [death.key]: parseInt(e.target.value) || 0
+                                  }
+                                }
+                              })}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base">Additional Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      value={formData.additional_notes}
+                      onChange={(e) => setFormData({ ...formData, additional_notes: e.target.value })}
+                      placeholder="Any additional information about your household's health, environment, or other relevant details..."
+                      rows={4}
+                    />
+                  </CardContent>
+                </Card>
               </TabsContent>
             </ScrollArea>
           </Tabs>
