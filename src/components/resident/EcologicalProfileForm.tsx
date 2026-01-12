@@ -22,7 +22,10 @@ import {
   ArrowRight,
   CheckCircle,
   AlertCircle,
-  Clock
+  Clock,
+  Plus,
+  Trash2,
+  UserPlus
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -43,6 +46,23 @@ const DRAINAGE_FACILITIES = ["Open drainage", "Closed drainage", "None", "Others
 const COMMUNICATION_SERVICES = ["Telephone", "Cellular networks", "Internet", "Postal Services", "Others"];
 const MEANS_OF_TRANSPORT = ["PUB", "PUJ", "Taxi", "Private car", "Motorcycle", "Bicycle", "Others"];
 const INFO_SOURCES = ["TV", "Radio", "Newspaper", "Internet", "Others"];
+const GENDERS = ["Male", "Female"];
+const RELATIONSHIPS = ["Head", "Spouse", "Son", "Daughter", "Father", "Mother", "Brother", "Sister", "Grandfather", "Grandmother", "Grandson", "Granddaughter", "Son-in-law", "Daughter-in-law", "Other Relative", "Non-relative"];
+const EDUCATION_LEVELS = ["No formal education", "Elementary level", "Elementary graduate", "High school level", "High school graduate", "Vocational", "College level", "College graduate", "Post-graduate"];
+const CIVIL_STATUSES = ["Single", "Married", "Widowed", "Separated", "Divorced", "Live-in"];
+
+interface HouseholdMember {
+  id: string;
+  full_name: string;
+  age: number | null;
+  gender: string;
+  relationship_to_head: string;
+  civil_status: string;
+  occupation: string;
+  education_level: string;
+  is_pwd: boolean;
+  is_solo_parent: boolean;
+}
 
 interface EcologicalProfileFormProps {
   onSuccess?: () => void;
@@ -312,12 +332,49 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
     );
   };
 
+  const createEmptyMember = (): HouseholdMember => ({
+    id: crypto.randomUUID(),
+    full_name: "",
+    age: null,
+    gender: "",
+    relationship_to_head: "",
+    civil_status: "",
+    occupation: "",
+    education_level: "",
+    is_pwd: false,
+    is_solo_parent: false,
+  });
+
+  const addHouseholdMember = () => {
+    setFormData(prev => ({
+      ...prev,
+      household_members: [...prev.household_members, createEmptyMember()]
+    }));
+  };
+
+  const removeHouseholdMember = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      household_members: prev.household_members.filter((m: HouseholdMember) => m.id !== id)
+    }));
+  };
+
+  const updateHouseholdMember = (id: string, field: keyof HouseholdMember, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      household_members: prev.household_members.map((m: HouseholdMember) => 
+        m.id === id ? { ...m, [field]: value } : m
+      )
+    }));
+  };
+
   const tabs = [
     { id: "basic-info", label: "Basic Info", icon: FileText },
+    { id: "members", label: "Members", icon: Users },
     { id: "housing", label: "Housing", icon: Home },
     { id: "services", label: "Services", icon: Zap },
     { id: "utilities", label: "Utilities", icon: Droplets },
-    { id: "additional", label: "Additional", icon: Users },
+    { id: "additional", label: "Additional", icon: UserPlus },
   ];
 
   if (isLoading) {
@@ -377,11 +434,12 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsList className="grid w-full grid-cols-6 mb-6">
               {tabs.map((tab) => (
                 <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-1 text-xs md:text-sm">
                   <tab.icon className="h-4 w-4 hidden md:block" />
-                  {tab.label}
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.label.substring(0, 4)}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -481,6 +539,163 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                     />
                   </div>
                 </div>
+              </TabsContent>
+
+              {/* Household Members Tab */}
+              <TabsContent value="members" className="space-y-4 mt-0">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-medium">Household Members</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Add all family members living in this household ({formData.household_members.length} member{formData.household_members.length !== 1 ? 's' : ''})
+                    </p>
+                  </div>
+                  <Button type="button" onClick={addHouseholdMember} size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Member
+                  </Button>
+                </div>
+
+                {formData.household_members.length === 0 ? (
+                  <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                    <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground mb-3">No household members added yet</p>
+                    <Button type="button" onClick={addHouseholdMember} variant="outline">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add First Member
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {(formData.household_members as HouseholdMember[]).map((member, index) => (
+                      <Card key={member.id} className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <Badge variant="outline">Member {index + 1}</Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => removeHouseholdMember(member.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Full Name *</Label>
+                            <Input
+                              value={member.full_name}
+                              onChange={(e) => updateHouseholdMember(member.id, 'full_name', e.target.value)}
+                              placeholder="Full name"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Age</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="150"
+                              value={member.age || ""}
+                              onChange={(e) => updateHouseholdMember(member.id, 'age', e.target.value ? parseInt(e.target.value) : null)}
+                              placeholder="Age"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Gender</Label>
+                            <Select
+                              value={member.gender}
+                              onValueChange={(v) => updateHouseholdMember(member.id, 'gender', v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {GENDERS.map((g) => (
+                                  <SelectItem key={g} value={g}>{g}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Relationship to Head</Label>
+                            <Select
+                              value={member.relationship_to_head}
+                              onValueChange={(v) => updateHouseholdMember(member.id, 'relationship_to_head', v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {RELATIONSHIPS.map((r) => (
+                                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Civil Status</Label>
+                            <Select
+                              value={member.civil_status}
+                              onValueChange={(v) => updateHouseholdMember(member.id, 'civil_status', v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CIVIL_STATUSES.map((s) => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Education Level</Label>
+                            <Select
+                              value={member.education_level}
+                              onValueChange={(v) => updateHouseholdMember(member.id, 'education_level', v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {EDUCATION_LEVELS.map((e) => (
+                                  <SelectItem key={e} value={e}>{e}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1 md:col-span-2">
+                            <Label className="text-xs">Occupation</Label>
+                            <Input
+                              value={member.occupation}
+                              onChange={(e) => updateHouseholdMember(member.id, 'occupation', e.target.value)}
+                              placeholder="e.g., Farmer, Teacher, Student, None"
+                            />
+                          </div>
+                          <div className="flex items-center gap-4 md:col-span-1">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`pwd-${member.id}`}
+                                checked={member.is_pwd}
+                                onCheckedChange={(checked) => updateHouseholdMember(member.id, 'is_pwd', !!checked)}
+                              />
+                              <label htmlFor={`pwd-${member.id}`} className="text-xs">PWD</label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`solo-${member.id}`}
+                                checked={member.is_solo_parent}
+                                onCheckedChange={(checked) => updateHouseholdMember(member.id, 'is_solo_parent', !!checked)}
+                              />
+                              <label htmlFor={`solo-${member.id}`} className="text-xs">Solo Parent</label>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </TabsContent>
 
               {/* Housing Tab */}
