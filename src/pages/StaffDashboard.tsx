@@ -163,6 +163,7 @@ const StaffSidebar = ({
   userRole,
   pendingRegistrationCount,
   pendingEcologicalCount,
+  pendingNameChangeCount,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
@@ -170,6 +171,7 @@ const StaffSidebar = ({
   userRole?: string;
   pendingRegistrationCount?: number;
   pendingEcologicalCount?: number;
+  pendingNameChangeCount?: number;
 }) => {
   const { state } = useSidebar();
   const navigate = useNavigate();
@@ -189,7 +191,7 @@ const StaffSidebar = ({
   const adminMenuItems = [
     { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions", badge: pendingEcologicalCount && pendingEcologicalCount > 0 ? pendingEcologicalCount : undefined },
     { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined },
-    { title: "Name Change Requests", icon: User, tab: "name-change-requests" },
+    { title: "Name Change Requests", icon: User, tab: "name-change-requests", badge: pendingNameChangeCount && pendingNameChangeCount > 0 ? pendingNameChangeCount : undefined },
     { title: "Staff Management", icon: Shield, route: "/admin/staff" },
     { title: "Audit Logs", icon: History, tab: "audit-logs" },
   ];
@@ -300,6 +302,7 @@ const StaffDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [pendingEcologicalCount, setPendingEcologicalCount] = useState(0);
+  const [pendingNameChangeCount, setPendingNameChangeCount] = useState(0);
 
   // Auth is now handled by ProtectedRoute wrapper
 
@@ -483,6 +486,19 @@ const StaffDashboard = () => {
         }
       };
       loadEcologicalCount();
+
+      // Load pending name change requests count
+      const loadNameChangeCount = async () => {
+        try {
+          const { data, error } = await supabase.rpc("get_pending_name_change_requests_count");
+          if (!error && data !== null) {
+            setPendingNameChangeCount(data);
+          }
+        } catch (err) {
+          console.error("Error loading name change count:", err);
+        }
+      };
+      loadNameChangeCount();
       
       // Real-time subscription for certificate requests
       const requestsChannel = supabase
@@ -510,9 +526,23 @@ const StaffDashboard = () => {
         })
         .subscribe();
 
+      // Real-time subscription for name change requests
+      const nameChangeChannel = supabase
+        .channel('name-change-requests-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'name_change_requests'
+        }, () => {
+          console.log('Name change request changed, reloading count...');
+          loadNameChangeCount();
+        })
+        .subscribe();
+
       return () => {
         supabase.removeChannel(requestsChannel);
         supabase.removeChannel(ecologicalChannel);
+        supabase.removeChannel(nameChangeChannel);
       };
     }
   }, [isAuthenticated, loadRequests]);
@@ -1269,7 +1299,7 @@ const StaffDashboard = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} />
+        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} pendingNameChangeCount={pendingNameChangeCount} />
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}
