@@ -260,14 +260,21 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
       return;
     }
 
-    // Validate at least one household member marked as 'Head'
-    const hasHeadOfHousehold = formData.household_members.some(
+    // Validate household head - must have exactly one
+    const headsOfHousehold = formData.household_members.filter(
       (member: HouseholdMember) => member.relationship_to_head === "Head"
     );
     
-    if (!hasHeadOfHousehold) {
+    if (headsOfHousehold.length === 0) {
       toast.error("Please add at least one household member marked as 'Head'", {
         description: "Every household must have a head of household designated."
+      });
+      return;
+    }
+    
+    if (headsOfHousehold.length > 1) {
+      toast.error("Only one household member can be marked as 'Head'", {
+        description: "Please ensure only one person is designated as head of household."
       });
       return;
     }
