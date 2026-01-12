@@ -14,7 +14,8 @@ import {
   Settings,
   ChevronRight,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  Leaf
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -79,6 +80,7 @@ const ResidentSidebar = ({
     { title: "My Requests", icon: Clock, tab: "requests" },
     { title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessageCount > 0 ? unreadMessageCount : undefined },
     { title: "Incident Reports", icon: AlertCircle, tab: "incidents" },
+    { title: "Ecological Profile", icon: Leaf, tab: "ecological-profile" },
     { title: "Settings", icon: Settings, tab: "settings" },
   ];
 
@@ -230,6 +232,8 @@ const ResidentDashboard = () => {
       navigate("/resident/incidents");
     } else if (tab === "messages") {
       navigate("/resident/messages");
+    } else if (tab === "ecological-profile") {
+      navigate("/resident/ecological-profile");
     } else {
       setActiveTab(tab);
     }

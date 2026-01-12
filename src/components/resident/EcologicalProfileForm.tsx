@@ -176,14 +176,14 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                 dwelling_type: householdData.dwelling_type || "",
                 lighting_source: householdData.lighting_source || "",
                 water_supply_level: householdData.water_supply_level || "",
-                water_storage: Array.isArray(householdData.water_storage) ? householdData.water_storage : [],
-                food_storage_type: Array.isArray(householdData.food_storage_type) ? householdData.food_storage_type : [],
-                toilet_facilities: Array.isArray(householdData.toilet_facilities) ? householdData.toilet_facilities : [],
-                drainage_facilities: Array.isArray(householdData.drainage_facilities) ? householdData.drainage_facilities : [],
-                garbage_disposal: Array.isArray(householdData.garbage_disposal) ? householdData.garbage_disposal : [],
-                communication_services: Array.isArray(householdData.communication_services) ? householdData.communication_services : [],
-                means_of_transport: Array.isArray(householdData.means_of_transport) ? householdData.means_of_transport : [],
-                info_sources: Array.isArray(householdData.info_sources) ? householdData.info_sources : [],
+                water_storage: Array.isArray(householdData.water_storage) ? (householdData.water_storage as string[]) : [],
+                food_storage_type: Array.isArray(householdData.food_storage_type) ? (householdData.food_storage_type as string[]) : [],
+                toilet_facilities: Array.isArray(householdData.toilet_facilities) ? (householdData.toilet_facilities as string[]) : [],
+                drainage_facilities: Array.isArray(householdData.drainage_facilities) ? (householdData.drainage_facilities as string[]) : [],
+                garbage_disposal: Array.isArray(householdData.garbage_disposal) ? (householdData.garbage_disposal as string[]) : [],
+                communication_services: Array.isArray(householdData.communication_services) ? (householdData.communication_services as string[]) : [],
+                means_of_transport: Array.isArray(householdData.means_of_transport) ? (householdData.means_of_transport as string[]) : [],
+                info_sources: Array.isArray(householdData.info_sources) ? (householdData.info_sources as string[]) : [],
               }));
             }
           }

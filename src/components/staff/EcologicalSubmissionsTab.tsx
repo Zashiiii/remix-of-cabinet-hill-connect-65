@@ -66,7 +66,7 @@ interface Submission {
 }
 
 const EcologicalSubmissionsTab = () => {
-  const { staffUser } = useStaffAuthContext();
+  const { user: staffUser } = useStaffAuthContext();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
