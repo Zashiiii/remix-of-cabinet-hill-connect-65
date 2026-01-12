@@ -165,6 +165,7 @@ const StaffSidebar = ({
   pendingEcologicalCount,
   pendingNameChangeCount,
   pendingIncidentsCount,
+  pendingCertificatesCount,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
@@ -174,13 +175,14 @@ const StaffSidebar = ({
   pendingEcologicalCount?: number;
   pendingNameChangeCount?: number;
   pendingIncidentsCount?: number;
+  pendingCertificatesCount?: number;
 }) => {
   const { state } = useSidebar();
   const navigate = useNavigate();
 
   const mainMenuItems = [
     { title: "Home", icon: Home, tab: "home" },
-    { title: "Certificate Requests", icon: FileText, tab: "certificate-requests" },
+    { title: "Certificate Requests", icon: FileText, tab: "certificate-requests", badge: pendingCertificatesCount && pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined },
     { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", badge: pendingIncidentsCount && pendingIncidentsCount > 0 ? pendingIncidentsCount : undefined },
     { title: "Ecological Profile Census", icon: FileText, tab: "ecological-profile" },
     { title: "Manage Announcements", icon: Bell, tab: "announcements" },
@@ -320,6 +322,7 @@ const StaffDashboard = () => {
   const [pendingEcologicalCount, setPendingEcologicalCount] = useState(0);
   const [pendingNameChangeCount, setPendingNameChangeCount] = useState(0);
   const [pendingIncidentsCount, setPendingIncidentsCount] = useState(0);
+  const [pendingCertificatesCount, setPendingCertificatesCount] = useState(0);
 
   // Auth is now handled by ProtectedRoute wrapper
 
@@ -529,6 +532,19 @@ const StaffDashboard = () => {
         }
       };
       loadIncidentsCount();
+
+      // Load pending certificate requests count
+      const loadCertificatesCount = async () => {
+        try {
+          const { data, error } = await supabase.rpc("get_pending_certificate_requests_count");
+          if (!error && data !== null) {
+            setPendingCertificatesCount(data);
+          }
+        } catch (err) {
+          console.error("Error loading certificates count:", err);
+        }
+      };
+      loadCertificatesCount();
       
       // Real-time subscription for certificate requests
       const requestsChannel = supabase
@@ -540,6 +556,7 @@ const StaffDashboard = () => {
         }, () => {
           console.log('Certificate request changed, reloading...');
           loadRequests();
+          loadCertificatesCount();
         })
         .subscribe();
 
@@ -1343,7 +1360,7 @@ const StaffDashboard = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} pendingNameChangeCount={pendingNameChangeCount} pendingIncidentsCount={pendingIncidentsCount} />
+        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} pendingNameChangeCount={pendingNameChangeCount} pendingIncidentsCount={pendingIncidentsCount} pendingCertificatesCount={pendingCertificatesCount} />
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}
