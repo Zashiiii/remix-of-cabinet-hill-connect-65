@@ -217,13 +217,33 @@ const StaffChatWidget = () => {
     setSelectedConversation(message);
     setReplyContent("");
 
-    if (!message.isRead) {
+    // Check if parent or any replies are unread
+    const hasUnreadReplies = message.replies?.some((r) => !r.isRead) || false;
+    const needsMarkAsRead = !message.isRead || hasUnreadReplies;
+
+    if (needsMarkAsRead) {
       try {
-        await supabase.rpc("staff_mark_message_read", { p_staff_id: user.id, p_message_id: message.id });
+        await supabase.rpc("staff_mark_message_read", { p_staff_id: user?.id, p_message_id: message.id });
+        
+        // Calculate how many unread messages we're marking as read
+        const unreadRepliesCount = message.replies?.filter((r) => !r.isRead).length || 0;
+        const parentUnreadCount = message.isRead ? 0 : 1;
+        const totalMarkedAsRead = parentUnreadCount + unreadRepliesCount;
+        
+        // Update local state: mark parent and all replies as read
         setMessages((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, isRead: true } : m))
+          prev.map((m) =>
+            m.id === message.id
+              ? {
+                  ...m,
+                  isRead: true,
+                  replies: m.replies?.map((r) => ({ ...r, isRead: true })),
+                }
+              : m
+          )
         );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
+        
+        setUnreadCount((prev) => Math.max(0, prev - totalMarkedAsRead));
       } catch (error) {
         console.error("Error marking as read:", error);
       }
