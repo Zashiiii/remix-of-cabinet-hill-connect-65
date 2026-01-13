@@ -227,10 +227,43 @@ const ChatWidget = () => {
     setSelectedConversation(message);
     setReplyContent("");
 
-    // Mark as read
-    if (!message.isRead && message.senderType === "staff") {
-      await supabase.from("messages").update({ is_read: true }).eq("id", message.id);
-      loadMessages();
+    // Check for unread messages in this thread (from staff)
+    const hasUnreadParent = !message.isRead && message.senderType === "staff";
+    const unreadReplies = message.replies?.filter(r => !r.isRead && r.senderType === "staff") || [];
+    
+    if (hasUnreadParent || unreadReplies.length > 0) {
+      try {
+        // Mark parent as read if unread
+        if (hasUnreadParent) {
+          await supabase.from("messages").update({ is_read: true }).eq("id", message.id);
+        }
+        
+        // Mark all unread replies as read
+        if (unreadReplies.length > 0) {
+          const replyIds = unreadReplies.map(r => r.id);
+          await supabase.from("messages").update({ is_read: true }).in("id", replyIds);
+        }
+        
+        // Calculate total marked as read
+        const totalMarkedAsRead = (hasUnreadParent ? 1 : 0) + unreadReplies.length;
+        
+        // Update local state
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === message.id
+              ? {
+                  ...m,
+                  isRead: true,
+                  replies: m.replies?.map((r) => ({ ...r, isRead: true })),
+                }
+              : m
+          )
+        );
+        
+        setUnreadCount((prev) => Math.max(0, prev - totalMarkedAsRead));
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
+      }
     }
   };
 

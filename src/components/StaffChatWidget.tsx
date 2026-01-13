@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, X, Send, Loader2, Inbox, ArrowLeft, Mail, MailOpen, Plus, Users } from "lucide-react";
+import { MessageSquare, X, Send, Loader2, Inbox, ArrowLeft, Mail, MailOpen, Plus, Users, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -279,6 +279,43 @@ const StaffChatWidget = () => {
     }
   };
 
+  const handleMarkAllAsRead = async () => {
+    if (!user?.id || unreadCount === 0) return;
+    
+    try {
+      // Get all unread message IDs (parent and replies)
+      const unreadMessageIds: string[] = [];
+      messages.forEach((m) => {
+        if (!m.isRead) unreadMessageIds.push(m.id);
+        m.replies?.forEach((r) => {
+          if (!r.isRead) unreadMessageIds.push(r.id);
+        });
+      });
+      
+      if (unreadMessageIds.length === 0) return;
+      
+      // Mark all as read via RPC for each message
+      for (const msgId of unreadMessageIds) {
+        await supabase.rpc("staff_mark_message_read", { p_staff_id: user.id, p_message_id: msgId });
+      }
+      
+      // Update local state
+      setMessages((prev) =>
+        prev.map((m) => ({
+          ...m,
+          isRead: true,
+          replies: m.replies?.map((r) => ({ ...r, isRead: true })),
+        }))
+      );
+      setUnreadCount(0);
+      
+      toast.success("All messages marked as read");
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+      toast.error("Failed to mark messages as read");
+    }
+  };
+
   const filteredMessages =
     activeTab === "unread" ? messages.filter((m) => !m.isRead) : messages;
 
@@ -514,18 +551,31 @@ const StaffChatWidget = () => {
             <div className="flex-1 flex flex-col">
               {/* Tabs */}
               <div className="p-2 border-b">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="w-full">
-                    <TabsTrigger value="unread" className="flex-1 text-xs">
-                      <Mail className="h-3 w-3 mr-1" />
-                      Unread ({messages.filter((m) => !m.isRead).length})
-                    </TabsTrigger>
-                    <TabsTrigger value="all" className="flex-1 text-xs">
-                      <MailOpen className="h-3 w-3 mr-1" />
-                      All
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                <div className="flex items-center justify-between gap-2">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="unread" className="flex-1 text-xs">
+                        <Mail className="h-3 w-3 mr-1" />
+                        Unread ({messages.filter((m) => !m.isRead).length})
+                      </TabsTrigger>
+                      <TabsTrigger value="all" className="flex-1 text-xs">
+                        <MailOpen className="h-3 w-3 mr-1" />
+                        All
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  {unreadCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleMarkAllAsRead}
+                      className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      title="Mark all as read"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Messages List */}
