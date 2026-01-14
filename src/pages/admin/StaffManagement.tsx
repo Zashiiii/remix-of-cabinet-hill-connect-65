@@ -117,13 +117,25 @@ const AdminStaffManagement = () => {
   };
 
   const hashPassword = async (password: string): Promise<string> => {
-    // Token is now sent via httpOnly cookie automatically
-    const { data, error } = await supabase.functions.invoke("staff-auth", {
-      body: { action: "hash-password", password },
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    // Use fetch with credentials: 'include' to send httpOnly cookies
+    const response = await fetch(`${supabaseUrl}/functions/v1/staff-auth`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+      credentials: 'include', // Important: sends httpOnly cookies for authentication
+      body: JSON.stringify({ action: "hash-password", password }),
     });
+
+    const data = await response.json();
     
-    if (error || !data?.hashedPassword) {
-      throw new Error("Failed to hash password");
+    if (!response.ok || !data?.hashedPassword) {
+      throw new Error(data?.error || "Failed to hash password");
     }
     
     return data.hashedPassword;
