@@ -30,22 +30,40 @@ import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { createAuditLog } from "@/utils/auditLog";
 
 interface HouseholdMember {
+  id?: string;
   full_name?: string;
   relation_to_head?: string;
+  relationship_to_head?: string; // Alternative field name
   birth_date?: string;
+  age?: number;
   gender?: string;
   civil_status?: string;
   religion?: string;
   contact_number?: string;
   occupation?: string;
   education_attainment?: string;
+  education_level?: string; // Alternative field name
   schooling_status?: string;
   employment_status?: string;
   employment_category?: string;
   monthly_income_cash?: string;
   monthly_income_kind?: string;
+  monthly_income?: string; // Alternative field name
   is_head_of_household?: boolean;
+  is_pwd?: boolean;
+  is_solo_parent?: boolean;
 }
+
+// Helper to get member field value with fallback
+const getMemberValue = (member: HouseholdMember, ...keys: (keyof HouseholdMember)[]) => {
+  for (const key of keys) {
+    const value = member[key];
+    if (value !== undefined && value !== null && value !== '') {
+      return String(value);
+    }
+  }
+  return null;
+};
 
 interface Submission {
   id: string;
@@ -572,20 +590,22 @@ const EcologicalSubmissionsTab = () => {
                                 <TableCell className="font-medium">
                                   <div className="flex items-center gap-2">
                                     {member.full_name || "—"}
-                                    {member.is_head_of_household && (
+                                    {(member.is_head_of_household || getMemberValue(member, 'relation_to_head', 'relationship_to_head') === 'Head') && (
                                       <Badge variant="outline" className="text-xs">Head</Badge>
                                     )}
                                   </div>
                                 </TableCell>
-                                <TableCell>{member.relation_to_head || "—"}</TableCell>
+                                <TableCell>{getMemberValue(member, 'relation_to_head', 'relationship_to_head') || "—"}</TableCell>
                                 <TableCell>
                                   {member.birth_date 
                                     ? format(new Date(member.birth_date), "MMM dd, yyyy")
-                                    : "—"}
+                                    : member.age 
+                                      ? `${member.age} yrs old`
+                                      : "—"}
                                 </TableCell>
                                 <TableCell className="capitalize">{member.gender || "—"}</TableCell>
                                 <TableCell className="capitalize">
-                                  {member.employment_status?.replace(/_/g, ' ') || "—"}
+                                  {getMemberValue(member, 'employment_status')?.replace(/_/g, ' ') || "—"}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -598,16 +618,26 @@ const EcologicalSubmissionsTab = () => {
                         <Label className="text-muted-foreground">Member Details</Label>
                         {members.map((member, idx) => (
                           <div key={idx} className="p-3 rounded-lg bg-muted/50 border">
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <span className="font-medium">{member.full_name || `Member ${idx + 1}`}</span>
-                              {member.is_head_of_household && (
+                              {(member.is_head_of_household || getMemberValue(member, 'relation_to_head', 'relationship_to_head') === 'Head') && (
                                 <Badge variant="default" className="text-xs">Household Head</Badge>
+                              )}
+                              {member.is_pwd && (
+                                <Badge variant="secondary" className="text-xs">PWD</Badge>
+                              )}
+                              {member.is_solo_parent && (
+                                <Badge variant="secondary" className="text-xs">Solo Parent</Badge>
                               )}
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
                               <div>
                                 <span className="text-muted-foreground">Relation: </span>
-                                {member.relation_to_head || "—"}
+                                {getMemberValue(member, 'relation_to_head', 'relationship_to_head') || "—"}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Age: </span>
+                                {member.age ?? (member.birth_date ? `${new Date().getFullYear() - new Date(member.birth_date).getFullYear()}` : "—")}
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Gender: </span>
@@ -623,7 +653,15 @@ const EcologicalSubmissionsTab = () => {
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Education: </span>
-                                {member.education_attainment || "—"}
+                                {getMemberValue(member, 'education_attainment', 'education_level') || "—"}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Schooling: </span>
+                                {member.schooling_status || "—"}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Employment: </span>
+                                <span className="capitalize">{getMemberValue(member, 'employment_status')?.replace(/_/g, ' ') || "—"}</span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Occupation: </span>
@@ -634,13 +672,15 @@ const EcologicalSubmissionsTab = () => {
                                 {member.contact_number || "—"}
                               </div>
                               <div>
-                                <span className="text-muted-foreground">Income (Cash): </span>
-                                {member.monthly_income_cash || "—"}
+                                <span className="text-muted-foreground">Income: </span>
+                                {getMemberValue(member, 'monthly_income_cash', 'monthly_income') || "—"}
                               </div>
-                              <div>
-                                <span className="text-muted-foreground">Income (Kind): </span>
-                                {member.monthly_income_kind || "—"}
-                              </div>
+                              {member.monthly_income_kind && (
+                                <div>
+                                  <span className="text-muted-foreground">Income (Kind): </span>
+                                  {member.monthly_income_kind}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -746,115 +786,87 @@ const EcologicalSubmissionsTab = () => {
 
               <TabsContent value="health" className="space-y-4 mt-4">
                 <ScrollArea className="h-[350px] pr-4">
-                  {/* Health Data */}
-                  {selectedSubmission.health_data && Object.keys(selectedSubmission.health_data).length > 0 && (
-                    <div className="mb-4">
-                      <Label className="text-muted-foreground text-xs font-semibold">Health Data</Label>
-                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
-                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
-                          {JSON.stringify(selectedSubmission.health_data, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
+                  {(() => {
+                    const healthData = selectedSubmission.health_data as Record<string, unknown> | null;
+                    const hasHealthData = healthData && Object.keys(healthData).length > 0;
+                    
+                    // Helper to render data section
+                    const renderDataSection = (title: string, data: Record<string, unknown> | null) => {
+                      if (!data || Object.keys(data).length === 0) return null;
+                      
+                      return (
+                        <div className="mb-4 p-3 rounded-lg bg-muted/50 border">
+                          <Label className="text-xs font-semibold text-primary">{title}</Label>
+                          <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {Object.entries(data).map(([key, value]) => {
+                              // Format the key to be more readable
+                              const formattedKey = key
+                                .replace(/([A-Z])/g, ' $1')
+                                .replace(/_/g, ' ')
+                                .replace(/^\w/, c => c.toUpperCase())
+                                .trim();
+                              
+                              // Handle nested objects
+                              if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                                return (
+                                  <div key={key} className="col-span-2 md:col-span-3">
+                                    <span className="text-muted-foreground text-xs block mb-1">{formattedKey}:</span>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1 pl-2 border-l-2 border-muted">
+                                      {Object.entries(value as Record<string, unknown>).map(([subKey, subValue]) => (
+                                        <div key={subKey} className="text-xs">
+                                          <span className="text-muted-foreground capitalize">{subKey.replace(/_/g, ' ')}: </span>
+                                          <span className="font-medium">{String(subValue)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              
+                              return (
+                                <div key={key} className="text-sm">
+                                  <span className="text-muted-foreground text-xs block">{formattedKey}</span>
+                                  <span className="font-medium">
+                                    {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value ?? '—')}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    };
 
-                  {/* Immunization Data */}
-                  {selectedSubmission.immunization_data && Object.keys(selectedSubmission.immunization_data).length > 0 && (
-                    <div className="mb-4">
-                      <Label className="text-muted-foreground text-xs font-semibold">Immunization Data</Label>
-                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
-                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
-                          {JSON.stringify(selectedSubmission.immunization_data, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
+                    const hasAnyData = hasHealthData ||
+                      (selectedSubmission.immunization_data && Object.keys(selectedSubmission.immunization_data).length > 0) ||
+                      (selectedSubmission.education_data && Object.keys(selectedSubmission.education_data).length > 0) ||
+                      (selectedSubmission.family_planning && Object.keys(selectedSubmission.family_planning).length > 0) ||
+                      (selectedSubmission.pregnant_data && Object.keys(selectedSubmission.pregnant_data).length > 0) ||
+                      (selectedSubmission.disability_data && Object.keys(selectedSubmission.disability_data).length > 0) ||
+                      (selectedSubmission.senior_data && Object.keys(selectedSubmission.senior_data).length > 0) ||
+                      (selectedSubmission.death_data && Object.keys(selectedSubmission.death_data).length > 0);
 
-                  {/* Education Data */}
-                  {selectedSubmission.education_data && Object.keys(selectedSubmission.education_data).length > 0 && (
-                    <div className="mb-4">
-                      <Label className="text-muted-foreground text-xs font-semibold">Education Data</Label>
-                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
-                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
-                          {JSON.stringify(selectedSubmission.education_data, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
+                    if (!hasAnyData) {
+                      return (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p>No health-related data in this submission</p>
+                        </div>
+                      );
+                    }
 
-                  {/* Family Planning */}
-                  {selectedSubmission.family_planning && Object.keys(selectedSubmission.family_planning).length > 0 && (
-                    <div className="mb-4">
-                      <Label className="text-muted-foreground text-xs font-semibold">Family Planning</Label>
-                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
-                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
-                          {JSON.stringify(selectedSubmission.family_planning, null, 2)}
-                        </pre>
+                    return (
+                      <div className="space-y-2">
+                        {renderDataSection('Health Statistics', healthData)}
+                        {renderDataSection('Immunization Records', selectedSubmission.immunization_data)}
+                        {renderDataSection('Education Data', selectedSubmission.education_data)}
+                        {renderDataSection('Family Planning', selectedSubmission.family_planning)}
+                        {renderDataSection('Pregnancy Data', selectedSubmission.pregnant_data)}
+                        {renderDataSection('Disability Information', selectedSubmission.disability_data)}
+                        {renderDataSection('Senior Citizens', selectedSubmission.senior_data)}
+                        {renderDataSection('Death Records', selectedSubmission.death_data)}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Pregnant Data */}
-                  {selectedSubmission.pregnant_data && Object.keys(selectedSubmission.pregnant_data).length > 0 && (
-                    <div className="mb-4">
-                      <Label className="text-muted-foreground text-xs font-semibold">Pregnancy Data</Label>
-                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
-                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
-                          {JSON.stringify(selectedSubmission.pregnant_data, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Disability Data */}
-                  {selectedSubmission.disability_data && Object.keys(selectedSubmission.disability_data).length > 0 && (
-                    <div className="mb-4">
-                      <Label className="text-muted-foreground text-xs font-semibold">Disability Data</Label>
-                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
-                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
-                          {JSON.stringify(selectedSubmission.disability_data, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Senior Data */}
-                  {selectedSubmission.senior_data && Object.keys(selectedSubmission.senior_data).length > 0 && (
-                    <div className="mb-4">
-                      <Label className="text-muted-foreground text-xs font-semibold">Senior Citizen Data</Label>
-                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
-                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
-                          {JSON.stringify(selectedSubmission.senior_data, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Death Data */}
-                  {selectedSubmission.death_data && Object.keys(selectedSubmission.death_data).length > 0 && (
-                    <div className="mb-4">
-                      <Label className="text-muted-foreground text-xs font-semibold">Death Data</Label>
-                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
-                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
-                          {JSON.stringify(selectedSubmission.death_data, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Check if no health data exists */}
-                  {(!selectedSubmission.health_data || Object.keys(selectedSubmission.health_data).length === 0) &&
-                   (!selectedSubmission.immunization_data || Object.keys(selectedSubmission.immunization_data).length === 0) &&
-                   (!selectedSubmission.education_data || Object.keys(selectedSubmission.education_data).length === 0) &&
-                   (!selectedSubmission.family_planning || Object.keys(selectedSubmission.family_planning).length === 0) &&
-                   (!selectedSubmission.pregnant_data || Object.keys(selectedSubmission.pregnant_data).length === 0) &&
-                   (!selectedSubmission.disability_data || Object.keys(selectedSubmission.disability_data).length === 0) &&
-                   (!selectedSubmission.senior_data || Object.keys(selectedSubmission.senior_data).length === 0) &&
-                   (!selectedSubmission.death_data || Object.keys(selectedSubmission.death_data).length === 0) && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No health-related data in this submission</p>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </ScrollArea>
               </TabsContent>
 
