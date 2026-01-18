@@ -114,6 +114,16 @@ interface SubmissionData {
   additional_notes: string;
   respondent_name: string;
   respondent_relation: string;
+  // Custom "Others" text values
+  other_values?: {
+    water_storage?: string;
+    food_storage_type?: string;
+    garbage_disposal?: string;
+    drainage_facilities?: string;
+    communication_services?: string;
+    means_of_transport?: string;
+    info_sources?: string;
+  };
 }
 
 const defaultFormData: SubmissionData = {
@@ -146,6 +156,7 @@ const defaultFormData: SubmissionData = {
   additional_notes: "",
   respondent_name: "",
   respondent_relation: "",
+  other_values: {},
 };
 
 const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormProps) => {
@@ -314,7 +325,62 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
       setFormData(prev => ({ ...prev, [field]: [...currentArray, value] }));
     } else {
       setFormData(prev => ({ ...prev, [field]: currentArray.filter(v => v !== value) }));
+      // Clear the "Others" text value when unchecking
+      if (value === "Others") {
+        setFormData(prev => ({
+          ...prev,
+          other_values: { ...prev.other_values, [field]: "" }
+        }));
+      }
     }
+  };
+
+  const handleOtherValueChange = (field: keyof NonNullable<SubmissionData['other_values']>, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      other_values: { ...prev.other_values, [field]: value }
+    }));
+  };
+
+  const renderCheckboxWithOthers = (
+    label: string,
+    field: keyof SubmissionData,
+    options: string[],
+    idPrefix: string,
+    columns: string = "grid-cols-2 md:grid-cols-3"
+  ) => {
+    const currentArray = formData[field] as string[];
+    const hasOthers = options.includes("Others");
+    const othersChecked = currentArray.includes("Others");
+    const otherFieldKey = field as keyof NonNullable<SubmissionData['other_values']>;
+
+    return (
+      <div>
+        <Label className="text-sm font-medium">{label}</Label>
+        <div className={`grid ${columns} gap-2 mt-2`}>
+          {options.map((item) => (
+            <div key={item} className="flex items-center space-x-2">
+              <Checkbox
+                id={`${idPrefix}-${item}`}
+                checked={currentArray.includes(item)}
+                onCheckedChange={(checked) => handleCheckboxArray(field, item, !!checked)}
+              />
+              <label htmlFor={`${idPrefix}-${item}`} className="text-sm">{item}</label>
+            </div>
+          ))}
+        </div>
+        {hasOthers && othersChecked && (
+          <div className="mt-2 ml-6">
+            <Input
+              placeholder="Please specify..."
+              value={formData.other_values?.[otherFieldKey] || ""}
+              onChange={(e) => handleOtherValueChange(otherFieldKey, e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleSubmit = async () => {
@@ -381,7 +447,10 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
         means_of_transport: formData.means_of_transport,
         info_sources: formData.info_sources,
         household_members: formData.household_members,
-        health_data: formData.health_data,
+        health_data: {
+          ...(formData.health_data as any),
+          other_values: formData.other_values
+        },
         is_4ps_beneficiary: formData.is_4ps_beneficiary,
         solo_parent_count: formData.solo_parent_count,
         pwd_count: formData.pwd_count,
@@ -485,6 +554,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
       additional_notes: submission.additional_notes || "",
       respondent_name: submission.respondent_name || "",
       respondent_relation: submission.respondent_relation || "",
+      other_values: submission.health_data?.other_values || {},
     });
     
     setEditingSubmissionId(submission.id);
@@ -1335,53 +1405,9 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
               {/* Services Tab */}
               <TabsContent value="services" className="space-y-4 mt-0">
                 <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm font-medium">Communication Services</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                      {COMMUNICATION_SERVICES.map((service) => (
-                        <div key={service} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`comm-${service}`}
-                            checked={formData.communication_services.includes(service)}
-                            onCheckedChange={(checked) => handleCheckboxArray("communication_services", service, !!checked)}
-                          />
-                          <label htmlFor={`comm-${service}`} className="text-sm">{service}</label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-sm font-medium">Means of Transport</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                      {MEANS_OF_TRANSPORT.map((transport) => (
-                        <div key={transport} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`trans-${transport}`}
-                            checked={formData.means_of_transport.includes(transport)}
-                            onCheckedChange={(checked) => handleCheckboxArray("means_of_transport", transport, !!checked)}
-                          />
-                          <label htmlFor={`trans-${transport}`} className="text-sm">{transport}</label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-sm font-medium">Information Sources</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                      {INFO_SOURCES.map((source) => (
-                        <div key={source} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`info-${source}`}
-                            checked={formData.info_sources.includes(source)}
-                            onCheckedChange={(checked) => handleCheckboxArray("info_sources", source, !!checked)}
-                          />
-                          <label htmlFor={`info-${source}`} className="text-sm">{source}</label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  {renderCheckboxWithOthers("Communication Services", "communication_services", COMMUNICATION_SERVICES, "comm")}
+                  {renderCheckboxWithOthers("Means of Transport", "means_of_transport", MEANS_OF_TRANSPORT, "trans")}
+                  {renderCheckboxWithOthers("Information Sources", "info_sources", INFO_SOURCES, "info")}
                 </div>
               </TabsContent>
 
@@ -1568,22 +1594,8 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                       </div>
                     </div>
 
-                    <div>
-                      <Label className="text-sm font-medium">Water Storage</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                        {WATER_STORAGE.map((item) => (
-                          <div key={item} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`water-${item}`}
-                              checked={formData.water_storage.includes(item)}
-                              onCheckedChange={(checked) => handleCheckboxArray("water_storage", item, !!checked)}
-                            />
-                            <label htmlFor={`water-${item}`} className="text-sm">{item}</label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
+                    {renderCheckboxWithOthers("Water Storage", "water_storage", WATER_STORAGE, "water")}
+                    
                     <div>
                       <Label className="text-sm font-medium">Toilet Facilities</Label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
@@ -1600,53 +1612,9 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                       </div>
                     </div>
 
-                    <div>
-                      <Label className="text-sm font-medium">Garbage Disposal</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                        {GARBAGE_DISPOSAL.map((item) => (
-                          <div key={item} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`garbage-${item}`}
-                              checked={formData.garbage_disposal.includes(item)}
-                              onCheckedChange={(checked) => handleCheckboxArray("garbage_disposal", item, !!checked)}
-                            />
-                            <label htmlFor={`garbage-${item}`} className="text-sm">{item}</label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium">Drainage Facilities</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                        {DRAINAGE_FACILITIES.map((item) => (
-                          <div key={item} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`drain-${item}`}
-                              checked={formData.drainage_facilities.includes(item)}
-                              onCheckedChange={(checked) => handleCheckboxArray("drainage_facilities", item, !!checked)}
-                            />
-                            <label htmlFor={`drain-${item}`} className="text-sm">{item}</label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium">Food Storage</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                        {FOOD_STORAGE.map((item) => (
-                          <div key={item} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`food-${item}`}
-                              checked={formData.food_storage_type.includes(item)}
-                              onCheckedChange={(checked) => handleCheckboxArray("food_storage_type", item, !!checked)}
-                            />
-                            <label htmlFor={`food-${item}`} className="text-sm">{item}</label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    {renderCheckboxWithOthers("Garbage Disposal", "garbage_disposal", GARBAGE_DISPOSAL, "garbage")}
+                    {renderCheckboxWithOthers("Drainage Facilities", "drainage_facilities", DRAINAGE_FACILITIES, "drain")}
+                    {renderCheckboxWithOthers("Food Storage", "food_storage_type", FOOD_STORAGE, "food")}
                   </CardContent>
                 </Card>
               </TabsContent>
