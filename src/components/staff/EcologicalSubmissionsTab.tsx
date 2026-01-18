@@ -54,13 +54,21 @@ interface Submission {
   household_number: string | null;
   address: string | null;
   street_purok: string | null;
+  house_number: string | null;
   respondent_name: string | null;
+  respondent_relation: string | null;
   created_at: string;
   reviewed_by: string | null;
   reviewed_at: string | null;
   rejection_reason: string | null;
   staff_notes: string | null;
   submitted_by_resident_id: string | null;
+  interview_date: string | null;
+  // Location data
+  barangay: string | null;
+  city: string | null;
+  province: string | null;
+  district: string | null;
   // Housing data
   house_ownership: string | null;
   lot_ownership: string | null;
@@ -72,18 +80,30 @@ interface Submission {
   ethnic_group: string | null;
   // Array fields
   water_storage: string[] | null;
+  food_storage_type: string[] | null;
   toilet_facilities: string[] | null;
+  drainage_facilities: string[] | null;
   garbage_disposal: string[] | null;
   communication_services: string[] | null;
   means_of_transport: string[] | null;
   info_sources: string[] | null;
-  // Additional
+  // Additional counts
   is_4ps_beneficiary: boolean | null;
   solo_parent_count: number | null;
   pwd_count: number | null;
   additional_notes: string | null;
-  // Household members
+  // JSON data fields
   household_members: HouseholdMember[] | null;
+  health_data: Record<string, unknown> | null;
+  immunization_data: Record<string, unknown> | null;
+  education_data: Record<string, unknown> | null;
+  family_planning: Record<string, unknown> | null;
+  pregnant_data: Record<string, unknown> | null;
+  disability_data: Record<string, unknown> | null;
+  senior_data: Record<string, unknown> | null;
+  death_data: Record<string, unknown> | null;
+  food_production: Record<string, unknown> | null;
+  animals: Record<string, unknown> | null;
 }
 
 const EcologicalSubmissionsTab = () => {
@@ -385,67 +405,82 @@ const EcologicalSubmissionsTab = () => {
 
           {selectedSubmission && (
             <Tabs defaultValue="basic" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                <TabsTrigger value="members" className="flex items-center gap-1">
+              <TabsList className="flex flex-wrap h-auto gap-1 p-1">
+                <TabsTrigger value="basic" className="text-xs">Basic</TabsTrigger>
+                <TabsTrigger value="location" className="text-xs">Location</TabsTrigger>
+                <TabsTrigger value="members" className="flex items-center gap-1 text-xs">
                   <Users className="h-3 w-3" />
                   Members
-                  {selectedSubmission.household_members && selectedSubmission.household_members.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {selectedSubmission.household_members && (selectedSubmission.household_members as HouseholdMember[]).length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs">
                       {(selectedSubmission.household_members as HouseholdMember[]).length}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="housing">Housing</TabsTrigger>
-                <TabsTrigger value="services">Services</TabsTrigger>
-                <TabsTrigger value="additional">Additional</TabsTrigger>
+                <TabsTrigger value="housing" className="text-xs">Housing</TabsTrigger>
+                <TabsTrigger value="services" className="text-xs">Services</TabsTrigger>
+                <TabsTrigger value="health" className="text-xs">Health</TabsTrigger>
+                <TabsTrigger value="additional" className="text-xs">Additional</TabsTrigger>
               </TabsList>
 
               <TabsContent value="basic" className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground">Status</Label>
+                    <Label className="text-muted-foreground text-xs">Status</Label>
                     <div className="mt-1">{getStatusBadge(selectedSubmission.status)}</div>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Household Number</Label>
+                    <Label className="text-muted-foreground text-xs">Submission Number</Label>
+                    <p className="font-medium">{selectedSubmission.submission_number}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Household Number</Label>
                     <p className="font-medium">{selectedSubmission.household_number || "—"}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Respondent</Label>
+                    <Label className="text-muted-foreground text-xs">Interview Date</Label>
+                    <p className="font-medium">
+                      {selectedSubmission.interview_date 
+                        ? format(new Date(selectedSubmission.interview_date), "MMM dd, yyyy")
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Respondent Name</Label>
                     <p className="font-medium">{selectedSubmission.respondent_name || "—"}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Address</Label>
-                    <p className="font-medium">{selectedSubmission.address || selectedSubmission.street_purok || "—"}</p>
+                    <Label className="text-muted-foreground text-xs">Respondent Relation</Label>
+                    <p className="font-medium">{selectedSubmission.respondent_relation || "—"}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Years Staying</Label>
-                    <p className="font-medium">{selectedSubmission.years_staying || "—"}</p>
+                    <Label className="text-muted-foreground text-xs">Years Staying</Label>
+                    <p className="font-medium">{selectedSubmission.years_staying ?? "—"}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Place of Origin</Label>
+                    <Label className="text-muted-foreground text-xs">Place of Origin</Label>
                     <p className="font-medium">{selectedSubmission.place_of_origin || "—"}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Ethnic Group</Label>
+                    <Label className="text-muted-foreground text-xs">Ethnic Group</Label>
                     <p className="font-medium">{selectedSubmission.ethnic_group || "—"}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Submitted</Label>
+                    <Label className="text-muted-foreground text-xs">Submitted At</Label>
                     <p className="font-medium">{format(new Date(selectedSubmission.created_at), "MMM dd, yyyy HH:mm")}</p>
                   </div>
                 </div>
 
                 {selectedSubmission.reviewed_by && (
                   <div className="pt-4 border-t">
-                    <div className="grid grid-cols-2 gap-4">
+                    <Label className="text-muted-foreground text-xs font-semibold">Review Information</Label>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
                       <div>
-                        <Label className="text-muted-foreground">Reviewed By</Label>
+                        <Label className="text-muted-foreground text-xs">Reviewed By</Label>
                         <p className="font-medium">{selectedSubmission.reviewed_by}</p>
                       </div>
                       <div>
-                        <Label className="text-muted-foreground">Reviewed At</Label>
+                        <Label className="text-muted-foreground text-xs">Reviewed At</Label>
                         <p className="font-medium">
                           {selectedSubmission.reviewed_at 
                             ? format(new Date(selectedSubmission.reviewed_at), "MMM dd, yyyy HH:mm")
@@ -455,18 +490,51 @@ const EcologicalSubmissionsTab = () => {
                     </div>
                     {selectedSubmission.rejection_reason && (
                       <div className="mt-4">
-                        <Label className="text-muted-foreground">Rejection Reason</Label>
+                        <Label className="text-muted-foreground text-xs">Rejection Reason</Label>
                         <p className="font-medium text-destructive">{selectedSubmission.rejection_reason}</p>
                       </div>
                     )}
                     {selectedSubmission.staff_notes && (
                       <div className="mt-4">
-                        <Label className="text-muted-foreground">Staff Notes</Label>
+                        <Label className="text-muted-foreground text-xs">Staff Notes</Label>
                         <p className="font-medium">{selectedSubmission.staff_notes}</p>
                       </div>
                     )}
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="location" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs">House Number</Label>
+                    <p className="font-medium">{selectedSubmission.house_number || "—"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Street/Purok</Label>
+                    <p className="font-medium">{selectedSubmission.street_purok || "—"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Address</Label>
+                    <p className="font-medium">{selectedSubmission.address || "—"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">District</Label>
+                    <p className="font-medium">{selectedSubmission.district || "—"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Barangay</Label>
+                    <p className="font-medium">{selectedSubmission.barangay || "—"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">City/Municipality</Label>
+                    <p className="font-medium">{selectedSubmission.city || "—"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Province</Label>
+                    <p className="font-medium">{selectedSubmission.province || "—"}</p>
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="members" className="space-y-4 mt-4">
@@ -610,49 +678,65 @@ const EcologicalSubmissionsTab = () => {
               <TabsContent value="services" className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground">Water Storage</Label>
+                    <Label className="text-muted-foreground text-xs">Water Storage</Label>
                     <p className="font-medium">
-                      {selectedSubmission.water_storage?.length 
+                      {Array.isArray(selectedSubmission.water_storage) && selectedSubmission.water_storage.length 
                         ? selectedSubmission.water_storage.join(", ") 
                         : "—"}
                     </p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Toilet Facilities</Label>
+                    <Label className="text-muted-foreground text-xs">Food Storage</Label>
                     <p className="font-medium">
-                      {selectedSubmission.toilet_facilities?.length 
+                      {Array.isArray(selectedSubmission.food_storage_type) && selectedSubmission.food_storage_type.length 
+                        ? selectedSubmission.food_storage_type.join(", ") 
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Toilet Facilities</Label>
+                    <p className="font-medium">
+                      {Array.isArray(selectedSubmission.toilet_facilities) && selectedSubmission.toilet_facilities.length 
                         ? selectedSubmission.toilet_facilities.join(", ") 
                         : "—"}
                     </p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Garbage Disposal</Label>
+                    <Label className="text-muted-foreground text-xs">Drainage Facilities</Label>
                     <p className="font-medium">
-                      {selectedSubmission.garbage_disposal?.length 
+                      {Array.isArray(selectedSubmission.drainage_facilities) && selectedSubmission.drainage_facilities.length 
+                        ? selectedSubmission.drainage_facilities.join(", ") 
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Garbage Disposal</Label>
+                    <p className="font-medium">
+                      {Array.isArray(selectedSubmission.garbage_disposal) && selectedSubmission.garbage_disposal.length 
                         ? selectedSubmission.garbage_disposal.join(", ") 
                         : "—"}
                     </p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Communication</Label>
+                    <Label className="text-muted-foreground text-xs">Communication Services</Label>
                     <p className="font-medium">
-                      {selectedSubmission.communication_services?.length 
+                      {Array.isArray(selectedSubmission.communication_services) && selectedSubmission.communication_services.length 
                         ? selectedSubmission.communication_services.join(", ") 
                         : "—"}
                     </p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Transport</Label>
+                    <Label className="text-muted-foreground text-xs">Means of Transport</Label>
                     <p className="font-medium">
-                      {selectedSubmission.means_of_transport?.length 
+                      {Array.isArray(selectedSubmission.means_of_transport) && selectedSubmission.means_of_transport.length 
                         ? selectedSubmission.means_of_transport.join(", ") 
                         : "—"}
                     </p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Info Sources</Label>
+                    <Label className="text-muted-foreground text-xs">Information Sources</Label>
                     <p className="font-medium">
-                      {selectedSubmission.info_sources?.length 
+                      {Array.isArray(selectedSubmission.info_sources) && selectedSubmission.info_sources.length 
                         ? selectedSubmission.info_sources.join(", ") 
                         : "—"}
                     </p>
@@ -660,24 +744,163 @@ const EcologicalSubmissionsTab = () => {
                 </div>
               </TabsContent>
 
+              <TabsContent value="health" className="space-y-4 mt-4">
+                <ScrollArea className="h-[350px] pr-4">
+                  {/* Health Data */}
+                  {selectedSubmission.health_data && Object.keys(selectedSubmission.health_data).length > 0 && (
+                    <div className="mb-4">
+                      <Label className="text-muted-foreground text-xs font-semibold">Health Data</Label>
+                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                          {JSON.stringify(selectedSubmission.health_data, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Immunization Data */}
+                  {selectedSubmission.immunization_data && Object.keys(selectedSubmission.immunization_data).length > 0 && (
+                    <div className="mb-4">
+                      <Label className="text-muted-foreground text-xs font-semibold">Immunization Data</Label>
+                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                          {JSON.stringify(selectedSubmission.immunization_data, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Education Data */}
+                  {selectedSubmission.education_data && Object.keys(selectedSubmission.education_data).length > 0 && (
+                    <div className="mb-4">
+                      <Label className="text-muted-foreground text-xs font-semibold">Education Data</Label>
+                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                          {JSON.stringify(selectedSubmission.education_data, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Family Planning */}
+                  {selectedSubmission.family_planning && Object.keys(selectedSubmission.family_planning).length > 0 && (
+                    <div className="mb-4">
+                      <Label className="text-muted-foreground text-xs font-semibold">Family Planning</Label>
+                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                          {JSON.stringify(selectedSubmission.family_planning, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pregnant Data */}
+                  {selectedSubmission.pregnant_data && Object.keys(selectedSubmission.pregnant_data).length > 0 && (
+                    <div className="mb-4">
+                      <Label className="text-muted-foreground text-xs font-semibold">Pregnancy Data</Label>
+                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                          {JSON.stringify(selectedSubmission.pregnant_data, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Disability Data */}
+                  {selectedSubmission.disability_data && Object.keys(selectedSubmission.disability_data).length > 0 && (
+                    <div className="mb-4">
+                      <Label className="text-muted-foreground text-xs font-semibold">Disability Data</Label>
+                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                          {JSON.stringify(selectedSubmission.disability_data, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Senior Data */}
+                  {selectedSubmission.senior_data && Object.keys(selectedSubmission.senior_data).length > 0 && (
+                    <div className="mb-4">
+                      <Label className="text-muted-foreground text-xs font-semibold">Senior Citizen Data</Label>
+                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                          {JSON.stringify(selectedSubmission.senior_data, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Death Data */}
+                  {selectedSubmission.death_data && Object.keys(selectedSubmission.death_data).length > 0 && (
+                    <div className="mb-4">
+                      <Label className="text-muted-foreground text-xs font-semibold">Death Data</Label>
+                      <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                        <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                          {JSON.stringify(selectedSubmission.death_data, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Check if no health data exists */}
+                  {(!selectedSubmission.health_data || Object.keys(selectedSubmission.health_data).length === 0) &&
+                   (!selectedSubmission.immunization_data || Object.keys(selectedSubmission.immunization_data).length === 0) &&
+                   (!selectedSubmission.education_data || Object.keys(selectedSubmission.education_data).length === 0) &&
+                   (!selectedSubmission.family_planning || Object.keys(selectedSubmission.family_planning).length === 0) &&
+                   (!selectedSubmission.pregnant_data || Object.keys(selectedSubmission.pregnant_data).length === 0) &&
+                   (!selectedSubmission.disability_data || Object.keys(selectedSubmission.disability_data).length === 0) &&
+                   (!selectedSubmission.senior_data || Object.keys(selectedSubmission.senior_data).length === 0) &&
+                   (!selectedSubmission.death_data || Object.keys(selectedSubmission.death_data).length === 0) && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No health-related data in this submission</p>
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+
               <TabsContent value="additional" className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground">4Ps Beneficiary</Label>
+                    <Label className="text-muted-foreground text-xs">4Ps Beneficiary</Label>
                     <p className="font-medium">{selectedSubmission.is_4ps_beneficiary ? "Yes" : "No"}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Solo Parent Count</Label>
-                    <p className="font-medium">{selectedSubmission.solo_parent_count || 0}</p>
+                    <Label className="text-muted-foreground text-xs">Solo Parent Count</Label>
+                    <p className="font-medium">{selectedSubmission.solo_parent_count ?? 0}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">PWD Count</Label>
-                    <p className="font-medium">{selectedSubmission.pwd_count || 0}</p>
+                    <Label className="text-muted-foreground text-xs">PWD Count</Label>
+                    <p className="font-medium">{selectedSubmission.pwd_count ?? 0}</p>
                   </div>
                 </div>
+
+                {/* Food Production */}
+                {selectedSubmission.food_production && Object.keys(selectedSubmission.food_production).length > 0 && (
+                  <div className="pt-4 border-t">
+                    <Label className="text-muted-foreground text-xs font-semibold">Food Production</Label>
+                    <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                      <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                        {JSON.stringify(selectedSubmission.food_production, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {/* Animals */}
+                {selectedSubmission.animals && Object.keys(selectedSubmission.animals).length > 0 && (
+                  <div className="pt-4 border-t">
+                    <Label className="text-muted-foreground text-xs font-semibold">Animals/Livestock</Label>
+                    <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+                      <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                        {JSON.stringify(selectedSubmission.animals, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
                 {selectedSubmission.additional_notes && (
-                  <div className="pt-4">
-                    <Label className="text-muted-foreground">Additional Notes</Label>
+                  <div className="pt-4 border-t">
+                    <Label className="text-muted-foreground text-xs">Additional Notes</Label>
                     <p className="font-medium mt-1">{selectedSubmission.additional_notes}</p>
                   </div>
                 )}
