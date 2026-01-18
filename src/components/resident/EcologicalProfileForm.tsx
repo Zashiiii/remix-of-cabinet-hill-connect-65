@@ -461,16 +461,22 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
       };
 
       if (isEditMode && editingSubmissionId) {
-        // Update existing submission
+        // Update existing submission - always reset status to pending for re-review
         const { error } = await supabase
           .from("ecological_profile_submissions")
-          .update(submissionData)
+          .update({
+            ...submissionData,
+            status: "pending", // Reset to pending for re-review
+            rejection_reason: null, // Clear any previous rejection reason
+            reviewed_at: null,
+            reviewed_by: null,
+          })
           .eq("id", editingSubmissionId);
 
         if (error) throw error;
 
-        toast.success("Submission updated successfully!", {
-          description: "Your changes have been saved."
+        toast.success("Submission updated and resubmitted!", {
+          description: "Your changes have been saved and sent for review."
         });
         
         // Reset edit mode
@@ -763,15 +769,13 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        {sub.status === "pending" && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleEditSubmission(sub)}
-                          >
-                            Edit
-                          </Button>
-                        )}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditSubmission(sub)}
+                        >
+                          {sub.status === "pending" ? "Edit" : "Edit & Resubmit"}
+                        </Button>
                         {getStatusBadge(sub.status)}
                       </div>
                     </div>
