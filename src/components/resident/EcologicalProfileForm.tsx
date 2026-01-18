@@ -156,6 +156,9 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
   const [formData, setFormData] = useState<SubmissionData>(defaultFormData);
   const [existingSubmissions, setExistingSubmissions] = useState<any[]>([]);
   const [residentId, setResidentId] = useState<string | null>(null);
+  const [householdNumberError, setHouseholdNumberError] = useState<string | null>(null);
+  const [isCheckingHousehold, setIsCheckingHousehold] = useState(false);
+  const [existingHouseholdId, setExistingHouseholdId] = useState<string | null>(null);
 
   // Load existing submissions and resident profile
   useEffect(() => {
@@ -240,6 +243,69 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
     loadData();
   }, [user]);
 
+  // Check for duplicate household number
+  const checkHouseholdNumber = async (householdNumber: string) => {
+    if (!householdNumber.trim()) {
+      setHouseholdNumberError(null);
+      setExistingHouseholdId(null);
+      return;
+    }
+
+    setIsCheckingHousehold(true);
+    try {
+      // Check if household number exists in households table
+      const { data: existingHousehold, error: householdError } = await supabase
+        .from("households")
+        .select("id, household_number")
+        .eq("household_number", householdNumber.trim())
+        .maybeSingle();
+
+      if (householdError) throw householdError;
+
+      if (existingHousehold) {
+        setExistingHouseholdId(existingHousehold.id);
+        setHouseholdNumberError(
+          `Household number "${householdNumber}" already exists. Submitting will update the existing household data.`
+        );
+      } else {
+        // Also check pending submissions
+        const { data: pendingSubmission, error: submissionError } = await supabase
+          .from("ecological_profile_submissions")
+          .select("id, submission_number, status")
+          .eq("household_number", householdNumber.trim())
+          .eq("status", "pending")
+          .maybeSingle();
+
+        if (submissionError) throw submissionError;
+
+        if (pendingSubmission) {
+          setHouseholdNumberError(
+            `There's already a pending submission (${pendingSubmission.submission_number}) for this household number. Please wait for it to be reviewed.`
+          );
+          setExistingHouseholdId(null);
+        } else {
+          setHouseholdNumberError(null);
+          setExistingHouseholdId(null);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking household number:", error);
+    } finally {
+      setIsCheckingHousehold(false);
+    }
+  };
+
+  // Debounced household number check
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (formData.household_number) {
+        checkHouseholdNumber(formData.household_number);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.household_number]);
+
   const handleCheckboxArray = (field: keyof SubmissionData, value: string, checked: boolean) => {
     const currentArray = formData[field] as string[];
     if (checked) {
@@ -257,6 +323,14 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
 
     if (!formData.household_number) {
       toast.error("Please enter a household number");
+      return;
+    }
+
+    // Block submission if there's a pending submission for this household number
+    if (householdNumberError && !existingHouseholdId) {
+      toast.error("Cannot submit", {
+        description: "There's already a pending submission for this household number."
+      });
       return;
     }
 
@@ -539,12 +613,24 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="household_number">Household Number *</Label>
-                    <Input
-                      id="household_number"
-                      value={formData.household_number}
-                      onChange={(e) => setFormData({ ...formData, household_number: e.target.value })}
-                      placeholder="e.g., HH-001"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="household_number"
+                        value={formData.household_number}
+                        onChange={(e) => setFormData({ ...formData, household_number: e.target.value })}
+                        placeholder="e.g., HH-001"
+                        className={householdNumberError && !existingHouseholdId ? "border-destructive" : householdNumberError && existingHouseholdId ? "border-yellow-500" : ""}
+                      />
+                      {isCheckingHousehold && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                    {householdNumberError && (
+                      <p className={`text-sm flex items-center gap-1 ${existingHouseholdId ? "text-yellow-600" : "text-destructive"}`}>
+                        <AlertCircle className="h-3 w-3" />
+                        {householdNumberError}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="house_number">House Number</Label>
