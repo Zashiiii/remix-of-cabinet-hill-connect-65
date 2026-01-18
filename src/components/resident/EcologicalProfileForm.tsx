@@ -159,6 +159,8 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
   const [householdNumberError, setHouseholdNumberError] = useState<string | null>(null);
   const [isCheckingHousehold, setIsCheckingHousehold] = useState(false);
   const [existingHouseholdId, setExistingHouseholdId] = useState<string | null>(null);
+  const [editingSubmissionId, setEditingSubmissionId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Load existing submissions and resident profile
   useEffect(() => {
@@ -326,8 +328,8 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
       return;
     }
 
-    // Block submission if there's a pending submission for this household number
-    if (householdNumberError && !existingHouseholdId) {
+    // Block submission if there's a pending submission for this household number (only for new submissions)
+    if (!isEditMode && householdNumberError && !existingHouseholdId) {
       toast.error("Cannot submit", {
         description: "There's already a pending submission for this household number."
       });
@@ -355,62 +357,157 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
 
     setIsSubmitting(true);
     try {
-      // Generate submission number
-      const { data: submissionNumber, error: numError } = await supabase
-        .rpc("generate_ecological_submission_number");
+      // Prepare submission data
+      const submissionData = {
+        household_number: formData.household_number,
+        address: formData.address,
+        house_number: formData.house_number,
+        street_purok: formData.street_purok,
+        district: formData.district,
+        years_staying: formData.years_staying,
+        place_of_origin: formData.place_of_origin,
+        ethnic_group: formData.ethnic_group,
+        house_ownership: formData.house_ownership,
+        lot_ownership: formData.lot_ownership,
+        dwelling_type: formData.dwelling_type,
+        lighting_source: formData.lighting_source,
+        water_supply_level: formData.water_supply_level,
+        water_storage: formData.water_storage,
+        food_storage_type: formData.food_storage_type,
+        toilet_facilities: formData.toilet_facilities,
+        drainage_facilities: formData.drainage_facilities,
+        garbage_disposal: formData.garbage_disposal,
+        communication_services: formData.communication_services,
+        means_of_transport: formData.means_of_transport,
+        info_sources: formData.info_sources,
+        household_members: formData.household_members,
+        health_data: formData.health_data,
+        is_4ps_beneficiary: formData.is_4ps_beneficiary,
+        solo_parent_count: formData.solo_parent_count,
+        pwd_count: formData.pwd_count,
+        additional_notes: formData.additional_notes,
+        respondent_name: formData.respondent_name,
+        respondent_relation: formData.respondent_relation,
+        interview_date: format(new Date(), "yyyy-MM-dd"),
+      };
 
-      if (numError) throw numError;
+      if (isEditMode && editingSubmissionId) {
+        // Update existing submission
+        const { error } = await supabase
+          .from("ecological_profile_submissions")
+          .update(submissionData)
+          .eq("id", editingSubmissionId);
 
-      // Insert submission
-      const { error } = await supabase
-        .from("ecological_profile_submissions")
-        .insert({
-          submission_number: submissionNumber,
-          submitted_by_resident_id: residentId,
-          household_number: formData.household_number,
-          address: formData.address,
-          house_number: formData.house_number,
-          street_purok: formData.street_purok,
-          district: formData.district,
-          years_staying: formData.years_staying,
-          place_of_origin: formData.place_of_origin,
-          ethnic_group: formData.ethnic_group,
-          house_ownership: formData.house_ownership,
-          lot_ownership: formData.lot_ownership,
-          dwelling_type: formData.dwelling_type,
-          lighting_source: formData.lighting_source,
-          water_supply_level: formData.water_supply_level,
-          water_storage: formData.water_storage,
-          food_storage_type: formData.food_storage_type,
-          toilet_facilities: formData.toilet_facilities,
-          drainage_facilities: formData.drainage_facilities,
-          garbage_disposal: formData.garbage_disposal,
-          communication_services: formData.communication_services,
-          means_of_transport: formData.means_of_transport,
-          info_sources: formData.info_sources,
-          household_members: formData.household_members,
-          health_data: formData.health_data,
-          is_4ps_beneficiary: formData.is_4ps_beneficiary,
-          solo_parent_count: formData.solo_parent_count,
-          pwd_count: formData.pwd_count,
-          additional_notes: formData.additional_notes,
-          respondent_name: formData.respondent_name,
-          respondent_relation: formData.respondent_relation,
-          interview_date: format(new Date(), "yyyy-MM-dd"),
+        if (error) throw error;
+
+        toast.success("Submission updated successfully!", {
+          description: "Your changes have been saved."
         });
+        
+        // Reset edit mode
+        setIsEditMode(false);
+        setEditingSubmissionId(null);
+        setFormData(defaultFormData);
+        
+        // Reload submissions
+        const { data: submissions } = await supabase
+          .from("ecological_profile_submissions")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      if (error) throw error;
+        if (submissions) {
+          setExistingSubmissions(submissions);
+        }
+      } else {
+        // Generate submission number for new submission
+        const { data: submissionNumber, error: numError } = await supabase
+          .rpc("generate_ecological_submission_number");
 
-      toast.success("Ecological profile submitted successfully!", {
-        description: `Submission number: ${submissionNumber}. Staff will review your submission.`
-      });
-      
-      onSuccess?.();
+        if (numError) throw numError;
+
+        // Insert new submission
+        const { error } = await supabase
+          .from("ecological_profile_submissions")
+          .insert({
+            submission_number: submissionNumber,
+            submitted_by_resident_id: residentId,
+            ...submissionData,
+          });
+
+        if (error) throw error;
+
+        toast.success("Ecological profile submitted successfully!", {
+          description: `Submission number: ${submissionNumber}. Staff will review your submission.`
+        });
+        
+        onSuccess?.();
+      }
     } catch (error: any) {
       console.error("Error submitting:", error);
       toast.error("Failed to submit", { description: error.message });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEditSubmission = (submission: any) => {
+    // Load submission data into form
+    setFormData({
+      id: submission.id,
+      submission_number: submission.submission_number,
+      status: submission.status,
+      household_number: submission.household_number || "",
+      address: submission.address || "",
+      house_number: submission.house_number || "",
+      street_purok: submission.street_purok || "",
+      district: submission.district || "",
+      years_staying: submission.years_staying,
+      place_of_origin: submission.place_of_origin || "",
+      ethnic_group: submission.ethnic_group || "",
+      house_ownership: submission.house_ownership || "",
+      lot_ownership: submission.lot_ownership || "",
+      dwelling_type: submission.dwelling_type || "",
+      lighting_source: submission.lighting_source || "",
+      water_supply_level: submission.water_supply_level || "",
+      water_storage: Array.isArray(submission.water_storage) ? submission.water_storage : [],
+      food_storage_type: Array.isArray(submission.food_storage_type) ? submission.food_storage_type : [],
+      toilet_facilities: Array.isArray(submission.toilet_facilities) ? submission.toilet_facilities : [],
+      drainage_facilities: Array.isArray(submission.drainage_facilities) ? submission.drainage_facilities : [],
+      garbage_disposal: Array.isArray(submission.garbage_disposal) ? submission.garbage_disposal : [],
+      communication_services: Array.isArray(submission.communication_services) ? submission.communication_services : [],
+      means_of_transport: Array.isArray(submission.means_of_transport) ? submission.means_of_transport : [],
+      info_sources: Array.isArray(submission.info_sources) ? submission.info_sources : [],
+      household_members: Array.isArray(submission.household_members) ? submission.household_members : [],
+      health_data: submission.health_data || {},
+      is_4ps_beneficiary: submission.is_4ps_beneficiary || false,
+      solo_parent_count: submission.solo_parent_count || 0,
+      pwd_count: submission.pwd_count || 0,
+      additional_notes: submission.additional_notes || "",
+      respondent_name: submission.respondent_name || "",
+      respondent_relation: submission.respondent_relation || "",
+    });
+    
+    setEditingSubmissionId(submission.id);
+    setIsEditMode(true);
+    setActiveTab("basic-info");
+    
+    toast.info("Editing submission", {
+      description: `You are now editing ${submission.submission_number}`
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditingSubmissionId(null);
+    setFormData(defaultFormData);
+    
+    // Re-load default resident data using fullName from profile
+    if (profile) {
+      setFormData(prev => ({
+        ...prev,
+        respondent_name: profile.fullName,
+        respondent_relation: "Self"
+      }));
     }
   };
 
@@ -550,8 +647,27 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
 
   return (
     <div className="space-y-6">
+      {/* Edit Mode Banner */}
+      {isEditMode && (
+        <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-yellow-600" />
+                <span className="font-medium text-yellow-800 dark:text-yellow-200">
+                  Editing: {formData.submission_number}
+                </span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+                Cancel Edit
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Existing Submissions */}
-      {existingSubmissions.length > 0 && (
+      {existingSubmissions.length > 0 && !isEditMode && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -564,7 +680,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
             <div className="space-y-3">
               {existingSubmissions.map((sub) => (
                 <div key={sub.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium">{sub.submission_number}</p>
                     <p className="text-sm text-muted-foreground">
                       Household: {sub.household_number || "N/A"} • 
@@ -576,7 +692,18 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                       </p>
                     )}
                   </div>
-                  {getStatusBadge(sub.status)}
+                  <div className="flex items-center gap-2">
+                    {sub.status === "pending" && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditSubmission(sub)}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                    {getStatusBadge(sub.status)}
+                  </div>
                 </div>
               ))}
             </div>
@@ -589,10 +716,13 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Home className="h-5 w-5" />
-            Submit Ecological Profile Census
+            {isEditMode ? "Edit Ecological Profile Census" : "Submit Ecological Profile Census"}
           </CardTitle>
           <CardDescription>
-            Fill out your household's ecological profile. This will be reviewed by staff before being included in official records.
+            {isEditMode 
+              ? "Update your household's ecological profile. Changes will be saved immediately."
+              : "Fill out your household's ecological profile. This will be reviewed by staff before being included in official records."
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1641,20 +1771,20 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
           </Tabs>
 
           <div className="flex justify-between mt-6 pt-4 border-t">
-            <Button variant="outline" onClick={onCancel}>
+            <Button variant="outline" onClick={isEditMode ? handleCancelEdit : onCancel}>
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Cancel
+              {isEditMode ? "Cancel Edit" : "Cancel"}
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
+                  {isEditMode ? "Saving..." : "Submitting..."}
                 </>
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-2" />
-                  Submit for Review
+                  {isEditMode ? "Save Changes" : "Submit for Review"}
                 </>
               )}
             </Button>
