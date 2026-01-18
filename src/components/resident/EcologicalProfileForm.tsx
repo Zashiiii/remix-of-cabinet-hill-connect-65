@@ -748,34 +748,72 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {existingSubmissions.map((sub) => (
-                <div key={sub.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                  <div className="flex-1">
-                    <p className="font-medium">{sub.submission_number}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Household: {sub.household_number || "N/A"} • 
-                      Submitted: {format(new Date(sub.created_at), "MMM dd, yyyy")}
-                    </p>
+              {existingSubmissions.map((sub) => {
+                const otherValues = sub.health_data?.other_values || {};
+                const hasOtherValues = Object.values(otherValues).some((v: any) => v && String(v).trim());
+                
+                return (
+                  <div key={sub.id} className="p-3 rounded-lg border bg-card">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium">{sub.submission_number}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Household: {sub.household_number || "N/A"} • 
+                          Submitted: {format(new Date(sub.created_at), "MMM dd, yyyy")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {sub.status === "pending" && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditSubmission(sub)}
+                          >
+                            Edit
+                          </Button>
+                        )}
+                        {getStatusBadge(sub.status)}
+                      </div>
+                    </div>
+                    
+                    {/* Show custom "Others" values if any */}
+                    {hasOtherValues && (
+                      <div className="mt-2 pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Custom Values (Others):</p>
+                        <div className="flex flex-wrap gap-1">
+                          {otherValues.water_storage && (
+                            <Badge variant="outline" className="text-xs">Water Storage: {otherValues.water_storage}</Badge>
+                          )}
+                          {otherValues.food_storage_type && (
+                            <Badge variant="outline" className="text-xs">Food Storage: {otherValues.food_storage_type}</Badge>
+                          )}
+                          {otherValues.garbage_disposal && (
+                            <Badge variant="outline" className="text-xs">Garbage: {otherValues.garbage_disposal}</Badge>
+                          )}
+                          {otherValues.drainage_facilities && (
+                            <Badge variant="outline" className="text-xs">Drainage: {otherValues.drainage_facilities}</Badge>
+                          )}
+                          {otherValues.communication_services && (
+                            <Badge variant="outline" className="text-xs">Communication: {otherValues.communication_services}</Badge>
+                          )}
+                          {otherValues.means_of_transport && (
+                            <Badge variant="outline" className="text-xs">Transport: {otherValues.means_of_transport}</Badge>
+                          )}
+                          {otherValues.info_sources && (
+                            <Badge variant="outline" className="text-xs">Info Source: {otherValues.info_sources}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
                     {sub.status === "rejected" && sub.rejection_reason && (
-                      <p className="text-sm text-destructive mt-1">
+                      <p className="text-sm text-destructive mt-2 pt-2 border-t">
                         Reason: {sub.rejection_reason}
                       </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {sub.status === "pending" && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleEditSubmission(sub)}
-                      >
-                        Edit
-                      </Button>
-                    )}
-                    {getStatusBadge(sub.status)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
