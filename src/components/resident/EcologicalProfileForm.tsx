@@ -40,10 +40,10 @@ const HOUSE_OWNERSHIP = ["Owned", "Rented", "Caretaker", "Others"];
 const LOT_OWNERSHIP = ["Owned", "Rented", "Caretaker", "Others"];
 const DWELLING_TYPES = ["Permanent concrete", "Semi Permanent", "Temporary", "Others"];
 const LIGHTING_SOURCES = ["Electricity", "Kerosene", "Solar", "Others"];
-const WATER_SOURCES = ["Spring", "Deepwell (private)", "Deepwell (public)", "Piped water", "Others"];
+const WATER_SOURCES = ["Spring", "Deepwell (private)", "Deepwell (public)", "Piped water"];
 const WATER_STORAGE = ["Tank", "Elevated Tank", "Jars", "Drums/Cans", "Plastic Containers", "Others"];
 const FOOD_STORAGE = ["Refrigerator", "Cabinet/Shelves", "Others"];
-const TOILET_FACILITIES = ["Flush with septic tank", "Flush with sewer system", "Water sealed (pit)", "Pit privy", "Others"];
+const TOILET_FACILITIES = ["Flush with septic tank", "Flush with sewer system", "Water sealed (pit)", "Pit privy"];
 const GARBAGE_DISPOSAL = ["City collection system", "Communal pit", "Backyard pit", "Open dump", "Composting", "Burning", "Others"];
 const DRAINAGE_FACILITIES = ["Open drainage", "Closed drainage", "None", "Others"];
 const COMMUNICATION_SERVICES = ["Telephone", "Cellular networks", "Internet", "Postal Services", "Others"];
@@ -1546,21 +1546,26 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Water Supply Source</Label>
-                      <Select
-                        value={formData.water_supply_level}
-                        onValueChange={(v) => setFormData({ ...formData, water_supply_level: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {WATER_SOURCES.map((opt) => (
-                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div>
+                      <Label className="text-sm font-medium">Water Supply Source</Label>
+                      <div className="grid grid-cols-2 md:grid-cols-2 gap-2 mt-2">
+                        {WATER_SOURCES.map((source) => (
+                          <div key={source} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`water-source-${source}`}
+                              checked={formData.water_supply_level === source}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setFormData({ ...formData, water_supply_level: source });
+                                } else if (formData.water_supply_level === source) {
+                                  setFormData({ ...formData, water_supply_level: "" });
+                                }
+                              }}
+                            />
+                            <label htmlFor={`water-source-${source}`} className="text-sm">{source}</label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     <div>
