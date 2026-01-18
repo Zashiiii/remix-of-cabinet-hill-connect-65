@@ -20,13 +20,32 @@ import {
   FileText,
   Home,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Users
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { createAuditLog } from "@/utils/auditLog";
+
+interface HouseholdMember {
+  full_name?: string;
+  relation_to_head?: string;
+  birth_date?: string;
+  gender?: string;
+  civil_status?: string;
+  religion?: string;
+  contact_number?: string;
+  occupation?: string;
+  education_attainment?: string;
+  schooling_status?: string;
+  employment_status?: string;
+  employment_category?: string;
+  monthly_income_cash?: string;
+  monthly_income_kind?: string;
+  is_head_of_household?: boolean;
+}
 
 interface Submission {
   id: string;
@@ -63,6 +82,8 @@ interface Submission {
   solo_parent_count: number | null;
   pwd_count: number | null;
   additional_notes: string | null;
+  // Household members
+  household_members: HouseholdMember[] | null;
 }
 
 const EcologicalSubmissionsTab = () => {
@@ -364,8 +385,17 @@ const EcologicalSubmissionsTab = () => {
 
           {selectedSubmission && (
             <Tabs defaultValue="basic" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                <TabsTrigger value="members" className="flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  Members
+                  {selectedSubmission.household_members && selectedSubmission.household_members.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      {(selectedSubmission.household_members as HouseholdMember[]).length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="housing">Housing</TabsTrigger>
                 <TabsTrigger value="services">Services</TabsTrigger>
                 <TabsTrigger value="additional">Additional</TabsTrigger>
@@ -437,6 +467,119 @@ const EcologicalSubmissionsTab = () => {
                     )}
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="members" className="space-y-4 mt-4">
+                {(() => {
+                  const members = selectedSubmission.household_members as HouseholdMember[] | null;
+                  if (!members || members.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No household members in this submission</p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          {members.length} member{members.length !== 1 ? 's' : ''} will be {selectedSubmission.status === 'pending' ? 'created/updated' : 'processed'} when approved
+                        </p>
+                      </div>
+                      <ScrollArea className="h-[300px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Relation</TableHead>
+                              <TableHead>Birth Date</TableHead>
+                              <TableHead>Gender</TableHead>
+                              <TableHead>Employment</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {members.map((member, idx) => (
+                              <TableRow key={idx}>
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center gap-2">
+                                    {member.full_name || "—"}
+                                    {member.is_head_of_household && (
+                                      <Badge variant="outline" className="text-xs">Head</Badge>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>{member.relation_to_head || "—"}</TableCell>
+                                <TableCell>
+                                  {member.birth_date 
+                                    ? format(new Date(member.birth_date), "MMM dd, yyyy")
+                                    : "—"}
+                                </TableCell>
+                                <TableCell className="capitalize">{member.gender || "—"}</TableCell>
+                                <TableCell className="capitalize">
+                                  {member.employment_status?.replace(/_/g, ' ') || "—"}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                      
+                      {/* Detailed member cards */}
+                      <div className="pt-4 border-t space-y-3">
+                        <Label className="text-muted-foreground">Member Details</Label>
+                        {members.map((member, idx) => (
+                          <div key={idx} className="p-3 rounded-lg bg-muted/50 border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-medium">{member.full_name || `Member ${idx + 1}`}</span>
+                              {member.is_head_of_household && (
+                                <Badge variant="default" className="text-xs">Household Head</Badge>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">Relation: </span>
+                                {member.relation_to_head || "—"}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Gender: </span>
+                                <span className="capitalize">{member.gender || "—"}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Civil Status: </span>
+                                <span className="capitalize">{member.civil_status || "—"}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Religion: </span>
+                                {member.religion || "—"}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Education: </span>
+                                {member.education_attainment || "—"}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Occupation: </span>
+                                {member.occupation || "—"}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Contact: </span>
+                                {member.contact_number || "—"}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Income (Cash): </span>
+                                {member.monthly_income_cash || "—"}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Income (Kind): </span>
+                                {member.monthly_income_kind || "—"}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </TabsContent>
 
               <TabsContent value="housing" className="space-y-4 mt-4">
