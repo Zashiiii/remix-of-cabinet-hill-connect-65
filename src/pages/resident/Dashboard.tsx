@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { useResidentAuth } from "@/hooks/useResidentAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveAnnouncements } from "@/utils/api";
-import CertificateRequestForm from "@/components/CertificateRequestForm";
+import ResidentCertificateRequestForm from "@/components/resident/ResidentCertificateRequestForm";
 import SuccessModal from "@/components/SuccessModal";
 import ChatWidget from "@/components/ChatWidget";
 import { logResidentLogout } from "@/utils/auditLog";
@@ -76,6 +76,8 @@ const ResidentSidebar = ({
   const menuItems = [
     { title: "Dashboard", icon: Home, tab: "dashboard" },
     { title: "My Profile", icon: User, tab: "profile" },
+    { title: "Request Certificate", icon: FileText, tab: "request" },
+    { title: "My Requests", icon: Clock, tab: "requests" },
     { title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessageCount > 0 ? unreadMessageCount : undefined },
     { title: "Incident Reports", icon: AlertCircle, tab: "incidents" },
     { title: "Ecological Profile", icon: Leaf, tab: "ecological-profile" },
@@ -167,7 +169,7 @@ const ResidentDashboard = () => {
         .select("*")
         .eq("email", user?.email)
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(50);
 
       if (requestsData) {
         setRequests(requestsData.map(r => ({
@@ -222,8 +224,6 @@ const ResidentDashboard = () => {
   const handleTabChange = (tab: string) => {
     if (tab === "profile") {
       navigate("/resident/profile");
-    } else if (tab === "requests") {
-      navigate("/resident/requests");
     } else if (tab === "settings") {
       navigate("/resident/settings");
     } else if (tab === "incidents") {
@@ -328,15 +328,15 @@ const ResidentDashboard = () => {
 
                 <Card 
                   className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-accent"
-                  onClick={() => navigate("/track-request")}
+                  onClick={() => setActiveTab("requests")}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
                     <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
                       <Clock className="h-6 w-6 text-accent" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">Track Request</h3>
-                      <p className="text-sm text-muted-foreground">Check status of your requests</p>
+                      <h3 className="font-semibold">My Requests</h3>
+                      <p className="text-sm text-muted-foreground">Track your certificate requests</p>
                     </div>
                     <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
                   </CardContent>
@@ -367,7 +367,7 @@ const ResidentDashboard = () => {
                       <CardTitle className="text-lg">Recent Requests</CardTitle>
                       <CardDescription>Your latest certificate requests</CardDescription>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => navigate("/resident/requests")}>
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab("requests")}>
                       View All
                     </Button>
                   </CardHeader>
@@ -485,7 +485,18 @@ const ResidentDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <CertificateRequestForm onSuccess={handleRequestSuccess} />
+                  {profile && (
+                    <ResidentCertificateRequestForm 
+                      profile={{
+                        id: profile.id,
+                        fullName: profile.fullName,
+                        email: profile.email,
+                        contactNumber: profile.contactNumber,
+                        householdId: profile.householdId,
+                      }}
+                      onSuccess={handleRequestSuccess} 
+                    />
+                  )}
                 </CardContent>
               </Card>
 
@@ -495,6 +506,94 @@ const ResidentDashboard = () => {
                 controlNumber={submittedControlNumber}
                 onReset={() => setActiveTab("dashboard")}
               />
+            </>
+          )}
+
+          {activeTab === "requests" && (
+            <>
+              <div className="flex items-center gap-4 mb-6">
+                <SidebarTrigger />
+                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Dashboard
+                </Button>
+              </div>
+
+              <Card className="max-w-4xl mx-auto">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl flex items-center gap-2">
+                      <Clock className="h-6 w-6" />
+                      My Requests
+                    </CardTitle>
+                    <CardDescription>
+                      Track the status of your certificate requests
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => setActiveTab("request")}>
+                    New Request
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : requests.length === 0 ? (
+                    <div className="text-center py-12">
+                      <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <h3 className="font-medium text-lg mb-2">No Requests Yet</h3>
+                      <p className="text-muted-foreground mb-4">
+                        You haven't submitted any certificate requests.
+                      </p>
+                      <Button onClick={() => setActiveTab("request")}>
+                        Request a Certificate
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {requests.map((request) => (
+                        <div
+                          key={request.id}
+                          className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold">{request.certificateType}</h3>
+                                {getStatusBadge(request.status)}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                Control No: {request.controlNumber}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Submitted: {request.dateSubmitted}
+                              </p>
+                              {request.status === "rejected" && request.rejectionReason && (
+                                <div className="mt-2 p-2 rounded bg-destructive/10 border border-destructive/20">
+                                  <p className="text-sm text-destructive font-medium">
+                                    Rejection Reason:
+                                  </p>
+                                  <p className="text-sm text-destructive">
+                                    {request.rejectionReason}
+                                  </p>
+                                </div>
+                              )}
+                              {request.status === "approved" && (
+                                <div className="mt-2 p-2 rounded bg-accent/10 border border-accent/20">
+                                  <p className="text-sm text-accent font-medium">
+                                    Ready for Pickup
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </>
           )}
         </main>
