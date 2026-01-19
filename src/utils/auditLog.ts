@@ -187,3 +187,89 @@ export const logAnnouncementCreation = async (
     details: { title },
   });
 };
+
+// Staff user management audit functions
+export const logStaffUserCreation = async (
+  creatorName: string,
+  creatorRole: string,
+  newUserId: string,
+  newUsername: string,
+  newUserRole: string
+) => {
+  return createAuditLog({
+    action: "create",
+    entityType: "staff_user",
+    entityId: newUserId,
+    performedBy: creatorName,
+    performedByType: creatorRole === "admin" ? "admin" : "staff",
+    details: { 
+      new_username: newUsername, 
+      new_role: newUserRole,
+      created_by_role: creatorRole
+    },
+  });
+};
+
+export const logStaffUserUpdate = async (
+  updaterName: string,
+  updaterRole: string,
+  updatedUserId: string,
+  updatedUsername: string,
+  changes: Record<string, any>
+) => {
+  return createAuditLog({
+    action: "update",
+    entityType: "staff_user",
+    entityId: updatedUserId,
+    performedBy: updaterName,
+    performedByType: updaterRole === "admin" ? "admin" : "staff",
+    details: { 
+      username: updatedUsername,
+      changes,
+      updated_by_role: updaterRole
+    },
+  });
+};
+
+export const logStaffUserDeletion = async (
+  deleterName: string,
+  deleterRole: string,
+  deletedUserId: string,
+  deletedUsername: string,
+  deletedUserRole: string
+) => {
+  return createAuditLog({
+    action: "delete",
+    entityType: "staff_user",
+    entityId: deletedUserId,
+    performedBy: deleterName,
+    performedByType: deleterRole === "admin" ? "admin" : "staff",
+    details: { 
+      deleted_username: deletedUsername,
+      deleted_role: deletedUserRole,
+      deleted_by_role: deleterRole
+    },
+  });
+};
+
+export const logStaffUserStatusChange = async (
+  changerName: string,
+  changerRole: string,
+  targetUserId: string,
+  targetUsername: string,
+  newStatus: boolean
+) => {
+  return createAuditLog({
+    action: "update",
+    entityType: "staff_user",
+    entityId: targetUserId,
+    performedBy: changerName,
+    performedByType: changerRole === "admin" ? "admin" : "staff",
+    details: { 
+      action_type: "status_change",
+      username: targetUsername,
+      new_active_status: newStatus,
+      changed_by_role: changerRole
+    },
+  });
+};

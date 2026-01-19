@@ -98,17 +98,23 @@ const AppContent = () => {
         
         {/* Admin Protected Routes */}
         <Route path="/admin/staff" element={
-          <StaffProtectedRoute requiredRole="admin">
+          <StaffProtectedRoute 
+            requiredFeature="staff_management"
+            allowedRoles={['admin', 'barangay_captain']}
+          >
             <AdminStaffManagement />
           </StaffProtectedRoute>
         } />
         <Route path="/admin/audit-logs" element={
-          <StaffProtectedRoute requiredRole="admin">
+          <StaffProtectedRoute 
+            requiredFeature="audit_logs"
+            allowedRoles={['admin', 'barangay_captain']}
+          >
             <AdminAuditLogs />
           </StaffProtectedRoute>
         } />
         <Route path="/admin/resident-approval" element={
-          <StaffProtectedRoute>
+          <StaffProtectedRoute requiredFeature="resident_approval">
             <AdminResidentApproval />
           </StaffProtectedRoute>
         } />
