@@ -1,0 +1,175 @@
+-- Fix the interview_date type issue - accept TEXT and cast to DATE
+CREATE OR REPLACE FUNCTION public.staff_save_ecological_census(
+  p_household_id UUID,
+  p_household_number TEXT,
+  p_respondent_name TEXT DEFAULT NULL,
+  p_respondent_relation TEXT DEFAULT NULL,
+  p_interview_date TEXT DEFAULT NULL,
+  p_address TEXT DEFAULT NULL,
+  p_house_number TEXT DEFAULT NULL,
+  p_street_purok TEXT DEFAULT NULL,
+  p_barangay TEXT DEFAULT NULL,
+  p_city TEXT DEFAULT NULL,
+  p_province TEXT DEFAULT NULL,
+  p_district TEXT DEFAULT NULL,
+  p_years_staying INTEGER DEFAULT NULL,
+  p_place_of_origin TEXT DEFAULT NULL,
+  p_ethnic_group TEXT DEFAULT NULL,
+  p_dwelling_type TEXT DEFAULT NULL,
+  p_house_ownership TEXT DEFAULT NULL,
+  p_lot_ownership TEXT DEFAULT NULL,
+  p_water_supply_level TEXT DEFAULT NULL,
+  p_lighting_source TEXT DEFAULT NULL,
+  p_is_4ps_beneficiary BOOLEAN DEFAULT FALSE,
+  p_toilet_facilities JSONB DEFAULT NULL,
+  p_drainage_facilities JSONB DEFAULT NULL,
+  p_garbage_disposal JSONB DEFAULT NULL,
+  p_water_storage JSONB DEFAULT NULL,
+  p_food_storage_type JSONB DEFAULT NULL,
+  p_communication_services JSONB DEFAULT NULL,
+  p_info_sources JSONB DEFAULT NULL,
+  p_means_of_transport JSONB DEFAULT NULL,
+  p_household_members JSONB DEFAULT NULL,
+  p_education_data JSONB DEFAULT NULL,
+  p_health_data JSONB DEFAULT NULL,
+  p_animals JSONB DEFAULT NULL,
+  p_food_production JSONB DEFAULT NULL,
+  p_family_planning JSONB DEFAULT NULL,
+  p_pwd_count INTEGER DEFAULT 0,
+  p_solo_parent_count INTEGER DEFAULT 0,
+  p_senior_data JSONB DEFAULT NULL,
+  p_pregnant_data JSONB DEFAULT NULL,
+  p_immunization_data JSONB DEFAULT NULL,
+  p_disability_data JSONB DEFAULT NULL,
+  p_death_data JSONB DEFAULT NULL,
+  p_additional_notes TEXT DEFAULT NULL,
+  p_staff_id TEXT DEFAULT NULL
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_submission_number TEXT;
+  v_submission_id UUID;
+  v_interview_date DATE;
+BEGIN
+  -- Cast interview_date from text to date
+  IF p_interview_date IS NOT NULL AND p_interview_date != '' THEN
+    v_interview_date := p_interview_date::DATE;
+  ELSE
+    v_interview_date := NULL;
+  END IF;
+
+  -- Generate submission number
+  v_submission_number := 'EP-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(FLOOR(RANDOM() * 10000)::TEXT, 4, '0');
+  
+  -- Insert new ecological profile submission with approved status (staff-entered)
+  INSERT INTO ecological_profile_submissions (
+    submission_number,
+    household_id,
+    household_number,
+    respondent_name,
+    respondent_relation,
+    interview_date,
+    address,
+    house_number,
+    street_purok,
+    barangay,
+    city,
+    province,
+    district,
+    years_staying,
+    place_of_origin,
+    ethnic_group,
+    dwelling_type,
+    house_ownership,
+    lot_ownership,
+    water_supply_level,
+    lighting_source,
+    is_4ps_beneficiary,
+    toilet_facilities,
+    drainage_facilities,
+    garbage_disposal,
+    water_storage,
+    food_storage_type,
+    communication_services,
+    info_sources,
+    means_of_transport,
+    household_members,
+    education_data,
+    health_data,
+    animals,
+    food_production,
+    family_planning,
+    pwd_count,
+    solo_parent_count,
+    senior_data,
+    pregnant_data,
+    immunization_data,
+    disability_data,
+    death_data,
+    additional_notes,
+    status,
+    reviewed_by,
+    reviewed_at,
+    staff_notes
+  ) VALUES (
+    v_submission_number,
+    p_household_id,
+    p_household_number,
+    p_respondent_name,
+    p_respondent_relation,
+    v_interview_date,
+    p_address,
+    p_house_number,
+    p_street_purok,
+    p_barangay,
+    p_city,
+    p_province,
+    p_district,
+    p_years_staying,
+    p_place_of_origin,
+    p_ethnic_group,
+    p_dwelling_type,
+    p_house_ownership,
+    p_lot_ownership,
+    p_water_supply_level,
+    p_lighting_source,
+    p_is_4ps_beneficiary,
+    p_toilet_facilities,
+    p_drainage_facilities,
+    p_garbage_disposal,
+    p_water_storage,
+    p_food_storage_type,
+    p_communication_services,
+    p_info_sources,
+    p_means_of_transport,
+    p_household_members,
+    p_education_data,
+    p_health_data,
+    p_animals,
+    p_food_production,
+    p_family_planning,
+    p_pwd_count,
+    p_solo_parent_count,
+    p_senior_data,
+    p_pregnant_data,
+    p_immunization_data,
+    p_disability_data,
+    p_death_data,
+    p_additional_notes,
+    'approved',
+    p_staff_id,
+    NOW(),
+    'Staff-entered census data'
+  )
+  RETURNING id INTO v_submission_id;
+  
+  -- Apply the submission to update household data
+  PERFORM apply_ecological_submission_to_household(v_submission_id);
+  
+  RETURN v_submission_number;
+END;
+$$;
