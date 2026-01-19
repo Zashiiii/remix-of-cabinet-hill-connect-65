@@ -1862,7 +1862,7 @@ const StaffDashboard = () => {
             )}
 
             {activeTab === "create-certificate" && (
-              <Card className="max-w-2xl">
+              <Card className="max-w-2xl mx-auto">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
