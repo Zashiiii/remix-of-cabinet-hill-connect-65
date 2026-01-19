@@ -161,10 +161,14 @@ export const BarangayStatsProvider = ({ children }: { children: ReactNode }) => 
     }
   }, [isAuthenticated]);
 
-  // Initial load when authenticated
+  // Initial load when authenticated - with delay to ensure httpOnly cookie is set
   useEffect(() => {
     if (isAuthenticated) {
-      refreshStats();
+      // Small delay to ensure httpOnly session cookie is properly set after login
+      const timer = setTimeout(() => {
+        refreshStats();
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, refreshStats]);
 
