@@ -423,7 +423,10 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
 
     setIsSubmitting(true);
     try {
-      // Prepare submission data
+      // Extract nested data from health_data for proper database columns
+      const healthData = formData.health_data as any;
+      
+      // Prepare submission data with proper mapping to database columns
       const submissionData = {
         household_number: formData.household_number,
         address: formData.address,
@@ -447,9 +450,25 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
         means_of_transport: formData.means_of_transport,
         info_sources: formData.info_sources,
         household_members: formData.household_members,
+        // Map to separate database columns
+        education_data: healthData?.education || {},
         health_data: {
-          ...(formData.health_data as any),
+          malnutrition: healthData?.malnutrition || {},
+          seniorCount: healthData?.seniorCount || 0,
+          pregnantCount: healthData?.pregnantCount || 0,
           other_values: formData.other_values
+        },
+        disability_data: healthData?.disability || {},
+        death_data: healthData?.deaths || {},
+        family_planning: {
+          isAcceptor: healthData?.familyPlanningAcceptor || false,
+          type: healthData?.familyPlanningType || ""
+        },
+        pregnant_data: {
+          count: healthData?.pregnantCount || 0
+        },
+        senior_data: {
+          count: healthData?.seniorCount || 0
         },
         is_4ps_beneficiary: formData.is_4ps_beneficiary,
         solo_parent_count: formData.solo_parent_count,
@@ -526,6 +545,18 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
   };
 
   const handleEditSubmission = (submission: any) => {
+    // Reconstruct health_data from separate database columns for form editing
+    const reconstructedHealthData = {
+      education: submission.education_data || {},
+      malnutrition: submission.health_data?.malnutrition || {},
+      disability: submission.disability_data || {},
+      deaths: submission.death_data || {},
+      familyPlanningAcceptor: submission.family_planning?.isAcceptor || false,
+      familyPlanningType: submission.family_planning?.type || "",
+      seniorCount: submission.senior_data?.count || submission.health_data?.seniorCount || 0,
+      pregnantCount: submission.pregnant_data?.count || submission.health_data?.pregnantCount || 0,
+    };
+
     // Load submission data into form
     setFormData({
       id: submission.id,
@@ -553,7 +584,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
       means_of_transport: Array.isArray(submission.means_of_transport) ? submission.means_of_transport : [],
       info_sources: Array.isArray(submission.info_sources) ? submission.info_sources : [],
       household_members: Array.isArray(submission.household_members) ? submission.household_members : [],
-      health_data: submission.health_data || {},
+      health_data: reconstructedHealthData,
       is_4ps_beneficiary: submission.is_4ps_beneficiary || false,
       solo_parent_count: submission.solo_parent_count || 0,
       pwd_count: submission.pwd_count || 0,
