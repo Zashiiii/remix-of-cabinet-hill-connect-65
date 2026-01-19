@@ -485,7 +485,134 @@ const EcologicalProfileTab = () => {
     }
   };
 
-  // Validate data
+  // Save census data to ecological_profile_submissions
+  const handleSaveCensusData = async () => {
+    if (!selectedHousehold) {
+      toast.error("Please select a household first");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Generate submission number
+      const { data: submissionNumber } = await supabase.rpc("generate_ecological_submission_number");
+
+      // Prepare data for database
+      const submissionData = {
+        submission_number: submissionNumber,
+        household_number: selectedHousehold.household_number,
+        household_id: selectedHousehold.id,
+        address: selectedHousehold.address,
+        house_number: selectedHousehold.house_number,
+        street_purok: selectedHousehold.street_purok,
+        district: selectedHousehold.district,
+        barangay: selectedHousehold.barangay || "Salud Mitra",
+        city: selectedHousehold.city || "Sample City",
+        province: selectedHousehold.province || "Sample Province",
+        years_staying: selectedHousehold.years_staying,
+        place_of_origin: selectedHousehold.place_of_origin,
+        ethnic_group: selectedHousehold.ethnic_group,
+        house_ownership: selectedHousehold.house_ownership,
+        lot_ownership: selectedHousehold.lot_ownership,
+        dwelling_type: selectedHousehold.dwelling_type,
+        lighting_source: selectedHousehold.lighting_source,
+        water_supply_level: selectedHousehold.water_supply_level,
+        water_storage: selectedHousehold.water_storage,
+        food_storage_type: selectedHousehold.food_storage_type,
+        toilet_facilities: selectedHousehold.toilet_facilities,
+        drainage_facilities: selectedHousehold.drainage_facilities,
+        garbage_disposal: selectedHousehold.garbage_disposal,
+        communication_services: selectedHousehold.communication_services,
+        means_of_transport: selectedHousehold.means_of_transport,
+        info_sources: selectedHousehold.info_sources,
+        interview_date: censusData.interviewDate,
+        respondent_name: censusData.respondentName,
+        respondent_relation: censusData.respondentRelation,
+        // Map education data to database format
+        education_data: {
+          preschool: censusData.educationData.preschool.graduate,
+          primary: censusData.educationData.primary.graduate,
+          secondary: censusData.educationData.secondary.graduate,
+          vocational: censusData.educationData.vocational.graduate,
+          college: censusData.educationData.college.graduate,
+          postgraduate: censusData.educationData.postGraduate.graduate,
+        },
+        // Map health data to database format
+        health_data: {
+          malnutrition: {
+            "0-11months": censusData.healthData.malnutrition_0_11.first,
+            "1-4years": censusData.healthData.malnutrition_1_4.first,
+            "5-7years": censusData.healthData.malnutrition_5_7.first,
+          },
+          seniorCount: censusData.seniorData.count,
+          pregnantCount: censusData.pregnantData.count,
+        },
+        // Disability data
+        disability_data: censusData.disabilityData,
+        // Death data
+        death_data: censusData.deathData,
+        // Family planning
+        family_planning: {
+          isAcceptor: censusData.familyPlanning.isAcceptor,
+          type: censusData.familyPlanning.type || censusData.familyPlanning.otherType,
+        },
+        // Pregnant data
+        pregnant_data: {
+          count: censusData.pregnantData.count,
+          highRiskCount: censusData.pregnantData.highRiskCount,
+        },
+        // Senior data
+        senior_data: {
+          count: censusData.seniorData.count,
+          withPension: censusData.seniorData.withPension,
+        },
+        // Household members from residents
+        household_members: selectedHousehold.residents?.map(r => ({
+          full_name: `${r.first_name} ${r.middle_name || ""} ${r.last_name}`.trim(),
+          birth_date: r.birth_date,
+          gender: r.gender,
+          relationship_to_head: r.relation_to_head,
+          civil_status: r.civil_status,
+          religion: r.religion,
+          schooling_status: r.schooling_status,
+          education_level: r.education_attainment,
+          employment_status: r.employment_status,
+          occupation: r.occupation,
+          monthly_income: r.monthly_income_cash,
+        })) || [],
+        // Additional data
+        is_4ps_beneficiary: censusData.is4PsBeneficiary,
+        solo_parent_count: censusData.soloParentCount,
+        pwd_count: censusData.pwdCount,
+        additional_notes: censusData.additionalNotes,
+        food_production: censusData.foodProduction,
+        animals: censusData.animals,
+        // Status - auto-approved for staff entries
+        status: "approved",
+        reviewed_by: "Staff",
+        reviewed_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from("ecological_profile_submissions")
+        .insert(submissionData);
+
+      if (error) throw error;
+
+      // Apply the submission to household
+      await supabase.rpc("apply_ecological_submission_to_household", {
+        p_submission_id: submissionNumber,
+      });
+
+      toast.success("Census data saved successfully!");
+      loadData();
+    } catch (error) {
+      console.error("Error saving census data:", error);
+      toast.error("Failed to save census data. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
   const validateData = useCallback(() => {
     const warnings: ValidationWarning[] = [];
 
@@ -2365,6 +2492,19 @@ const EcologicalProfileTab = () => {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-4">
+              <Button
+                onClick={handleSaveCensusData}
+                variant="default"
+                disabled={isSaving || !selectedHousehold}
+                className="bg-accent hover:bg-accent/90"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Save Census Data
+              </Button>
               <Button
                 onClick={() => setShowPreview(true)}
                 variant="outline"
