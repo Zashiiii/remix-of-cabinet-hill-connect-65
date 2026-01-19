@@ -124,6 +124,7 @@ import NameChangeRequestsTab from "@/components/staff/NameChangeRequestsTab";
 import EcologicalProfileTab from "@/components/staff/EcologicalProfileTab";
 import EcologicalSubmissionsTab from "@/components/staff/EcologicalSubmissionsTab";
 import CertificateRequestForm from "@/components/CertificateRequestForm";
+import CertificateRequestCard from "@/components/staff/CertificateRequestCard";
 
 interface PendingRequest {
   id: string;
@@ -1720,117 +1721,22 @@ const StaffDashboard = () => {
                             <p className="text-sm">When residents submit certificate requests, they will appear here for processing</p>
                           </div>
                         ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-12">
-                                  <Checkbox
-                                    checked={selectedRequests.size === approvedRequests.length && approvedRequests.length > 0}
-                                    onCheckedChange={toggleSelectAllApproved}
-                                    disabled={approvedRequests.length === 0}
-                                    aria-label="Select all approved"
-                                  />
-                                </TableHead>
-                                <TableHead>Control Number</TableHead>
-                                <TableHead>Resident Name</TableHead>
-                                <TableHead>Certificate Type</TableHead>
-                                <TableHead>Date Submitted</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Actions</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {requests.map((request) => (
-                                <TableRow key={request.id} className={selectedRequests.has(request.id) ? "bg-muted/50" : ""}>
-                                  <TableCell>
-                                    <Checkbox
-                                      checked={selectedRequests.has(request.id)}
-                                      onCheckedChange={() => toggleRequestSelection(request.id)}
-                                      disabled={request.status !== "approved"}
-                                      aria-label={`Select ${request.residentName}`}
-                                    />
-                                  </TableCell>
-                                  <TableCell className="font-medium font-mono text-xs">{request.id}</TableCell>
-                                  <TableCell>{request.residentName}</TableCell>
-                                  <TableCell>{request.certificateType}</TableCell>
-                                  <TableCell>{request.dateSubmitted}</TableCell>
-                                  <TableCell>
-                                    <div className="space-y-1">
-                                      {getStatusBadge(request.status)}
-                                      {request.processedBy && (
-                                        <div className="text-xs text-muted-foreground">
-                                          By: {request.processedBy}
-                                          <br />
-                                          {request.processedDate}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex gap-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleAction("View", request)}
-                                        title="View Details"
-                                      >
-                                        <Eye className="h-4 w-4 mr-1" />
-                                        View
-                                      </Button>
-                                      {request.status === "approved" && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleDownloadCertificate(request)}
-                                          className="text-blue-600 hover:bg-blue-50"
-                                          title="Download Certificate"
-                                        >
-                                          <Download className="h-4 w-4" />
-                                        </Button>
-                                      )}
-                                      {(request.status === "pending" || request.status === "verifying") && (
-                                        <>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleAction("Approve", request)}
-                                            className="hover:bg-green-50 text-green-600"
-                                            disabled={isProcessing}
-                                            title="Approve Request"
-                                          >
-                                            <CheckCircle className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleAction("Reject", request)}
-                                            className="hover:bg-red-50 text-red-600"
-                                            disabled={isProcessing}
-                                            title="Reject Request"
-                                          >
-                                            <XCircle className="h-4 w-4" />
-                                          </Button>
-                                          {request.status === "pending" && (
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() => handleAction("Verifying", request)}
-                                              className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                                              disabled={isProcessing}
-                                              title="Mark as Verifying"
-                                            >
-                                              <Clock className="h-4 w-4 mr-1" />
-                                              Verify
-                                            </Button>
-                                          )}
-                                        </>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                          <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+                            {requests.map((request) => (
+                              <CertificateRequestCard
+                                key={request.id}
+                                request={request}
+                                isSelected={selectedRequests.has(request.id)}
+                                isProcessing={isProcessing}
+                                onSelect={toggleRequestSelection}
+                                onView={(req) => handleAction("View", req)}
+                                onDownload={handleDownloadCertificate}
+                                onApprove={(req) => handleAction("Approve", req)}
+                                onReject={(req) => handleAction("Reject", req)}
+                                onVerify={(req) => handleAction("Verifying", req)}
+                              />
+                            ))}
+                          </div>
                         )}
                       </CardContent>
                     </Card>
