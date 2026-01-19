@@ -143,8 +143,8 @@ export function CertificateRequestCard({
 
         {/* Actions - Right side */}
         <div className="flex flex-col gap-2 items-end">
-          {/* Checkbox for bulk selection (approved only) */}
-          {isApproved && (
+          {/* Checkbox for bulk selection (approved and pending/verifying) */}
+          {(isApproved || isPendingOrVerifying) && (
             <Checkbox
               checked={isSelected}
               onCheckedChange={() => onSelect(request.id)}

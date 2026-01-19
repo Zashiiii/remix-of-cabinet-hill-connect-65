@@ -34,6 +34,7 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
+  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1101,6 +1102,25 @@ const StaffDashboard = () => {
 
   // Bulk selection handlers
   const approvedRequests = requests.filter(r => r.status === "approved");
+  const pendingOrVerifyingRequests = requests.filter(r => r.status === "pending" || r.status === "verifying" || r.status === "processing");
+  
+  // Bulk rejection dialog state
+  const [showBulkRejectDialog, setShowBulkRejectDialog] = useState(false);
+  const [bulkRejectionReason, setBulkRejectionReason] = useState("");
+  
+  // Calculate selected counts by status
+  const selectedPendingCount = useMemo(() => {
+    return requests.filter(
+      r => selectedRequests.has(r.id) && 
+      (r.status === "pending" || r.status === "verifying" || r.status === "processing")
+    ).length;
+  }, [requests, selectedRequests]);
+
+  const selectedApprovedCount = useMemo(() => {
+    return requests.filter(
+      r => selectedRequests.has(r.id) && r.status === "approved"
+    ).length;
+  }, [requests, selectedRequests]);
   
   const toggleRequestSelection = (requestId: string) => {
     setSelectedRequests(prev => {
@@ -1122,8 +1142,146 @@ const StaffDashboard = () => {
     }
   };
 
+  const toggleSelectAllPending = () => {
+    const allPendingSelected = pendingOrVerifyingRequests.every(r => selectedRequests.has(r.id));
+    if (allPendingSelected && pendingOrVerifyingRequests.length > 0) {
+      // Deselect all pending
+      setSelectedRequests(prev => {
+        const newSet = new Set(prev);
+        pendingOrVerifyingRequests.forEach(r => newSet.delete(r.id));
+        return newSet;
+      });
+    } else {
+      // Select all pending
+      setSelectedRequests(prev => {
+        const newSet = new Set(prev);
+        pendingOrVerifyingRequests.forEach(r => newSet.add(r.id));
+        return newSet;
+      });
+    }
+  };
+
+  const allPendingSelected = pendingOrVerifyingRequests.length > 0 && pendingOrVerifyingRequests.every(r => selectedRequests.has(r.id));
+
   const clearSelection = () => {
     setSelectedRequests(new Set());
+  };
+
+  // Bulk approve handler
+  const handleBulkApprove = async () => {
+    if (selectedPendingCount === 0) return;
+    
+    setIsBatchUpdating(true);
+    const staffName = user?.fullName || "Staff Admin";
+    let successCount = 0;
+    let errorCount = 0;
+    
+    const pendingSelected = requests.filter(
+      r => selectedRequests.has(r.id) && 
+      (r.status === "pending" || r.status === "verifying" || r.status === "processing")
+    );
+    
+    try {
+      for (const request of pendingSelected) {
+        try {
+          if (!request.dbId) {
+            errorCount++;
+            continue;
+          }
+          
+          await updateCertificateRequestStatus(
+            request.dbId,
+            'Approved',
+            staffName,
+            'Bulk approved - All requirements verified'
+          );
+          successCount++;
+        } catch (error) {
+          errorCount++;
+          console.error(`Failed to approve ${request.id}:`, error);
+        }
+      }
+      
+      // Log bulk action
+      await logBatchStatusUpdate(
+        pendingSelected.map(r => r.id),
+        'Approved',
+        staffName
+      );
+      
+      toast.success(`Bulk approval complete`, {
+        description: `${successCount} approved${errorCount > 0 ? `, ${errorCount} failed` : ''}`
+      });
+      
+      setSelectedRequests(new Set());
+      loadRequests();
+    } catch (error) {
+      console.error("Bulk approve error:", error);
+      toast.error("Failed to complete bulk approval");
+    } finally {
+      setIsBatchUpdating(false);
+    }
+  };
+
+  // Bulk reject handler
+  const handleBulkReject = async () => {
+    if (!bulkRejectionReason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+    
+    setIsBatchUpdating(true);
+    const staffName = user?.fullName || "Staff Admin";
+    let successCount = 0;
+    let errorCount = 0;
+    
+    const pendingSelected = requests.filter(
+      r => selectedRequests.has(r.id) && 
+      (r.status === "pending" || r.status === "verifying" || r.status === "processing")
+    );
+    
+    try {
+      for (const request of pendingSelected) {
+        try {
+          if (!request.dbId) {
+            errorCount++;
+            continue;
+          }
+          
+          await updateCertificateRequestStatus(
+            request.dbId,
+            'Rejected',
+            staffName,
+            bulkRejectionReason.trim()
+          );
+          successCount++;
+        } catch (error) {
+          errorCount++;
+          console.error(`Failed to reject ${request.id}:`, error);
+        }
+      }
+      
+      // Log bulk action
+      await logBatchStatusUpdate(
+        pendingSelected.map(r => r.id),
+        'Rejected',
+        staffName
+      );
+      
+      toast.success(`Bulk rejection complete`, {
+        description: `${successCount} rejected${errorCount > 0 ? `, ${errorCount} failed` : ''}`
+      });
+      
+      setShowBulkRejectDialog(false);
+      setBulkRejectionReason("");
+      setSelectedRequests(new Set());
+      loadRequests();
+    } catch (error) {
+      console.error("Bulk reject error:", error);
+      toast.error("Failed to complete bulk rejection");
+    } finally {
+      setIsBatchUpdating(false);
+    }
   };
 
   // Bulk download handler
@@ -1732,18 +1890,22 @@ const StaffDashboard = () => {
                   <h2 className="text-2xl font-bold">Certificate Requests</h2>
                 </div>
 
-                {/* Status Filter Buttons */}
-                <div className="flex gap-2 flex-wrap">
-                  {["All", "Pending", "Verifying", "Approved", "Released", "Rejected"].map((status) => (
-                    <Button
-                      key={status}
-                      variant={statusFilter === status ? "default" : "outline"}
-                      onClick={() => setStatusFilter(status)}
-                      size="sm"
-                    >
-                      {status}
-                    </Button>
-                  ))}
+                {/* Status Filter Dropdown */}
+                <div className="flex items-center gap-4">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Requests</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Verifying">Verifying</SelectItem>
+                      <SelectItem value="Approved">Approved</SelectItem>
+                      <SelectItem value="Released">Released</SelectItem>
+                      <SelectItem value="Rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Search and Sort Controls */}
@@ -1811,8 +1973,21 @@ const StaffDashboard = () => {
                           {statusFilter === "All" ? "All Certificate Requests" : `${statusFilter} Requests`}
                           {certSearchQuery && <span className="text-muted-foreground font-normal ml-2">- filtered</span>}
                         </CardTitle>
-                        {approvedRequests.length > 0 && (
-                          <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {pendingOrVerifyingRequests.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={toggleSelectAllPending}
+                              className="text-xs"
+                            >
+                              {allPendingSelected 
+                                ? <><CheckSquare className="h-4 w-4 mr-1" /> Deselect All Pending</>
+                                : <><Square className="h-4 w-4 mr-1" /> Select All Pending ({pendingOrVerifyingRequests.length})</>
+                              }
+                            </Button>
+                          )}
+                          {approvedRequests.length > 0 && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -1820,12 +1995,12 @@ const StaffDashboard = () => {
                               className="text-xs"
                             >
                               {selectedRequests.size === approvedRequests.length && approvedRequests.length > 0 
-                                ? <><CheckSquare className="h-4 w-4 mr-1" /> Deselect All</>
+                                ? <><CheckSquare className="h-4 w-4 mr-1" /> Deselect All Approved</>
                                 : <><Square className="h-4 w-4 mr-1" /> Select All Approved ({approvedRequests.length})</>
                               }
                             </Button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {paginatedRequests.length === 0 ? (
@@ -1970,47 +2145,90 @@ const StaffDashboard = () => {
                   <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-card shadow-lg rounded-lg border p-4 flex flex-wrap items-center gap-4 z-50 max-w-[90vw]">
                     <span className="text-sm font-medium">
                       {selectedRequests.size} certificate(s) selected
+                      {selectedPendingCount > 0 && selectedApprovedCount > 0 && (
+                        <span className="text-muted-foreground ml-1">
+                          ({selectedPendingCount} pending, {selectedApprovedCount} approved)
+                        </span>
+                      )}
                     </span>
                     
-                    <div className="flex items-center gap-2">
-                      <Button
-                        onClick={handleBulkDownload}
-                        disabled={isDownloading || isBatchUpdating}
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {isDownloading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Downloading ({downloadProgress.current}/{downloadProgress.total})
-                          </>
-                        ) : (
-                          <>
-                            <Download className="h-4 w-4 mr-2" />
-                            Download ZIP
-                          </>
-                        )}
-                      </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Show for pending/verifying selections */}
+                      {selectedPendingCount > 0 && (
+                        <>
+                          <Button
+                            onClick={handleBulkApprove}
+                            disabled={isDownloading || isBatchUpdating}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            {isBatchUpdating ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Approving...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Approve ({selectedPendingCount})
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => setShowBulkRejectDialog(true)}
+                            disabled={isDownloading || isBatchUpdating}
+                            size="sm"
+                            variant="destructive"
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Reject ({selectedPendingCount})
+                          </Button>
+                        </>
+                      )}
                       
-                      <Button
-                        onClick={handleMarkAsReleased}
-                        disabled={isDownloading || isBatchUpdating}
-                        variant="outline"
-                        size="sm"
-                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                      >
-                        {isBatchUpdating ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Updating...
-                          </>
-                        ) : (
-                          <>
-                            <Package className="h-4 w-4 mr-2" />
-                            Mark as Released
-                          </>
-                        )}
-                      </Button>
+                      {/* Show for approved selections */}
+                      {selectedApprovedCount > 0 && (
+                        <>
+                          <Button
+                            onClick={handleBulkDownload}
+                            disabled={isDownloading || isBatchUpdating}
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            {isDownloading ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Downloading ({downloadProgress.current}/{downloadProgress.total})
+                              </>
+                            ) : (
+                              <>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download ZIP ({selectedApprovedCount})
+                              </>
+                            )}
+                          </Button>
+                          
+                          <Button
+                            onClick={handleMarkAsReleased}
+                            disabled={isDownloading || isBatchUpdating}
+                            variant="outline"
+                            size="sm"
+                            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                          >
+                            {isBatchUpdating ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Updating...
+                              </>
+                            ) : (
+                              <>
+                                <Package className="h-4 w-4 mr-2" />
+                                Mark as Released ({selectedApprovedCount})
+                              </>
+                            )}
+                          </Button>
+                        </>
+                      )}
                       
                       <Button
                         variant="ghost"
@@ -2024,6 +2242,42 @@ const StaffDashboard = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Bulk Rejection Dialog */}
+                <AlertDialog open={showBulkRejectDialog} onOpenChange={setShowBulkRejectDialog}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reject {selectedPendingCount} Certificate Request(s)</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will reject all selected pending requests. Please provide a reason that will be applied to all.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-4">
+                      <Label htmlFor="bulk-rejection-reason">Rejection Reason</Label>
+                      <Textarea
+                        id="bulk-rejection-reason"
+                        placeholder="Enter the reason for rejection..."
+                        value={bulkRejectionReason}
+                        onChange={(e) => setBulkRejectionReason(e.target.value)}
+                        className="mt-2"
+                      />
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isBatchUpdating}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleBulkReject}
+                        disabled={!bulkRejectionReason.trim() || isBatchUpdating}
+                        className="bg-destructive hover:bg-destructive/90"
+                      >
+                        {isBatchUpdating ? (
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Rejecting...</>
+                        ) : (
+                          "Reject All"
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             )}
 
