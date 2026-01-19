@@ -397,15 +397,12 @@ const EcologicalProfileTab = () => {
       respondentRelation: head ? "Head" : "",
     }));
 
-    // Try to load existing census data from approved ecological submissions
+    // Try to load existing census data from approved ecological submissions using RPC
     try {
-      const { data: submissions, error } = await supabase
-        .from("ecological_profile_submissions")
-        .select("*")
-        .eq("household_number", household.household_number)
-        .eq("status", "approved")
-        .order("reviewed_at", { ascending: false })
-        .limit(1);
+      const { data: submissions, error } = await supabase.rpc(
+        "get_ecological_submission_by_household",
+        { p_household_number: household.household_number }
+      );
 
       if (!error && submissions && submissions.length > 0) {
         const sub = submissions[0];
@@ -590,7 +587,64 @@ const EcologicalProfileTab = () => {
       if (error) throw error;
 
       toast.success(`Census data saved successfully! Submission #${data}`);
-      loadData();
+      
+      // Reload data and re-select the household to refresh the form with saved values
+      await loadData();
+      
+      // Re-fetch and select the household to reload the saved census data
+      if (selectedHousehold) {
+        // Re-fetch updated household data
+        const { data: updatedHouseholds } = await supabase.rpc("get_all_households_for_staff");
+        if (updatedHouseholds) {
+          const updatedHousehold = updatedHouseholds.find(
+            (h: any) => h.id === selectedHousehold.id
+          );
+          if (updatedHousehold) {
+            // Get residents for this household
+            const { data: residents } = await supabase.rpc("get_all_residents_for_staff");
+            const householdResidents = (residents?.filter(
+              (r: any) => r.household_id === updatedHousehold.id
+            ) || []).map((r: any) => ({
+              ...r,
+              dialects_spoken: Array.isArray(r.dialects_spoken) ? r.dialects_spoken : [],
+            })) as ResidentData[];
+            
+            // Cast household data properly
+            const typedHousehold: HouseholdData = {
+              id: updatedHousehold.id,
+              household_number: updatedHousehold.household_number,
+              address: updatedHousehold.address,
+              barangay: updatedHousehold.barangay,
+              city: updatedHousehold.city,
+              province: updatedHousehold.province,
+              house_number: updatedHousehold.house_number,
+              street_purok: updatedHousehold.street_purok,
+              district: updatedHousehold.district,
+              years_staying: updatedHousehold.years_staying,
+              place_of_origin: updatedHousehold.place_of_origin,
+              ethnic_group: updatedHousehold.ethnic_group,
+              house_ownership: updatedHousehold.house_ownership,
+              lot_ownership: updatedHousehold.lot_ownership,
+              dwelling_type: updatedHousehold.dwelling_type,
+              lighting_source: updatedHousehold.lighting_source,
+              water_supply_level: updatedHousehold.water_supply_level,
+              water_storage: Array.isArray(updatedHousehold.water_storage) ? (updatedHousehold.water_storage as string[]) : [],
+              food_storage_type: Array.isArray(updatedHousehold.food_storage_type) ? (updatedHousehold.food_storage_type as string[]) : [],
+              toilet_facilities: Array.isArray(updatedHousehold.toilet_facilities) ? (updatedHousehold.toilet_facilities as string[]) : [],
+              drainage_facilities: Array.isArray(updatedHousehold.drainage_facilities) ? (updatedHousehold.drainage_facilities as string[]) : [],
+              garbage_disposal: Array.isArray(updatedHousehold.garbage_disposal) ? (updatedHousehold.garbage_disposal as string[]) : [],
+              communication_services: Array.isArray(updatedHousehold.communication_services) ? (updatedHousehold.communication_services as string[]) : [],
+              means_of_transport: Array.isArray(updatedHousehold.means_of_transport) ? (updatedHousehold.means_of_transport as string[]) : [],
+              info_sources: Array.isArray(updatedHousehold.info_sources) ? (updatedHousehold.info_sources as string[]) : [],
+              interview_date: updatedHousehold.interview_date,
+              residents: householdResidents,
+            };
+            
+            // Reload the household with residents
+            await handleSelectHousehold(typedHousehold);
+          }
+        }
+      }
     } catch (error) {
       console.error("Error saving census data:", error);
       toast.error("Failed to save census data. Please try again.");
