@@ -129,6 +129,7 @@ import EcologicalProfileTab from "@/components/staff/EcologicalProfileTab";
 import EcologicalSubmissionsTab from "@/components/staff/EcologicalSubmissionsTab";
 import CertificateRequestForm from "@/components/CertificateRequestForm";
 import CertificateRequestCard from "@/components/staff/CertificateRequestCard";
+import { hasPermission, canAccessAdminSection, FeatureKey } from "@/utils/rolePermissions";
 
 interface PendingRequest {
   id: string;
@@ -187,29 +188,39 @@ const StaffSidebar = ({
   const { state } = useSidebar();
   const navigate = useNavigate();
 
-  const mainMenuItems = [
-    { title: "Home", icon: Home, tab: "home" },
-    { title: "Create Certificate", icon: Plus, tab: "create-certificate" },
-    { title: "Certificate Requests", icon: FileText, tab: "certificate-requests", badge: pendingCertificatesCount && pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined },
-    { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", badge: pendingIncidentsCount && pendingIncidentsCount > 0 ? pendingIncidentsCount : undefined },
-    { title: "Ecological Profile Census", icon: FileText, tab: "ecological-profile" },
-    { title: "Manage Announcements", icon: Bell, tab: "announcements" },
-    { title: "Manage Residents", icon: Users, tab: "residents" },
-    { title: "Manage Households", icon: Home, tab: "households" },
-    { title: "View Reports", icon: BarChart3, tab: "view-reports" },
-    { title: "Settings", icon: Settings, tab: "settings" },
+  // Map tabs to feature keys for permission checking
+  const mainMenuItemsRaw = [
+    { title: "Home", icon: Home, tab: "home", feature: null }, // Everyone can access home
+    { title: "Create Certificate", icon: Plus, tab: "create-certificate", feature: "create_certificate" as FeatureKey },
+    { title: "Certificate Requests", icon: FileText, tab: "certificate-requests", badge: pendingCertificatesCount && pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined, feature: "certificate_requests" as FeatureKey },
+    { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", badge: pendingIncidentsCount && pendingIncidentsCount > 0 ? pendingIncidentsCount : undefined, feature: "incidents" as FeatureKey },
+    { title: "Ecological Profile Census", icon: FileText, tab: "ecological-profile", feature: "ecological_profile" as FeatureKey },
+    { title: "Manage Announcements", icon: Bell, tab: "announcements", feature: "announcements" as FeatureKey },
+    { title: "Manage Residents", icon: Users, tab: "residents", feature: "manage_residents" as FeatureKey },
+    { title: "Manage Households", icon: Home, tab: "households", feature: "manage_households" as FeatureKey },
+    { title: "View Reports", icon: BarChart3, tab: "view-reports", feature: "view_reports" as FeatureKey },
+    { title: "Settings", icon: Settings, tab: "settings", feature: "settings" as FeatureKey },
   ];
 
-  const adminMenuItems = [
-    { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions", badge: pendingEcologicalCount && pendingEcologicalCount > 0 ? pendingEcologicalCount : undefined },
-    { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined },
-    { title: "Name Change Requests", icon: User, tab: "name-change-requests", badge: pendingNameChangeCount && pendingNameChangeCount > 0 ? pendingNameChangeCount : undefined },
-    { title: "Staff Management", icon: Shield, route: "/admin/staff" },
-    { title: "Audit Logs", icon: History, tab: "audit-logs" },
+  const adminMenuItemsRaw = [
+    { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions", badge: pendingEcologicalCount && pendingEcologicalCount > 0 ? pendingEcologicalCount : undefined, feature: "ecological_submissions" as FeatureKey },
+    { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined, feature: "resident_approval" as FeatureKey },
+    { title: "Name Change Requests", icon: User, tab: "name-change-requests", badge: pendingNameChangeCount && pendingNameChangeCount > 0 ? pendingNameChangeCount : undefined, feature: "name_change_requests" as FeatureKey },
+    { title: "Staff Management", icon: Shield, route: "/admin/staff", feature: "staff_management" as FeatureKey },
+    { title: "Audit Logs", icon: History, tab: "audit-logs", feature: "audit_logs" as FeatureKey },
   ];
+
+  // Filter menu items based on role permissions
+  const mainMenuItems = mainMenuItemsRaw.filter(item => 
+    item.feature === null || hasPermission(userRole, item.feature)
+  );
+
+  const adminMenuItems = adminMenuItemsRaw.filter(item => 
+    hasPermission(userRole, item.feature)
+  );
 
   const isCollapsed = state === "collapsed";
-  const isAdmin = userRole === "admin";
+  const showAdminSection = canAccessAdminSection(userRole);
 
   const handleMenuClick = (item: { tab?: string; route?: string }) => {
     if (item.route) {
@@ -263,7 +274,7 @@ const StaffSidebar = ({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {isAdmin && (
+        {showAdminSection && adminMenuItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className={isCollapsed ? "hidden" : "block"}>
               Admin

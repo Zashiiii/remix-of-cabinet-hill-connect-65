@@ -1091,7 +1091,7 @@ serve(async (req) => {
       );
     }
 
-    // Get audit logs (admin only)
+    // Get audit logs (admin and barangay_captain only)
     if (action === 'get-audit-logs') {
       const token = getTokenFromCookie(req);
       const { entityFilter, actionFilter, limit } = body;
@@ -1104,8 +1104,8 @@ serve(async (req) => {
         );
       }
 
-      // Only admins can view audit logs
-      if (session.role !== 'admin') {
+      // Only admins and barangay captains can view audit logs
+      if (session.role !== 'admin' && session.role !== 'barangay_captain') {
         return new Response(
           JSON.stringify({ error: 'Admin access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -1142,7 +1142,32 @@ serve(async (req) => {
       );
     }
 
-    // ========== STAFF USER MANAGEMENT (Admin Only) ==========
+    // ========== STAFF USER MANAGEMENT (Admin and Barangay Captain Only) ==========
+    
+    // Helper function to log staff audit entries
+    const logStaffAudit = async (
+      action: string,
+      entityId: string,
+      performedBy: string,
+      performedByRole: string,
+      details?: Record<string, any>
+    ) => {
+      try {
+        await supabase.from('audit_logs').insert({
+          action,
+          entity_type: 'staff_user',
+          entity_id: entityId,
+          performed_by: performedBy,
+          performed_by_type: performedByRole === 'admin' ? 'admin' : 'staff',
+          details,
+        });
+      } catch (error) {
+        console.error('Failed to log audit entry:', error);
+      }
+    };
+
+    // Helper to check if role can manage staff
+    const canManageStaff = (role: string) => role === 'admin' || role === 'barangay_captain';
     
     // Get all staff users
     if (action === 'get-staff-users') {
@@ -1156,10 +1181,10 @@ serve(async (req) => {
         );
       }
 
-      // Only admins can view staff users
-      if (session.role !== 'admin') {
+      // Only admins and barangay captains can view staff users
+      if (!canManageStaff(session.role)) {
         return new Response(
-          JSON.stringify({ error: 'Admin access required' }),
+          JSON.stringify({ error: 'Staff management access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1195,9 +1220,9 @@ serve(async (req) => {
         );
       }
 
-      if (session.role !== 'admin') {
+      if (!canManageStaff(session.role)) {
         return new Response(
-          JSON.stringify({ error: 'Admin access required' }),
+          JSON.stringify({ error: 'Staff management access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1237,7 +1262,21 @@ serve(async (req) => {
         );
       }
 
-      console.log('Staff user created:', username, 'by admin:', session.username);
+      // Log audit entry for staff user creation
+      await logStaffAudit(
+        'create',
+        data.id,
+        session.full_name,
+        session.role,
+        {
+          new_username: username,
+          new_full_name: fullName,
+          new_role: role || 'secretary',
+          created_by_role: session.role
+        }
+      );
+
+      console.log('Staff user created:', username, 'by:', session.username, 'role:', session.role);
       return new Response(
         JSON.stringify({ success: true, data }),
         { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -1256,9 +1295,9 @@ serve(async (req) => {
         );
       }
 
-      if (session.role !== 'admin') {
+      if (!canManageStaff(session.role)) {
         return new Response(
-          JSON.stringify({ error: 'Admin access required' }),
+          JSON.stringify({ error: 'Staff management access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1272,15 +1311,47 @@ serve(async (req) => {
         );
       }
 
+      // Get original user data for audit log
+      const { data: originalUser } = await supabase
+        .from('staff_users')
+        .select('username, full_name, role, is_active')
+        .eq('id', id)
+        .single();
+
       const updateData: Record<string, any> = {
         updated_at: new Date().toISOString()
       };
 
-      if (username !== undefined) updateData.username = username.toLowerCase().trim();
-      if (fullName !== undefined) updateData.full_name = fullName;
-      if (passwordHash !== undefined) updateData.password_hash = passwordHash;
-      if (role !== undefined) updateData.role = role;
-      if (isActive !== undefined) updateData.is_active = isActive;
+      const changedFields: Record<string, any> = {};
+
+      if (username !== undefined) {
+        updateData.username = username.toLowerCase().trim();
+        if (originalUser?.username !== username.toLowerCase().trim()) {
+          changedFields.username = { from: originalUser?.username, to: username.toLowerCase().trim() };
+        }
+      }
+      if (fullName !== undefined) {
+        updateData.full_name = fullName;
+        if (originalUser?.full_name !== fullName) {
+          changedFields.full_name = { from: originalUser?.full_name, to: fullName };
+        }
+      }
+      if (passwordHash !== undefined) {
+        updateData.password_hash = passwordHash;
+        changedFields.password = 'changed';
+      }
+      if (role !== undefined) {
+        updateData.role = role;
+        if (originalUser?.role !== role) {
+          changedFields.role = { from: originalUser?.role, to: role };
+        }
+      }
+      if (isActive !== undefined) {
+        updateData.is_active = isActive;
+        if (originalUser?.is_active !== isActive) {
+          changedFields.is_active = { from: originalUser?.is_active, to: isActive };
+        }
+      }
 
       const { data, error } = await supabase
         .from('staff_users')
@@ -1303,7 +1374,22 @@ serve(async (req) => {
         );
       }
 
-      console.log('Staff user updated:', id, 'by admin:', session.username);
+      // Log audit entry for staff user update
+      if (Object.keys(changedFields).length > 0) {
+        await logStaffAudit(
+          'update',
+          id,
+          session.full_name,
+          session.role,
+          {
+            username: data.username,
+            changes: changedFields,
+            updated_by_role: session.role
+          }
+        );
+      }
+
+      console.log('Staff user updated:', id, 'by:', session.username, 'role:', session.role);
       return new Response(
         JSON.stringify({ success: true, data }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -1322,9 +1408,9 @@ serve(async (req) => {
         );
       }
 
-      if (session.role !== 'admin') {
+      if (!canManageStaff(session.role)) {
         return new Response(
-          JSON.stringify({ error: 'Admin access required' }),
+          JSON.stringify({ error: 'Staff management access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1346,6 +1432,13 @@ serve(async (req) => {
         );
       }
 
+      // Get user data before deletion for audit log
+      const { data: deletedUser } = await supabase
+        .from('staff_users')
+        .select('username, full_name, role')
+        .eq('id', id)
+        .single();
+
       // Delete associated sessions first
       await supabase.from('sessions').delete().eq('staff_user_id', id);
 
@@ -1362,7 +1455,21 @@ serve(async (req) => {
         );
       }
 
-      console.log('Staff user deleted:', id, 'by admin:', session.username);
+      // Log audit entry for staff user deletion
+      await logStaffAudit(
+        'delete',
+        id,
+        session.full_name,
+        session.role,
+        {
+          deleted_username: deletedUser?.username,
+          deleted_full_name: deletedUser?.full_name,
+          deleted_role: deletedUser?.role,
+          deleted_by_role: session.role
+        }
+      );
+
+      console.log('Staff user deleted:', id, 'by:', session.username, 'role:', session.role);
       return new Response(
         JSON.stringify({ success: true }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -1381,9 +1488,9 @@ serve(async (req) => {
         );
       }
 
-      if (session.role !== 'admin') {
+      if (!canManageStaff(session.role)) {
         return new Response(
-          JSON.stringify({ error: 'Admin access required' }),
+          JSON.stringify({ error: 'Staff management access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1405,10 +1512,10 @@ serve(async (req) => {
         );
       }
 
-      // Get current status
+      // Get current status and user info
       const { data: currentUser, error: fetchError } = await supabase
         .from('staff_users')
-        .select('is_active')
+        .select('is_active, username, full_name')
         .eq('id', id)
         .single();
 
@@ -1439,7 +1546,22 @@ serve(async (req) => {
         await supabase.from('sessions').delete().eq('staff_user_id', id);
       }
 
-      console.log('Staff user status toggled:', id, 'to:', newStatus, 'by admin:', session.username);
+      // Log audit entry for status toggle
+      await logStaffAudit(
+        'update',
+        id,
+        session.full_name,
+        session.role,
+        {
+          action_type: 'status_change',
+          username: currentUser.username,
+          full_name: currentUser.full_name,
+          new_active_status: newStatus,
+          changed_by_role: session.role
+        }
+      );
+
+      console.log('Staff user status toggled:', id, 'to:', newStatus, 'by:', session.username, 'role:', session.role);
       return new Response(
         JSON.stringify({ success: true, isActive: newStatus }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -6,10 +6,13 @@ import { Loader2, Clock, XCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import { hasPermission, FeatureKey } from '@/utils/rolePermissions';
 
 interface StaffProtectedRouteProps {
   children: ReactNode;
   requiredRole?: 'staff' | 'admin' | 'any';
+  allowedRoles?: string[]; // Array of specific roles allowed
+  requiredFeature?: FeatureKey; // Feature-based access control
   redirectTo?: string;
 }
 
@@ -22,6 +25,8 @@ interface ResidentProtectedRouteProps {
 export const StaffProtectedRoute = ({ 
   children, 
   requiredRole = 'any',
+  allowedRoles,
+  requiredFeature,
   redirectTo = '/' 
 }: StaffProtectedRouteProps) => {
   const { isAuthenticated, isLoading, user } = useStaffAuth();
@@ -41,8 +46,18 @@ export const StaffProtectedRoute = ({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // Role check for admin-only routes
-  if (requiredRole === 'admin' && user?.role !== 'admin') {
+  // Check feature-based permission
+  if (requiredFeature && !hasPermission(user?.role, requiredFeature)) {
+    return <Navigate to="/staff-dashboard" replace />;
+  }
+
+  // Check specific allowed roles
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user?.role || '')) {
+    return <Navigate to="/staff-dashboard" replace />;
+  }
+
+  // Legacy role check for admin-only routes
+  if (requiredRole === 'admin' && user?.role !== 'admin' && user?.role !== 'barangay_captain') {
     return <Navigate to="/staff-dashboard" replace />;
   }
 
