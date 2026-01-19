@@ -1634,6 +1634,10 @@ export type Database = {
         }
         Returns: string
       }
+      resident_link_to_household: {
+        Args: { p_household_number: string; p_user_id: string }
+        Returns: Json
+      }
       review_ecological_submission: {
         Args: {
           p_rejection_reason?: string
