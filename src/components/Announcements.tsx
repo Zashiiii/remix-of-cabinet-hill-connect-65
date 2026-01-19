@@ -14,27 +14,6 @@ interface Announcement {
   date: string;
 }
 
-const defaultAnnouncements: Announcement[] = [
-  {
-    id: "1",
-    type: "important",
-    title: "New Online Certificate System",
-    titleTl: "Bagong Sistema ng Online na Sertipiko",
-    description: "Our new online certificate request system is now live! Request your barangay certificates from home.",
-    descriptionTl: "Ang aming bagong sistema ng online na kahilingan ng sertipiko ay live na! Humiling ng inyong barangay certificates mula sa bahay.",
-    date: "January 15, 2024",
-  },
-  {
-    id: "2",
-    type: "general",
-    title: "Office Hours Update",
-    titleTl: "Pagbabago sa Oras ng Opisina",
-    description: "Barangay Hall will be open Monday to Friday, 8:00 AM - 5:00 PM. Closed on weekends and holidays.",
-    descriptionTl: "Ang Barangay Hall ay bukas Lunes hanggang Biyernes, 8:00 AM - 5:00 PM. Sarado sa weekend at holiday.",
-    date: "January 10, 2024",
-  },
-];
-
 const Announcements = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,11 +21,9 @@ const Announcements = () => {
   useEffect(() => {
     const loadAnnouncements = async () => {
       try {
-        // Try to fetch from Supabase first
         const data = await fetchActiveAnnouncements();
         
         if (data && data.length > 0) {
-          // Map Supabase data to our format
           const mapped: Announcement[] = data.map((item: any) => ({
             id: item.id,
             type: (item.type === 'important' ? 'important' : 'general') as "important" | "general",
@@ -62,29 +39,11 @@ const Announcements = () => {
           }));
           setAnnouncements(mapped);
         } else {
-          // Fall back to localStorage or defaults
-          const stored = localStorage.getItem("barangay_announcements");
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            setAnnouncements(Array.isArray(parsed) ? parsed : defaultAnnouncements);
-          } else {
-            setAnnouncements(defaultAnnouncements);
-          }
+          setAnnouncements([]);
         }
       } catch (error) {
         console.error("Error loading announcements:", error);
-        // Fall back to localStorage or defaults on error
-        try {
-          const stored = localStorage.getItem("barangay_announcements");
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            setAnnouncements(Array.isArray(parsed) ? parsed : defaultAnnouncements);
-          } else {
-            setAnnouncements(defaultAnnouncements);
-          }
-        } catch {
-          setAnnouncements(defaultAnnouncements);
-        }
+        setAnnouncements([]);
       } finally {
         setIsLoading(false);
       }
@@ -105,22 +64,8 @@ const Announcements = () => {
       })
       .subscribe();
 
-    // Listen for storage changes for live updates (backward compatibility)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "barangay_announcements" && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          setAnnouncements(Array.isArray(parsed) ? parsed : []);
-        } catch (error) {
-          console.error("Error parsing announcements:", error);
-        }
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
     return () => {
       supabase.removeChannel(channel);
-      window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
 
@@ -155,7 +100,9 @@ const Announcements = () => {
           {announcements.length === 0 ? (
             <Card className="border-l-4 border-l-muted">
               <CardContent className="p-6 text-center text-muted-foreground">
-                No announcements at this time.
+                <Bell className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No announcements at this time.</p>
+                <p className="text-sm mt-1">Check back later for updates.</p>
               </CardContent>
             </Card>
           ) : (
