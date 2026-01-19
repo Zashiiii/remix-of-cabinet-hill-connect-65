@@ -1142,6 +1142,310 @@ serve(async (req) => {
       );
     }
 
+    // ========== STAFF USER MANAGEMENT (Admin Only) ==========
+    
+    // Get all staff users
+    if (action === 'get-staff-users') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Only admins can view staff users
+      if (session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('staff_users')
+        .select('id, username, full_name, role, is_active, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching staff users:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch staff users' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create staff user
+    if (action === 'create-staff-user') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { username, fullName, passwordHash, role, isActive } = body;
+
+      if (!username || !fullName || !passwordHash) {
+        return new Response(
+          JSON.stringify({ error: 'Username, full name, and password are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('staff_users')
+        .insert({
+          username: username.toLowerCase().trim(),
+          full_name: fullName,
+          password_hash: passwordHash,
+          role: role || 'secretary',
+          is_active: isActive ?? true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating staff user:', error);
+        if (error.code === '23505') {
+          return new Response(
+            JSON.stringify({ error: 'Username already exists' }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(
+          JSON.stringify({ error: 'Failed to create staff user' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Staff user created:', username, 'by admin:', session.username);
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update staff user
+    if (action === 'update-staff-user') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { id, username, fullName, passwordHash, role, isActive } = body;
+
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'Staff user ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const updateData: Record<string, any> = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (username !== undefined) updateData.username = username.toLowerCase().trim();
+      if (fullName !== undefined) updateData.full_name = fullName;
+      if (passwordHash !== undefined) updateData.password_hash = passwordHash;
+      if (role !== undefined) updateData.role = role;
+      if (isActive !== undefined) updateData.is_active = isActive;
+
+      const { data, error } = await supabase
+        .from('staff_users')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating staff user:', error);
+        if (error.code === '23505') {
+          return new Response(
+            JSON.stringify({ error: 'Username already exists' }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(
+          JSON.stringify({ error: 'Failed to update staff user' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Staff user updated:', id, 'by admin:', session.username);
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Delete staff user
+    if (action === 'delete-staff-user') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { id } = body;
+
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'Staff user ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Prevent self-deletion
+      if (id === session.staff_user_id) {
+        return new Response(
+          JSON.stringify({ error: 'Cannot delete your own account' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Delete associated sessions first
+      await supabase.from('sessions').delete().eq('staff_user_id', id);
+
+      const { error } = await supabase
+        .from('staff_users')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting staff user:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to delete staff user' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Staff user deleted:', id, 'by admin:', session.username);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Toggle staff user active status
+    if (action === 'toggle-staff-user-active') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { id } = body;
+
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'Staff user ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Prevent self-deactivation
+      if (id === session.staff_user_id) {
+        return new Response(
+          JSON.stringify({ error: 'Cannot deactivate your own account' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get current status
+      const { data: currentUser, error: fetchError } = await supabase
+        .from('staff_users')
+        .select('is_active')
+        .eq('id', id)
+        .single();
+
+      if (fetchError || !currentUser) {
+        return new Response(
+          JSON.stringify({ error: 'Staff user not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const newStatus = !currentUser.is_active;
+
+      const { error } = await supabase
+        .from('staff_users')
+        .update({ is_active: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error toggling staff user status:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update staff user status' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // If deactivating, invalidate their sessions
+      if (!newStatus) {
+        await supabase.from('sessions').delete().eq('staff_user_id', id);
+      }
+
+      console.log('Staff user status toggled:', id, 'to:', newStatus, 'by admin:', session.username);
+      return new Response(
+        JSON.stringify({ success: true, isActive: newStatus }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== LOGIN (default) ==========
     console.log('Processing LOGIN action');
     const username = body?.username;
@@ -1312,3 +1616,50 @@ serve(async (req) => {
     );
   }
 });
+
+// ========== HELPER: Validate admin session ==========
+async function validateAdminSession(req: Request, supabase: any, corsHeaders: Record<string, string>, isSecure: boolean): Promise<{ valid: boolean; session?: any; errorResponse?: Response }> {
+  const token = getTokenFromCookie(req);
+  
+  if (!token) {
+    return {
+      valid: false,
+      errorResponse: new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    };
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.rpc('validate_session', { session_token: token });
+
+  if (sessionError || !sessionData || sessionData.length === 0) {
+    return {
+      valid: false,
+      errorResponse: new Response(
+        JSON.stringify({ error: 'Invalid or expired session' }),
+        { 
+          status: 401, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Set-Cookie': createLogoutCookie(isSecure),
+          } 
+        }
+      )
+    };
+  }
+
+  const session = sessionData[0];
+  if (session.role !== 'admin') {
+    return {
+      valid: false,
+      errorResponse: new Response(
+        JSON.stringify({ error: 'Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    };
+  }
+
+  return { valid: true, session };
+}

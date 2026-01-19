@@ -12,7 +12,13 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { useStaffAuth } from "@/hooks/useStaffAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { 
+  getStaffUsers, 
+  createStaffUser, 
+  updateStaffUser, 
+  deleteStaffUser, 
+  toggleStaffUserActive 
+} from "@/utils/staffApi";
 
 interface StaffUser {
   id: string;
@@ -62,26 +68,18 @@ const AdminStaffManagement = () => {
   const loadStaffUsers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("staff_users")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      if (data) {
-        setStaffUsers(data.map(u => ({
-          id: u.id,
-          username: u.username,
-          fullName: u.full_name,
-          role: u.role || "staff",
-          isActive: u.is_active ?? true,
-          createdAt: new Date(u.created_at || "").toLocaleDateString(),
-        })));
-      }
-    } catch (error) {
+      const data = await getStaffUsers();
+      setStaffUsers(data.map((u: any) => ({
+        id: u.id,
+        username: u.username,
+        fullName: u.full_name,
+        role: u.role || "staff",
+        isActive: u.is_active ?? true,
+        createdAt: new Date(u.created_at || "").toLocaleDateString(),
+      })));
+    } catch (error: any) {
       console.error("Error loading staff users:", error);
-      toast.error("Failed to load staff users");
+      toast.error(error.message || "Failed to load staff users");
     } finally {
       setIsLoading(false);
     }
@@ -155,41 +153,38 @@ const AdminStaffManagement = () => {
     setIsSaving(true);
     try {
       if (selectedUser) {
-        const updateData: any = {
+        // Update existing user
+        const updates: {
+          username?: string;
+          fullName?: string;
+          passwordHash?: string;
+          role?: string;
+          isActive?: boolean;
+        } = {
           username: formData.username,
-          full_name: formData.fullName,
+          fullName: formData.fullName,
           role: formData.role,
-          is_active: formData.isActive,
-          updated_at: new Date().toISOString(),
+          isActive: formData.isActive,
         };
 
         if (formData.password) {
           // Hash password via edge function
-          updateData.password_hash = await hashPassword(formData.password);
+          updates.passwordHash = await hashPassword(formData.password);
         }
 
-        const { error } = await supabase
-          .from("staff_users")
-          .update(updateData)
-          .eq("id", selectedUser.id);
-
-        if (error) throw error;
+        await updateStaffUser(selectedUser.id, updates);
         toast.success("Staff user updated successfully");
       } else {
-        // Hash password via edge function
+        // Create new user - hash password via edge function
         const hashedPassword = await hashPassword(formData.password);
         
-        const { error } = await supabase
-          .from("staff_users")
-          .insert({
-            username: formData.username,
-            full_name: formData.fullName,
-            password_hash: hashedPassword,
-            role: formData.role,
-            is_active: formData.isActive,
-          });
-
-        if (error) throw error;
+        await createStaffUser({
+          username: formData.username,
+          fullName: formData.fullName,
+          passwordHash: hashedPassword,
+          role: formData.role,
+          isActive: formData.isActive,
+        });
         toast.success("Staff user created successfully");
       }
 
@@ -197,7 +192,7 @@ const AdminStaffManagement = () => {
       loadStaffUsers();
     } catch (error: any) {
       console.error("Error saving staff user:", error);
-      if (error.message?.includes("duplicate")) {
+      if (error.message?.includes("duplicate") || error.message?.includes("already exists")) {
         toast.error("Username already exists");
       } else {
         toast.error(error.message || "Failed to save staff user");
@@ -209,17 +204,12 @@ const AdminStaffManagement = () => {
 
   const handleToggleActive = async (staffUser: StaffUser) => {
     try {
-      const { error } = await supabase
-        .from("staff_users")
-        .update({ is_active: !staffUser.isActive })
-        .eq("id", staffUser.id);
-
-      if (error) throw error;
+      await toggleStaffUserActive(staffUser.id);
       toast.success(`User ${staffUser.isActive ? "deactivated" : "activated"}`);
       loadStaffUsers();
     } catch (error: any) {
       console.error("Error toggling user status:", error);
-      toast.error("Failed to update user status");
+      toast.error(error.message || "Failed to update user status");
     }
   };
 
@@ -227,17 +217,12 @@ const AdminStaffManagement = () => {
     if (!confirm(`Are you sure you want to delete ${staffUser.fullName}?`)) return;
 
     try {
-      const { error } = await supabase
-        .from("staff_users")
-        .delete()
-        .eq("id", staffUser.id);
-
-      if (error) throw error;
+      await deleteStaffUser(staffUser.id);
       toast.success("Staff user deleted");
       loadStaffUsers();
     } catch (error: any) {
       console.error("Error deleting staff user:", error);
-      toast.error("Failed to delete staff user");
+      toast.error(error.message || "Failed to delete staff user");
     }
   };
 
