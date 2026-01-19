@@ -385,18 +385,104 @@ const EcologicalProfileTab = () => {
     );
   });
 
-  // Handle household selection
-  const handleSelectHousehold = (household: HouseholdData) => {
+  // Handle household selection - load existing census data from approved submissions
+  const handleSelectHousehold = async (household: HouseholdData) => {
     setSelectedHousehold(household);
     const head = household.residents?.find((r) => r.is_head_of_household);
-    if (head) {
-      setCensusData((prev) => ({
-        ...prev,
-        respondentName: `${head.first_name} ${head.middle_name || ""} ${head.last_name}`.trim(),
-        respondentRelation: "Head",
-      }));
+    
+    // Reset census data to defaults first
+    setCensusData((prev) => ({
+      ...prev,
+      respondentName: head ? `${head.first_name} ${head.middle_name || ""} ${head.last_name}`.trim() : "",
+      respondentRelation: head ? "Head" : "",
+    }));
+
+    // Try to load existing census data from approved ecological submissions
+    try {
+      const { data: submissions, error } = await supabase
+        .from("ecological_profile_submissions")
+        .select("*")
+        .eq("household_number", household.household_number)
+        .eq("status", "approved")
+        .order("reviewed_at", { ascending: false })
+        .limit(1);
+
+      if (!error && submissions && submissions.length > 0) {
+        const sub = submissions[0];
+        
+        // Parse education data
+        const educationData = sub.education_data as Record<string, any> || {};
+        const healthData = sub.health_data as Record<string, any> || {};
+        const disabilityData = sub.disability_data as Record<string, any> || {};
+        const deathData = sub.death_data as Record<string, any> || {};
+        const familyPlanning = sub.family_planning as Record<string, any> || {};
+        const pregnantData = sub.pregnant_data as Record<string, any> || {};
+        const seniorData = sub.senior_data as Record<string, any> || {};
+
+        setCensusData((prev) => ({
+          ...prev,
+          respondentName: sub.respondent_name || prev.respondentName,
+          respondentRelation: sub.respondent_relation || prev.respondentRelation,
+          interviewDate: sub.interview_date || prev.interviewDate,
+          // Education data
+          educationData: {
+            preschool: { graduate: educationData.preschool || 0, undergraduate: 0 },
+            primary: { graduate: educationData.primary || 0, undergraduate: 0 },
+            secondary: { graduate: educationData.secondary || 0, undergraduate: 0 },
+            vocational: { graduate: educationData.vocational || 0, undergraduate: 0 },
+            college: { graduate: educationData.college || 0, undergraduate: 0 },
+            postGraduate: { graduate: educationData.postgraduate || 0, undergraduate: 0 },
+          },
+          // Health data
+          healthData: {
+            malnutrition_0_11: { first: healthData.malnutrition?.["0-11months"] || 0, second: 0 },
+            malnutrition_1_4: { first: healthData.malnutrition?.["1-4years"] || 0, second: 0 },
+            malnutrition_5_7: { first: healthData.malnutrition?.["5-7years"] || 0, second: 0 },
+          },
+          // Disability data
+          disabilityData: {
+            physical: disabilityData.physical || 0,
+            mental: disabilityData.mental || 0,
+            visual: disabilityData.visual || 0,
+            hearing: disabilityData.hearing || 0,
+            speech: disabilityData.speech || 0,
+          },
+          // Death data
+          deathData: {
+            infant: deathData.infant || 0,
+            maternal: deathData.maternal || 0,
+            other: deathData.other || 0,
+          },
+          // Family planning
+          familyPlanning: {
+            isAcceptor: familyPlanning.isAcceptor || false,
+            type: familyPlanning.type || "",
+            otherType: "",
+          },
+          // Pregnant data
+          pregnantData: {
+            count: pregnantData.count || healthData.pregnantCount || 0,
+            highRiskCount: 0,
+          },
+          // Senior data
+          seniorData: {
+            count: seniorData.count || healthData.seniorCount || 0,
+            withPension: 0,
+          },
+          // Counts
+          soloParentCount: sub.solo_parent_count || 0,
+          pwdCount: sub.pwd_count || 0,
+          is4PsBeneficiary: sub.is_4ps_beneficiary || false,
+        }));
+
+        toast.success(`Loaded census data from approved submission for ${household.household_number}`);
+      } else {
+        toast.success(`Selected household: ${household.household_number}`);
+      }
+    } catch (error) {
+      console.error("Error loading census data:", error);
+      toast.success(`Selected household: ${household.household_number}`);
     }
-    toast.success(`Selected household: ${household.household_number}`);
   };
 
   // Validate data
