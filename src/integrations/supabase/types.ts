@@ -268,6 +268,8 @@ export type Database = {
           communication_services: Json | null
           created_at: string
           death_data: Json | null
+          deleted_at: string | null
+          deleted_by: string | null
           disability_data: Json | null
           district: string | null
           drainage_facilities: Json | null
@@ -323,6 +325,8 @@ export type Database = {
           communication_services?: Json | null
           created_at?: string
           death_data?: Json | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           disability_data?: Json | null
           district?: string | null
           drainage_facilities?: Json | null
@@ -378,6 +382,8 @@ export type Database = {
           communication_services?: Json | null
           created_at?: string
           death_data?: Json | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           disability_data?: Json | null
           district?: string | null
           drainage_facilities?: Json | null
@@ -1173,70 +1179,110 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      get_all_ecological_submissions_for_staff: {
-        Args: { p_status?: string }
-        Returns: {
-          additional_notes: string | null
-          address: string | null
-          animals: Json | null
-          barangay: string | null
-          city: string | null
-          communication_services: Json | null
-          created_at: string
-          death_data: Json | null
-          disability_data: Json | null
-          district: string | null
-          drainage_facilities: Json | null
-          dwelling_type: string | null
-          education_data: Json | null
-          ethnic_group: string | null
-          family_planning: Json | null
-          food_production: Json | null
-          food_storage_type: Json | null
-          garbage_disposal: Json | null
-          health_data: Json | null
-          house_number: string | null
-          house_ownership: string | null
-          household_id: string | null
-          household_members: Json | null
-          household_number: string | null
-          id: string
-          immunization_data: Json | null
-          info_sources: Json | null
-          interview_date: string | null
-          is_4ps_beneficiary: boolean | null
-          lighting_source: string | null
-          lot_ownership: string | null
-          means_of_transport: Json | null
-          place_of_origin: string | null
-          pregnant_data: Json | null
-          province: string | null
-          pwd_count: number | null
-          rejection_reason: string | null
-          respondent_name: string | null
-          respondent_relation: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          senior_data: Json | null
-          solo_parent_count: number | null
-          staff_notes: string | null
-          status: string
-          street_purok: string | null
-          submission_number: string
-          submitted_by_resident_id: string | null
-          toilet_facilities: Json | null
-          updated_at: string
-          water_storage: Json | null
-          water_supply_level: string | null
-          years_staying: number | null
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "ecological_profile_submissions"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
+      get_all_ecological_submissions_for_staff:
+        | {
+            Args: { p_include_deleted?: boolean }
+            Returns: {
+              address: string
+              cooking_fuel: string
+              created_at: string
+              deleted_at: string
+              deleted_by: string
+              garbage_disposal: Json
+              health_data: Json
+              household_id: string
+              household_members: Json
+              household_number: string
+              housing_materials: Json
+              housing_ownership: string
+              housing_type: string
+              id: string
+              lactating_count: number
+              lighting_source: string
+              notes: string
+              pregnant_count: number
+              purok: string
+              pwd_count: number
+              rejection_reason: string
+              respondent_name: string
+              reviewed_at: string
+              reviewed_by: string
+              senior_citizen_count: number
+              solo_parent_count: number
+              status: string
+              toilet_facilities: Json
+              updated_at: string
+              user_id: string
+              water_sources: Json
+              water_storage: Json
+            }[]
+          }
+        | {
+            Args: { p_status?: string }
+            Returns: {
+              additional_notes: string | null
+              address: string | null
+              animals: Json | null
+              barangay: string | null
+              city: string | null
+              communication_services: Json | null
+              created_at: string
+              death_data: Json | null
+              deleted_at: string | null
+              deleted_by: string | null
+              disability_data: Json | null
+              district: string | null
+              drainage_facilities: Json | null
+              dwelling_type: string | null
+              education_data: Json | null
+              ethnic_group: string | null
+              family_planning: Json | null
+              food_production: Json | null
+              food_storage_type: Json | null
+              garbage_disposal: Json | null
+              health_data: Json | null
+              house_number: string | null
+              house_ownership: string | null
+              household_id: string | null
+              household_members: Json | null
+              household_number: string | null
+              id: string
+              immunization_data: Json | null
+              info_sources: Json | null
+              interview_date: string | null
+              is_4ps_beneficiary: boolean | null
+              lighting_source: string | null
+              lot_ownership: string | null
+              means_of_transport: Json | null
+              place_of_origin: string | null
+              pregnant_data: Json | null
+              province: string | null
+              pwd_count: number | null
+              rejection_reason: string | null
+              respondent_name: string | null
+              respondent_relation: string | null
+              reviewed_at: string | null
+              reviewed_by: string | null
+              senior_data: Json | null
+              solo_parent_count: number | null
+              staff_notes: string | null
+              status: string
+              street_purok: string | null
+              submission_number: string
+              submitted_by_resident_id: string | null
+              toilet_facilities: Json | null
+              updated_at: string
+              water_storage: Json | null
+              water_supply_level: string | null
+              years_staying: number | null
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "ecological_profile_submissions"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
       get_all_households_for_staff: {
         Args: never
         Returns: {
@@ -1372,6 +1418,8 @@ export type Database = {
           communication_services: Json | null
           created_at: string
           death_data: Json | null
+          deleted_at: string | null
+          deleted_by: string | null
           disability_data: Json | null
           district: string | null
           drainage_facilities: Json | null
@@ -1622,6 +1670,10 @@ export type Database = {
         Args: { p_ip_address: string; p_success: boolean; p_username: string }
         Returns: undefined
       }
+      recover_ecological_submission: {
+        Args: { p_submission_id: string }
+        Returns: boolean
+      }
       register_new_resident: {
         Args: {
           p_address: string
@@ -1646,6 +1698,10 @@ export type Database = {
           p_status: string
           p_submission_id: string
         }
+        Returns: boolean
+      }
+      soft_delete_ecological_submission: {
+        Args: { p_deleted_by: string; p_submission_id: string }
         Returns: boolean
       }
       staff_approve_incident: {
