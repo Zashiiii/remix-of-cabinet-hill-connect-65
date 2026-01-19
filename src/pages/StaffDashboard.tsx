@@ -123,6 +123,7 @@ import ViewReportsTab from "@/components/staff/ViewReportsTab";
 import NameChangeRequestsTab from "@/components/staff/NameChangeRequestsTab";
 import EcologicalProfileTab from "@/components/staff/EcologicalProfileTab";
 import EcologicalSubmissionsTab from "@/components/staff/EcologicalSubmissionsTab";
+import CertificateRequestForm from "@/components/CertificateRequestForm";
 
 interface PendingRequest {
   id: string;
@@ -183,6 +184,7 @@ const StaffSidebar = ({
 
   const mainMenuItems = [
     { title: "Home", icon: Home, tab: "home" },
+    { title: "Create Certificate", icon: Plus, tab: "create-certificate" },
     { title: "Certificate Requests", icon: FileText, tab: "certificate-requests", badge: pendingCertificatesCount && pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined },
     { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", badge: pendingIncidentsCount && pendingIncidentsCount > 0 ? pendingIncidentsCount : undefined },
     { title: "Ecological Profile Census", icon: FileText, tab: "ecological-profile" },
@@ -1512,8 +1514,8 @@ const StaffDashboard = () => {
                 <div className="mb-8">
                   <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
                   <div className="flex flex-wrap gap-3">
-                    <Button onClick={() => navigate("/request-certificate")}>
-                      <FileText className="h-4 w-4 mr-2" />
+                    <Button onClick={() => setActiveTab("create-certificate")}>
+                      <Plus className="h-4 w-4 mr-2" />
                       New Certificate Request
                     </Button>
                     <Button variant="outline" onClick={() => setActiveTab("announcements")}>
@@ -1636,6 +1638,29 @@ const StaffDashboard = () => {
                   </Card>
                 </div>
               </>
+            )}
+
+            {activeTab === "create-certificate" && (
+              <Card className="max-w-2xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Create Certificate for Resident
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Submit a new certificate request on behalf of a resident
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <CertificateRequestForm 
+                    onSuccess={(controlNumber) => {
+                      toast.success(`Certificate request created: ${controlNumber}`);
+                      loadRequests();
+                      setActiveTab("certificate-requests");
+                    }} 
+                  />
+                </CardContent>
+              </Card>
             )}
 
             {activeTab === "certificate-requests" && (
