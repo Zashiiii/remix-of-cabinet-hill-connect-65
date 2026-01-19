@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,10 @@ import {
   AlertCircle,
   Users,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -146,6 +149,8 @@ const EcologicalSubmissionsTab = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
   const [showDeletedFilter, setShowDeletedFilter] = useState(false);
+  const [sortField, setSortField] = useState<'created_at' | 'submission_number' | 'household_number' | 'status'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const loadSubmissions = useCallback(async () => {
     setIsLoading(true);
@@ -209,6 +214,43 @@ const EcologicalSubmissionsTab = () => {
       sub.address?.toLowerCase().includes(searchLower)
     );
   });
+
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder(field === 'created_at' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortedSubmissions = useMemo(() => {
+    return [...filteredSubmissions].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'created_at':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        case 'submission_number':
+          comparison = (a.submission_number || '').localeCompare(b.submission_number || '');
+          break;
+        case 'household_number':
+          comparison = (a.household_number || '').localeCompare(b.household_number || '');
+          break;
+        case 'status':
+          comparison = (a.status || '').localeCompare(b.status || '');
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [filteredSubmissions, sortField, sortOrder]);
+
+  const getSortIcon = (field: typeof sortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3 w-3 opacity-50" />;
+    }
+    return sortOrder === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
+  };
 
   const handleViewDetails = (submission: Submission) => {
     setSelectedSubmission(submission);
@@ -438,6 +480,28 @@ const EcologicalSubmissionsTab = () => {
                 <SelectItem value="deleted">Deleted</SelectItem>
               </SelectContent>
             </Select>
+            <Select 
+              value={`${sortField}-${sortOrder}`} 
+              onValueChange={(val) => {
+                const [field, order] = val.split('-') as [typeof sortField, 'asc' | 'desc'];
+                setSortField(field);
+                setSortOrder(order);
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_at-desc">Newest First</SelectItem>
+                <SelectItem value="created_at-asc">Oldest First</SelectItem>
+                <SelectItem value="submission_number-asc">Submission # (A-Z)</SelectItem>
+                <SelectItem value="submission_number-desc">Submission # (Z-A)</SelectItem>
+                <SelectItem value="household_number-asc">Household # (A-Z)</SelectItem>
+                <SelectItem value="household_number-desc">Household # (Z-A)</SelectItem>
+                <SelectItem value="status-asc">Status (A-Z)</SelectItem>
+                <SelectItem value="status-desc">Status (Z-A)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Table */}
@@ -455,16 +519,48 @@ const EcologicalSubmissionsTab = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Submission #</TableHead>
-                    <TableHead>Household #</TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => handleSort('submission_number')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Submission #
+                        {getSortIcon('submission_number')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => handleSort('household_number')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Household #
+                        {getSortIcon('household_number')}
+                      </div>
+                    </TableHead>
                     <TableHead>Respondent</TableHead>
-                    <TableHead>Submitted</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => handleSort('created_at')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Submitted
+                        {getSortIcon('created_at')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Status
+                        {getSortIcon('status')}
+                      </div>
+                    </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSubmissions.map((sub) => {
+                  {sortedSubmissions.map((sub) => {
                     const isDeleted = sub.deleted_at !== null;
                     return (
                       <TableRow key={sub.id} className={isDeleted ? "opacity-60" : ""}>
