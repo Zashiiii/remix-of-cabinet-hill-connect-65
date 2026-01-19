@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { FileText, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 
@@ -36,20 +36,10 @@ const Hero = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4">
-            <Link to="/request-certificate">
-              <Button 
-                size="lg" 
-                className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-medium w-full sm:w-auto"
-              >
-                <FileText className="mr-2 h-5 w-5" />
-                Request Certificate
-              </Button>
-            </Link>
             <Link to="/track-request">
               <Button 
                 size="lg" 
-                variant="outline" 
-                className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm w-full sm:w-auto"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-medium w-full sm:w-auto"
               >
                 <Search className="mr-2 h-5 w-5" />
                 Track Request Status
