@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   Loader2, 
   Search, 
@@ -21,7 +22,9 @@ import {
   Home,
   RefreshCw,
   AlertCircle,
-  Users
+  Users,
+  Trash2,
+  RotateCcw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -122,6 +125,9 @@ interface Submission {
   death_data: Record<string, unknown> | null;
   food_production: Record<string, unknown> | null;
   animals: Record<string, unknown> | null;
+  // Soft delete fields
+  deleted_at: string | null;
+  deleted_by: string | null;
 }
 
 const EcologicalSubmissionsTab = () => {
@@ -137,23 +143,36 @@ const EcologicalSubmissionsTab = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [staffNotes, setStaffNotes] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
+  const [showDeletedFilter, setShowDeletedFilter] = useState(false);
 
   const loadSubmissions = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.rpc("get_all_ecological_submissions_for_staff", {
-        p_status: statusFilter === "all" ? null : statusFilter
+        p_status: statusFilter === "all" || statusFilter === "deleted" ? null : statusFilter,
+        p_include_deleted: showDeletedFilter || statusFilter === "deleted"
       });
 
       if (error) throw error;
-      setSubmissions((data || []) as Submission[]);
+      
+      // Filter for deleted if that's the selected filter
+      let filteredData = data || [];
+      if (statusFilter === "deleted") {
+        filteredData = filteredData.filter((s: any) => s.deleted_at !== null);
+      } else if (!showDeletedFilter) {
+        filteredData = filteredData.filter((s: any) => s.deleted_at === null);
+      }
+      
+      setSubmissions(filteredData as Submission[]);
     } catch (error) {
       console.error("Error loading submissions:", error);
       toast.error("Failed to load submissions");
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, showDeletedFilter]);
 
   useEffect(() => {
     loadSubmissions();
@@ -268,7 +287,91 @@ const EcologicalSubmissionsTab = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const handleDeleteSubmission = (submission: Submission) => {
+    setSubmissionToDelete(submission);
+    setShowDeleteDialog(true);
+  };
+
+  const processDelete = async () => {
+    if (!submissionToDelete || !staffUser) return;
+    
+    setIsProcessing(true);
+    try {
+      const { error } = await supabase.rpc("soft_delete_ecological_submission", {
+        p_submission_id: submissionToDelete.id,
+        p_deleted_by: staffUser.fullName
+      });
+
+      if (error) throw error;
+
+      await createAuditLog({
+        action: "delete",
+        entityType: "ecological_submission",
+        entityId: submissionToDelete.submission_number,
+        performedBy: staffUser.fullName,
+        performedByType: "staff",
+        details: {
+          household_number: submissionToDelete.household_number,
+          respondent: submissionToDelete.respondent_name,
+          reason: "Soft deleted by staff"
+        }
+      });
+
+      toast.success("Submission removed successfully");
+      setShowDeleteDialog(false);
+      setSubmissionToDelete(null);
+      loadSubmissions();
+    } catch (error: any) {
+      console.error("Error deleting submission:", error);
+      toast.error("Failed to remove submission", { description: error.message });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRecoverSubmission = async (submission: Submission) => {
+    if (!staffUser) return;
+    
+    setIsProcessing(true);
+    try {
+      const { error } = await supabase.rpc("recover_ecological_submission", {
+        p_submission_id: submission.id
+      });
+
+      if (error) throw error;
+
+      await createAuditLog({
+        action: "recover",
+        entityType: "ecological_submission",
+        entityId: submission.submission_number,
+        performedBy: staffUser.fullName,
+        performedByType: "staff",
+        details: {
+          household_number: submission.household_number,
+          respondent: submission.respondent_name
+        }
+      });
+
+      toast.success("Submission recovered successfully");
+      loadSubmissions();
+    } catch (error: any) {
+      console.error("Error recovering submission:", error);
+      toast.error("Failed to recover submission", { description: error.message });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const getStatusBadge = (status: string, isDeleted: boolean = false) => {
+    if (isDeleted) {
+      return (
+        <Badge variant="destructive" className="bg-gray-500">
+          <Trash2 className="h-3 w-3 mr-1" />
+          Deleted
+        </Badge>
+      );
+    }
+    
     const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
       pending: { variant: "secondary", icon: <Clock className="h-3 w-3 mr-1" /> },
       under_review: { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" /> },
@@ -286,7 +389,8 @@ const EcologicalSubmissionsTab = () => {
     );
   };
 
-  const pendingCount = submissions.filter(s => s.status === "pending").length;
+  const pendingCount = submissions.filter(s => s.status === "pending" && !s.deleted_at).length;
+  const deletedCount = submissions.filter(s => s.deleted_at !== null).length;
 
   return (
     <div className="space-y-6">
@@ -331,6 +435,7 @@ const EcologicalSubmissionsTab = () => {
                 <SelectItem value="under_review">Under Review</SelectItem>
                 <SelectItem value="approved">Approved</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="deleted">Deleted</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -359,48 +464,74 @@ const EcologicalSubmissionsTab = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSubmissions.map((sub) => (
-                    <TableRow key={sub.id}>
-                      <TableCell className="font-medium">{sub.submission_number}</TableCell>
-                      <TableCell>{sub.household_number || "—"}</TableCell>
-                      <TableCell>{sub.respondent_name || "—"}</TableCell>
-                      <TableCell>{format(new Date(sub.created_at), "MMM dd, yyyy")}</TableCell>
-                      <TableCell>{getStatusBadge(sub.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewDetails(sub)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {sub.status === "pending" && (
-                            <>
+                  {filteredSubmissions.map((sub) => {
+                    const isDeleted = sub.deleted_at !== null;
+                    return (
+                      <TableRow key={sub.id} className={isDeleted ? "opacity-60" : ""}>
+                        <TableCell className="font-medium">{sub.submission_number}</TableCell>
+                        <TableCell>{sub.household_number || "—"}</TableCell>
+                        <TableCell>{sub.respondent_name || "—"}</TableCell>
+                        <TableCell>{format(new Date(sub.created_at), "MMM dd, yyyy HH:mm")}</TableCell>
+                        <TableCell>{getStatusBadge(sub.status, isDeleted)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewDetails(sub)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {isDeleted ? (
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="text-green-600 hover:text-green-700"
-                                onClick={() => handleReview(sub, "approve")}
+                                onClick={() => handleRecoverSubmission(sub)}
+                                disabled={isProcessing}
                               >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Approve
+                                <RotateCcw className="h-4 w-4 mr-1" />
+                                Recover
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => handleReview(sub, "reject")}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            ) : (
+                              <>
+                                {sub.status === "pending" && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-green-600 hover:text-green-700"
+                                      onClick={() => handleReview(sub, "approve")}
+                                    >
+                                      <CheckCircle className="h-4 w-4 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() => handleReview(sub, "reject")}
+                                    >
+                                      <XCircle className="h-4 w-4 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleDeleteSubmission(sub)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </ScrollArea>
@@ -518,6 +649,24 @@ const EcologicalSubmissionsTab = () => {
                         <p className="font-medium">{selectedSubmission.staff_notes}</p>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {selectedSubmission.deleted_at && (
+                  <div className="pt-4 border-t">
+                    <Label className="text-muted-foreground text-xs font-semibold text-destructive">Deletion Information</Label>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Deleted By</Label>
+                        <p className="font-medium text-destructive">{selectedSubmission.deleted_by || "—"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Deleted At</Label>
+                        <p className="font-medium text-destructive">
+                          {format(new Date(selectedSubmission.deleted_at), "MMM dd, yyyy HH:mm")}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </TabsContent>
@@ -1027,6 +1176,46 @@ const EcologicalSubmissionsTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Submission</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this ecological profile submission? This action can be undone by recovering the submission later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {submissionToDelete && (
+            <div className="p-3 rounded-lg bg-muted my-4">
+              <p className="text-sm"><strong>Submission:</strong> {submissionToDelete.submission_number}</p>
+              <p className="text-sm"><strong>Household:</strong> {submissionToDelete.household_number || "—"}</p>
+              <p className="text-sm"><strong>Respondent:</strong> {submissionToDelete.respondent_name || "—"}</p>
+              <p className="text-sm"><strong>Submitted:</strong> {format(new Date(submissionToDelete.created_at), "MMM dd, yyyy HH:mm")}</p>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={processDelete}
+              disabled={isProcessing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

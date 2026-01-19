@@ -9,7 +9,8 @@ type AuditAction =
   | "login"
   | "logout"
   | "generate_certificate"
-  | "view";
+  | "view"
+  | "recover";
 
 type EntityType =
   | "certificate_request"
