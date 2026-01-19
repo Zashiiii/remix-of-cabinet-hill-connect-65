@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Home,
@@ -31,6 +31,9 @@ import {
   Package,
   Square,
   CheckSquare,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -342,6 +345,15 @@ const StaffDashboard = () => {
   const [recentRequests, setRecentRequests] = useState<PendingRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
+  
+  // Search, sorting, and pagination state for certificate requests
+  const [certSearchQuery, setCertSearchQuery] = useState("");
+  type CertSortField = "date" | "status" | "priority" | "certificateType";
+  type SortOrder = "asc" | "desc";
+  const [certSortField, setCertSortField] = useState<CertSortField>("date");
+  const [certSortOrder, setCertSortOrder] = useState<SortOrder>("desc");
+  const [certCurrentPage, setCertCurrentPage] = useState(1);
+  const CERT_ITEMS_PER_PAGE = 12;
 
   // Recent incidents state for home page
   interface RecentIncident {
@@ -400,6 +412,56 @@ const StaffDashboard = () => {
   const [residentRejectDialogOpen, setResidentRejectDialogOpen] = useState(false);
   const [selectedResidentForReject, setSelectedResidentForReject] = useState<PendingResident | null>(null);
   const [residentRejectionReason, setResidentRejectionReason] = useState("");
+
+  // Filtered, sorted, and paginated certificate requests
+  const filteredAndSortedRequests = useMemo(() => {
+    let result = [...requests];
+    
+    // Apply search filter
+    if (certSearchQuery.trim()) {
+      const query = certSearchQuery.toLowerCase();
+      result = result.filter(req => 
+        req.residentName.toLowerCase().includes(query) ||
+        req.id.toLowerCase().includes(query) ||
+        req.certificateType.toLowerCase().includes(query)
+      );
+    }
+    
+    // Apply sorting
+    result.sort((a, b) => {
+      let comparison = 0;
+      switch (certSortField) {
+        case "date":
+          comparison = new Date(a.dateSubmitted).getTime() - new Date(b.dateSubmitted).getTime();
+          break;
+        case "status":
+          comparison = a.status.localeCompare(b.status);
+          break;
+        case "priority":
+          const priorityOrder: Record<string, number> = { "Urgent": 0, "High": 1, "Normal": 2, "Low": 3 };
+          comparison = (priorityOrder[a.priority || "Normal"] || 2) - (priorityOrder[b.priority || "Normal"] || 2);
+          break;
+        case "certificateType":
+          comparison = a.certificateType.localeCompare(b.certificateType);
+          break;
+      }
+      return certSortOrder === "asc" ? comparison : -comparison;
+    });
+    
+    return result;
+  }, [requests, certSearchQuery, certSortField, certSortOrder]);
+
+  const totalCertPages = Math.ceil(filteredAndSortedRequests.length / CERT_ITEMS_PER_PAGE);
+
+  const paginatedRequests = useMemo(() => {
+    const startIndex = (certCurrentPage - 1) * CERT_ITEMS_PER_PAGE;
+    return filteredAndSortedRequests.slice(startIndex, startIndex + CERT_ITEMS_PER_PAGE);
+  }, [filteredAndSortedRequests, certCurrentPage, CERT_ITEMS_PER_PAGE]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCertCurrentPage(1);
+  }, [certSearchQuery, statusFilter, certSortField, certSortOrder]);
 
   // Load certificate requests from Supabase
   const loadRequests = useCallback(async () => {
@@ -1684,6 +1746,57 @@ const StaffDashboard = () => {
                   ))}
                 </div>
 
+                {/* Search and Sort Controls */}
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by name, control number, or certificate type..."
+                      value={certSearchQuery}
+                      onChange={(e) => setCertSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                    {certSearchQuery && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                        onClick={() => setCertSearchQuery("")}
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Select value={certSortField} onValueChange={(value: "date" | "status" | "priority" | "certificateType") => setCertSortField(value)}>
+                      <SelectTrigger className="w-[160px]">
+                        <ArrowUpDown className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="date">Date Submitted</SelectItem>
+                        <SelectItem value="status">Status</SelectItem>
+                        <SelectItem value="priority">Priority</SelectItem>
+                        <SelectItem value="certificateType">Certificate Type</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setCertSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+                      title={certSortOrder === "asc" ? "Ascending" : "Descending"}
+                    >
+                      <ArrowUpDown className={`h-4 w-4 transition-transform ${certSortOrder === "asc" ? "rotate-180" : ""}`} />
+                    </Button>
+                    
+                    <Badge variant="secondary" className="text-xs">
+                      {filteredAndSortedRequests.length} of {requests.length}
+                    </Badge>
+                  </div>
+                </div>
+
                 {isDataLoading ? (
                   <div className="text-center py-8">
                     <Loader2 className="inline-block animate-spin h-8 w-8 text-primary" />
@@ -1696,6 +1809,7 @@ const StaffDashboard = () => {
                       <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>
                           {statusFilter === "All" ? "All Certificate Requests" : `${statusFilter} Requests`}
+                          {certSearchQuery && <span className="text-muted-foreground font-normal ml-2">- filtered</span>}
                         </CardTitle>
                         {approvedRequests.length > 0 && (
                           <div className="flex items-center gap-2">
@@ -1713,30 +1827,97 @@ const StaffDashboard = () => {
                           </div>
                         )}
                       </CardHeader>
-                      <CardContent>
-                        {requests.length === 0 ? (
+                      <CardContent className="space-y-4">
+                        {paginatedRequests.length === 0 ? (
                           <div className="text-center py-12 text-muted-foreground">
                             <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                            <p className="text-lg font-medium">No {statusFilter !== "All" ? statusFilter.toLowerCase() : ""} requests found</p>
-                            <p className="text-sm">When residents submit certificate requests, they will appear here for processing</p>
+                            {certSearchQuery ? (
+                              <>
+                                <p className="text-lg font-medium">No matching requests found</p>
+                                <p className="text-sm">Try a different search term or clear the search</p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-lg font-medium">No {statusFilter !== "All" ? statusFilter.toLowerCase() : ""} requests found</p>
+                                <p className="text-sm">When residents submit certificate requests, they will appear here for processing</p>
+                              </>
+                            )}
                           </div>
                         ) : (
-                          <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-                            {requests.map((request) => (
-                              <CertificateRequestCard
-                                key={request.id}
-                                request={request}
-                                isSelected={selectedRequests.has(request.id)}
-                                isProcessing={isProcessing}
-                                onSelect={toggleRequestSelection}
-                                onView={(req) => handleAction("View", req)}
-                                onDownload={handleDownloadCertificate}
-                                onApprove={(req) => handleAction("Approve", req)}
-                                onReject={(req) => handleAction("Reject", req)}
-                                onVerify={(req) => handleAction("Verifying", req)}
-                              />
-                            ))}
-                          </div>
+                          <>
+                            <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+                              {paginatedRequests.map((request) => (
+                                <CertificateRequestCard
+                                  key={request.id}
+                                  request={request}
+                                  isSelected={selectedRequests.has(request.id)}
+                                  isProcessing={isProcessing}
+                                  onSelect={toggleRequestSelection}
+                                  onView={(req) => handleAction("View", req)}
+                                  onDownload={handleDownloadCertificate}
+                                  onApprove={(req) => handleAction("Approve", req)}
+                                  onReject={(req) => handleAction("Reject", req)}
+                                  onVerify={(req) => handleAction("Verifying", req)}
+                                />
+                              ))}
+                            </div>
+                            
+                            {/* Pagination */}
+                            {totalCertPages > 1 && (
+                              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t">
+                                <p className="text-sm text-muted-foreground">
+                                  Showing {((certCurrentPage - 1) * CERT_ITEMS_PER_PAGE) + 1} - {Math.min(certCurrentPage * CERT_ITEMS_PER_PAGE, filteredAndSortedRequests.length)} of {filteredAndSortedRequests.length} requests
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCertCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={certCurrentPage === 1}
+                                  >
+                                    <ChevronLeft className="h-4 w-4 mr-1" />
+                                    Previous
+                                  </Button>
+                                  
+                                  <div className="flex items-center gap-1">
+                                    {Array.from({ length: totalCertPages }, (_, i) => i + 1)
+                                      .filter(page => {
+                                        if (totalCertPages <= 7) return true;
+                                        if (page === 1 || page === totalCertPages) return true;
+                                        if (Math.abs(page - certCurrentPage) <= 1) return true;
+                                        return false;
+                                      })
+                                      .map((page, index, filteredPages) => (
+                                        <div key={page} className="flex items-center">
+                                          {index > 0 && filteredPages[index - 1] !== page - 1 && (
+                                            <span className="px-2 text-muted-foreground">...</span>
+                                          )}
+                                          <Button
+                                            variant={certCurrentPage === page ? "default" : "outline"}
+                                            size="sm"
+                                            className="w-9 h-9 p-0"
+                                            onClick={() => setCertCurrentPage(page)}
+                                          >
+                                            {page}
+                                          </Button>
+                                        </div>
+                                      ))
+                                    }
+                                  </div>
+                                  
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCertCurrentPage(prev => Math.min(totalCertPages, prev + 1))}
+                                    disabled={certCurrentPage === totalCertPages}
+                                  >
+                                    Next
+                                    <ChevronRight className="h-4 w-4 ml-1" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
                       </CardContent>
                     </Card>
