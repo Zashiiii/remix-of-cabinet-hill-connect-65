@@ -1,12 +1,15 @@
 import { useState, useCallback } from "react";
 import Header from "@/components/Header";
+import StaffHeader from "@/components/StaffHeader";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import CertificateRequestForm from "@/components/CertificateRequestForm";
 import SuccessModal from "@/components/SuccessModal";
 import { Card, CardContent } from "@/components/ui/card";
+import { useStaffAuthContext } from "@/context/StaffAuthContext";
 
 const RequestCertificate = () => {
+  const { isAuthenticated: isStaffAuthenticated } = useStaffAuthContext();
   const [showSuccess, setShowSuccess] = useState(false);
   const [controlNumber, setControlNumber] = useState("");
   const [formKey, setFormKey] = useState(0);
@@ -22,7 +25,7 @@ const RequestCertificate = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      {isStaffAuthenticated ? <StaffHeader /> : <Header />}
       <main className="flex-1 bg-secondary/30 py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <Breadcrumb 

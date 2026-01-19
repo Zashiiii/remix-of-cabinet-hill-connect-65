@@ -85,6 +85,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { useBarangayStats } from "@/context/BarangayStatsContext";
@@ -315,7 +316,7 @@ const StaffSidebar = ({
 const StaffDashboard = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading: authLoading, logout } = useStaffAuthContext();
-  const { totalResidents, pendingRegistrationCount, refreshStats } = useBarangayStats();
+  const { totalResidents, pendingRegistrationCount, refreshStats, isLoading: statsLoading } = useBarangayStats();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeTab, setActiveTab] = useState("home");
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -1400,64 +1401,83 @@ const StaffDashboard = () => {
               <>
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Residents</CardTitle>
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{totalResidents}</div>
-                      <p className="text-xs text-muted-foreground">Registered residents</p>
-                    </CardContent>
-                  </Card>
+                  {statsLoading ? (
+                    <>
+                      {[...Array(4)].map((_, i) => (
+                        <Card key={i}>
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-4" />
+                          </CardHeader>
+                          <CardContent>
+                            <Skeleton className="h-8 w-16 mb-1" />
+                            <Skeleton className="h-3 w-32" />
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Total Residents</CardTitle>
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{totalResidents}</div>
+                          <p className="text-xs text-muted-foreground">Registered residents</p>
+                        </CardContent>
+                      </Card>
 
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{pendingCount}</div>
-                      <p className="text-xs text-muted-foreground">Awaiting processing</p>
-                    </CardContent>
-                  </Card>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{pendingCount}</div>
+                          <p className="text-xs text-muted-foreground">Awaiting processing</p>
+                        </CardContent>
+                      </Card>
 
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Processed Today</CardTitle>
-                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {(() => {
-                          const today = new Date().toDateString();
-                          const certCount = requests.filter(r => {
-                            if (r.status !== "approved" && r.status !== "rejected") return false;
-                            const processedDate = r.processedDate ? new Date(r.processedDate).toDateString() : null;
-                            return processedDate === today;
-                          }).length;
-                          const incidentCount = allIncidents.filter(i => {
-                            if (i.approvalStatus !== "approved" && i.approvalStatus !== "rejected") return false;
-                            const reviewedDate = i.reviewedAt ? new Date(i.reviewedAt).toDateString() : null;
-                            return reviewedDate === today;
-                          }).length;
-                          return certCount + incidentCount;
-                        })()}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Certificates & incidents processed</p>
-                    </CardContent>
-                  </Card>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Processed Today</CardTitle>
+                          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">
+                            {(() => {
+                              const today = new Date().toDateString();
+                              const certCount = requests.filter(r => {
+                                if (r.status !== "approved" && r.status !== "rejected") return false;
+                                const processedDate = r.processedDate ? new Date(r.processedDate).toDateString() : null;
+                                return processedDate === today;
+                              }).length;
+                              const incidentCount = allIncidents.filter(i => {
+                                if (i.approvalStatus !== "approved" && i.approvalStatus !== "rejected") return false;
+                                const reviewedDate = i.reviewedAt ? new Date(i.reviewedAt).toDateString() : null;
+                                return reviewedDate === today;
+                              }).length;
+                              return certCount + incidentCount;
+                            })()}
+                          </div>
+                          <p className="text-xs text-muted-foreground">Certificates & incidents processed</p>
+                        </CardContent>
+                      </Card>
 
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">System Status</CardTitle>
-                      <Activity className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-green-600">Online</div>
-                      <p className="text-xs text-muted-foreground">All systems operational</p>
-                    </CardContent>
-                  </Card>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">System Status</CardTitle>
+                          <Activity className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-green-600">Online</div>
+                          <p className="text-xs text-muted-foreground">All systems operational</p>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
                 </div>
 
                 {/* Pending Registrations Widget (Admin Only) */}
