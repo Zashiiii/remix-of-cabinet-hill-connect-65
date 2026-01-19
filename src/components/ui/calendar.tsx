@@ -11,17 +11,17 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
+      className={cn("p-3 pointer-events-auto", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        caption_dropdowns: "flex gap-2 items-center",
-        vhidden: "hidden",
-        dropdown: "bg-background text-foreground border border-input rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring",
-        dropdown_month: "bg-background text-foreground border border-input rounded-md px-2 py-1 text-sm",
-        dropdown_year: "bg-background text-foreground border border-input rounded-md px-2 py-1 text-sm",
+        caption: "flex justify-center pt-1 relative items-center gap-1",
+        caption_label: "text-sm font-medium hidden",
+        caption_dropdowns: "flex gap-1 items-center justify-center",
+        vhidden: "sr-only",
+        dropdown: "appearance-none bg-background text-foreground border border-input rounded-md px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors",
+        dropdown_month: "appearance-none bg-background text-foreground border border-input rounded-md px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors",
+        dropdown_year: "appearance-none bg-background text-foreground border border-input rounded-md px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
