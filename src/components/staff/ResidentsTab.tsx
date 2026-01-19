@@ -57,8 +57,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import TableSkeleton from "./TableSkeleton";
 
 interface Household {
   id: string;
@@ -489,8 +491,19 @@ const ResidentsTab = () => {
               </form>
 
               {isLoading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead><Skeleton className="h-4 w-24" /></TableHead>
+                        <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                        <TableHead><Skeleton className="h-4 w-28" /></TableHead>
+                        <TableHead><Skeleton className="h-4 w-12" /></TableHead>
+                        <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableSkeleton columns={5} rows={5} />
+                  </Table>
                 </div>
               ) : residents.length === 0 ? (
                 <div className="text-center py-12">
