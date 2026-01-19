@@ -113,3 +113,40 @@ export const getAuditLogs = async (entityFilter?: string, actionFilter?: string,
   const result = await callStaffApi('get-audit-logs', { entityFilter, actionFilter, limit });
   return result.data || [];
 };
+
+// Staff user management (admin only)
+export const getStaffUsers = async () => {
+  const result = await callStaffApi('get-staff-users');
+  return result.data || [];
+};
+
+export const createStaffUser = async (user: {
+  username: string;
+  fullName: string;
+  passwordHash: string;
+  role: string;
+  isActive: boolean;
+}) => {
+  return callStaffApi('create-staff-user', user);
+};
+
+export const updateStaffUser = async (
+  id: string,
+  updates: {
+    username?: string;
+    fullName?: string;
+    passwordHash?: string;
+    role?: string;
+    isActive?: boolean;
+  }
+) => {
+  return callStaffApi('update-staff-user', { id, ...updates });
+};
+
+export const deleteStaffUser = async (id: string) => {
+  return callStaffApi('delete-staff-user', { id });
+};
+
+export const toggleStaffUserActive = async (id: string) => {
+  return callStaffApi('toggle-staff-user-active', { id });
+};
