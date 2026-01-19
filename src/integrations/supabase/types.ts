@@ -1361,6 +1361,70 @@ export type Database = {
           suffix: string
         }[]
       }
+      get_ecological_submission_by_household: {
+        Args: { p_household_number: string }
+        Returns: {
+          additional_notes: string | null
+          address: string | null
+          animals: Json | null
+          barangay: string | null
+          city: string | null
+          communication_services: Json | null
+          created_at: string
+          death_data: Json | null
+          disability_data: Json | null
+          district: string | null
+          drainage_facilities: Json | null
+          dwelling_type: string | null
+          education_data: Json | null
+          ethnic_group: string | null
+          family_planning: Json | null
+          food_production: Json | null
+          food_storage_type: Json | null
+          garbage_disposal: Json | null
+          health_data: Json | null
+          house_number: string | null
+          house_ownership: string | null
+          household_id: string | null
+          household_members: Json | null
+          household_number: string | null
+          id: string
+          immunization_data: Json | null
+          info_sources: Json | null
+          interview_date: string | null
+          is_4ps_beneficiary: boolean | null
+          lighting_source: string | null
+          lot_ownership: string | null
+          means_of_transport: Json | null
+          place_of_origin: string | null
+          pregnant_data: Json | null
+          province: string | null
+          pwd_count: number | null
+          rejection_reason: string | null
+          respondent_name: string | null
+          respondent_relation: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          senior_data: Json | null
+          solo_parent_count: number | null
+          staff_notes: string | null
+          status: string
+          street_purok: string | null
+          submission_number: string
+          submitted_by_resident_id: string | null
+          toilet_facilities: Json | null
+          updated_at: string
+          water_storage: Json | null
+          water_supply_level: string | null
+          years_staying: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ecological_profile_submissions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_households_paginated_for_staff: {
         Args: {
           p_limit?: number
