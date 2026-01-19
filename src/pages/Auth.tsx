@@ -81,8 +81,9 @@ const Auth = () => {
   const [statusError, setStatusError] = useState<string | null>(null);
 
   // Check if user is already logged in and approved
+  // Only auto-redirect on SIGNED_IN event (explicit login), not on page load with stale session
   useEffect(() => {
-    const checkApprovalAndRedirect = async (userId: string, email: string) => {
+    const checkApprovalAndRedirect = async (userId: string, email: string, shouldRedirect: boolean) => {
       // Check if resident is approved before redirecting
       const { data: resident } = await supabase
         .from("residents")
@@ -98,7 +99,7 @@ const Auth = () => {
           .eq("email", email)
           .maybeSingle();
 
-        if (residentByEmail?.approval_status === "approved") {
+        if (residentByEmail?.approval_status === "approved" && shouldRedirect) {
           navigate("/resident/dashboard");
         } else if (residentByEmail?.approval_status === "pending") {
           // Sign out if account is pending approval
@@ -108,7 +109,7 @@ const Auth = () => {
         return;
       }
 
-      if (resident.approval_status === "approved") {
+      if (resident.approval_status === "approved" && shouldRedirect) {
         navigate("/resident/dashboard");
       } else if (resident.approval_status === "pending") {
         // Sign out if account is pending approval
@@ -118,19 +119,17 @@ const Auth = () => {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user && event !== "SIGNED_OUT") {
+      // Only auto-redirect on explicit SIGNED_IN event (user just logged in)
+      // Don't redirect on INITIAL_SESSION or TOKEN_REFRESHED (page load with existing session)
+      if (session?.user && event === "SIGNED_IN") {
         setTimeout(() => {
-          checkApprovalAndRedirect(session.user.id, session.user.email || "");
+          checkApprovalAndRedirect(session.user.id, session.user.email || "", true);
         }, 0);
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        checkApprovalAndRedirect(session.user.id, session.user.email || "");
-      }
-    });
-
+    // Don't auto-redirect on page load - let user see the login page
+    // They will be redirected after explicit login
     return () => subscription.unsubscribe();
   }, [navigate]);
 
