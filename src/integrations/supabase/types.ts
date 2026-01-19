@@ -1698,6 +1698,55 @@ export type Database = {
         Args: { p_resident_id: string }
         Returns: undefined
       }
+      staff_save_ecological_census: {
+        Args: {
+          p_additional_notes?: string
+          p_address?: string
+          p_animals?: Json
+          p_barangay?: string
+          p_city?: string
+          p_communication_services?: Json
+          p_death_data?: Json
+          p_disability_data?: Json
+          p_district?: string
+          p_drainage_facilities?: Json
+          p_dwelling_type?: string
+          p_education_data?: Json
+          p_ethnic_group?: string
+          p_family_planning?: Json
+          p_food_production?: Json
+          p_food_storage_type?: Json
+          p_garbage_disposal?: Json
+          p_health_data?: Json
+          p_house_number?: string
+          p_house_ownership?: string
+          p_household_id: string
+          p_household_members?: Json
+          p_household_number: string
+          p_immunization_data?: Json
+          p_info_sources?: Json
+          p_interview_date?: string
+          p_is_4ps_beneficiary?: boolean
+          p_lighting_source?: string
+          p_lot_ownership?: string
+          p_means_of_transport?: Json
+          p_place_of_origin?: string
+          p_pregnant_data?: Json
+          p_province?: string
+          p_pwd_count?: number
+          p_respondent_name?: string
+          p_respondent_relation?: string
+          p_senior_data?: Json
+          p_solo_parent_count?: number
+          p_staff_id?: string
+          p_street_purok?: string
+          p_toilet_facilities?: Json
+          p_water_storage?: Json
+          p_water_supply_level?: string
+          p_years_staying?: number
+        }
+        Returns: string
+      }
       staff_send_new_message: {
         Args: {
           p_content: string
