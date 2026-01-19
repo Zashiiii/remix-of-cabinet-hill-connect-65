@@ -3,7 +3,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { 
   Eye, 
-  Download, 
   CheckCircle, 
   XCircle, 
   Clock, 
@@ -161,17 +160,6 @@ export function CertificateRequestCard({
               <Eye className="h-4 w-4 mr-1" />
               Details
             </Button>
-
-            {isApproved && (
-              <Button
-                size="sm"
-                className="bg-accent hover:bg-accent/90"
-                onClick={() => onDownload(request)}
-              >
-                <Download className="h-4 w-4 mr-1" />
-                Download
-              </Button>
-            )}
 
             {isPendingOrVerifying && (
               <>
