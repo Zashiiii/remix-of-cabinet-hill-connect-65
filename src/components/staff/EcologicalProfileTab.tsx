@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,9 @@ import {
   Stethoscope,
   Building2,
   Phone,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBarangayStats } from "@/context/BarangayStatsContext";
@@ -168,6 +171,10 @@ const EcologicalProfileTab = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("basic-info");
+  
+  // Sort state for households table
+  const [sortField, setSortField] = useState<'household_number' | 'address' | 'members' | 'created_at'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Census form state
   const [censusData, setCensusData] = useState({
@@ -384,6 +391,53 @@ const EcologicalProfileTab = () => {
       )
     );
   });
+
+  // Sort toggle handler
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder(field === 'created_at' ? 'desc' : 'asc');
+    }
+  };
+
+  // Get sort icon for column
+  const getSortIcon = (field: typeof sortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3 w-3 opacity-50" />;
+    }
+    return sortOrder === 'asc' 
+      ? <ArrowUp className="h-3 w-3" /> 
+      : <ArrowDown className="h-3 w-3" />;
+  };
+
+  // Sort filtered households
+  const sortedHouseholds = useMemo(() => {
+    return [...filteredHouseholds].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'household_number':
+          comparison = (a.household_number || '').localeCompare(b.household_number || '');
+          break;
+        case 'address':
+          const addressA = a.street_purok || a.address || '';
+          const addressB = b.street_purok || b.address || '';
+          comparison = addressA.localeCompare(addressB);
+          break;
+        case 'members':
+          comparison = (a.residents?.length || 0) - (b.residents?.length || 0);
+          break;
+        case 'created_at':
+          // Use interview_date if available, otherwise compare by household_number
+          const dateA = a.interview_date ? new Date(a.interview_date).getTime() : 0;
+          const dateB = b.interview_date ? new Date(b.interview_date).getTime() : 0;
+          comparison = dateA - dateB;
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [filteredHouseholds, sortField, sortOrder]);
 
   // Handle household selection - load existing census data from approved submissions
   const handleSelectHousehold = async (household: HouseholdData) => {
@@ -1380,27 +1434,81 @@ const EcologicalProfileTab = () => {
           <CardDescription>Choose a household to generate the ecological profile census</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
+          <div className="mb-4 flex flex-col sm:flex-row gap-4">
             <Input
               placeholder="Search by household number, address, or resident name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-md"
             />
+            <Select 
+              value={`${sortField}-${sortOrder}`} 
+              onValueChange={(val) => {
+                const [field, order] = val.split('-') as [typeof sortField, 'asc' | 'desc'];
+                setSortField(field);
+                setSortOrder(order);
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_at-desc">Newest First</SelectItem>
+                <SelectItem value="created_at-asc">Oldest First</SelectItem>
+                <SelectItem value="household_number-asc">Household # (A-Z)</SelectItem>
+                <SelectItem value="household_number-desc">Household # (Z-A)</SelectItem>
+                <SelectItem value="address-asc">Address (A-Z)</SelectItem>
+                <SelectItem value="members-desc">Most Members</SelectItem>
+                <SelectItem value="members-asc">Fewest Members</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <ScrollArea className="h-[250px] border rounded-md">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Household #</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>Members</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('household_number')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Household #
+                      {getSortIcon('household_number')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('address')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Address
+                      {getSortIcon('address')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('members')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Members
+                      {getSortIcon('members')}
+                    </div>
+                  </TableHead>
                   <TableHead>Head of Household</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('created_at')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Date Added
+                      {getSortIcon('created_at')}
+                    </div>
+                  </TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredHouseholds.map((h) => {
+                {sortedHouseholds.map((h) => {
                   const head = h.residents?.find((r) => r.is_head_of_household);
                   return (
                     <TableRow 
@@ -1414,6 +1522,9 @@ const EcologicalProfileTab = () => {
                       </TableCell>
                       <TableCell>
                         {head ? `${head.first_name} ${head.last_name}` : "-"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {h.interview_date ? format(new Date(h.interview_date), "MMM dd, yyyy") : "-"}
                       </TableCell>
                       <TableCell>
                         <Button
