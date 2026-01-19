@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Loader2, User, Home, Phone, Mail, Calendar, Briefcase, GraduationCap, Heart, Users, Pencil } from "lucide-react";
+import { ArrowLeft, Save, Loader2, User, Home, Phone, Mail, Calendar, Briefcase, GraduationCap, Heart, Users, Pencil, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,8 @@ const ResidentProfile = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [residentId, setResidentId] = useState<string | null>(null);
   const [showNameChangeForm, setShowNameChangeForm] = useState(false);
+  const [householdNumber, setHouseholdNumber] = useState("");
+  const [isLinkingHousehold, setIsLinkingHousehold] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -174,6 +176,44 @@ const ResidentProfile = () => {
       toast.error(error.message || "Failed to save profile");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleLinkHousehold = async () => {
+    if (!householdNumber.trim()) {
+      toast.error("Please enter a household number");
+      return;
+    }
+
+    if (!user?.id) {
+      toast.error("You must be logged in");
+      return;
+    }
+
+    setIsLinkingHousehold(true);
+    try {
+      const { data, error } = await supabase.rpc("resident_link_to_household", {
+        p_user_id: user.id,
+        p_household_number: householdNumber.trim(),
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string; household_number?: string; household_address?: string };
+      
+      if (result.success) {
+        toast.success(`Successfully linked to household ${result.household_number}`);
+        setHouseholdNumber("");
+        loadProfile(); // Reload to show household data
+        refetchProfile();
+      } else {
+        toast.error(result.error || "Failed to link household");
+      }
+    } catch (error: any) {
+      console.error("Error linking household:", error);
+      toast.error(error.message || "Failed to link to household");
+    } finally {
+      setIsLinkingHousehold(false);
     }
   };
 
@@ -526,12 +566,51 @@ const ResidentProfile = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                    <h3 className="font-medium text-lg mb-2">No Household Linked</h3>
-                    <p className="text-muted-foreground max-w-md mx-auto">
-                      Your profile is not yet linked to a household record. Please visit the barangay office to complete your census registration.
-                    </p>
+                  <div className="space-y-6">
+                    <div className="text-center py-8">
+                      <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <h3 className="font-medium text-lg mb-2">No Household Linked</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                        Your profile is not yet linked to a household record. Enter your household number below to link your account.
+                      </p>
+                    </div>
+                    
+                    <div className="max-w-md mx-auto space-y-4">
+                      <div className="p-4 border rounded-lg bg-muted/30">
+                        <Label htmlFor="householdNumber" className="text-sm font-medium">
+                          Enter Your Household Number
+                        </Label>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          You can find this number on your census form or ask your household head.
+                        </p>
+                        <div className="flex gap-2">
+                          <Input
+                            id="householdNumber"
+                            value={householdNumber}
+                            onChange={(e) => setHouseholdNumber(e.target.value)}
+                            placeholder="e.g., 12345678"
+                            className="flex-1"
+                          />
+                          <Button 
+                            onClick={handleLinkHousehold}
+                            disabled={isLinkingHousehold || !householdNumber.trim()}
+                          >
+                            {isLinkingHousehold ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Link className="h-4 w-4 mr-2" />
+                                Link
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm text-muted-foreground text-center">
+                        Don't know your household number? Contact the Barangay office for assistance.
+                      </p>
+                    </div>
                   </div>
                 )}
               </TabsContent>
