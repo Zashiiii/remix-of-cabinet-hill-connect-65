@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Loader2, User, Home, Phone, Mail, Calendar, Briefcase, GraduationCap, Heart, Users, Pencil, Link } from "lucide-react";
+import { ArrowLeft, Save, Loader2, User, Home, Phone, Mail, Calendar, Briefcase, GraduationCap, Heart, Users, Pencil, Link, Clock, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,10 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useResidentAuth } from "@/hooks/useResidentAuth";
 import { supabase } from "@/integrations/supabase/client";
 import NameChangeRequestForm from "@/components/resident/NameChangeRequestForm";
+import { format } from "date-fns";
 
 const RELATIONS = ["Head", "Spouse", "Son", "Daughter", "Father", "Mother", "Brother", "Sister", "Grandchild", "Other Relative", "Non-Relative"];
 const CIVIL_STATUS = ["Single", "Married", "Widowed", "Separated", "Divorced", "Common Law"];
@@ -30,7 +33,9 @@ const ResidentProfile = () => {
   const [residentId, setResidentId] = useState<string | null>(null);
   const [showNameChangeForm, setShowNameChangeForm] = useState(false);
   const [householdNumber, setHouseholdNumber] = useState("");
+  const [householdReason, setHouseholdReason] = useState("");
   const [isLinkingHousehold, setIsLinkingHousehold] = useState(false);
+  const [householdLinkRequests, setHouseholdLinkRequests] = useState<any[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -65,8 +70,23 @@ const ResidentProfile = () => {
   useEffect(() => {
     if (isAuthenticated && user) {
       loadProfile();
+      loadHouseholdLinkRequests();
     }
   }, [isAuthenticated, user]);
+
+  const loadHouseholdLinkRequests = async () => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase.rpc("get_resident_household_link_requests", {
+        p_user_id: user.id,
+      });
+      if (!error && data) {
+        setHouseholdLinkRequests(data);
+      }
+    } catch (err) {
+      console.error("Error loading household link requests:", err);
+    }
+  };
 
   const loadProfile = async () => {
     setIsLoading(true);
@@ -192,28 +212,42 @@ const ResidentProfile = () => {
 
     setIsLinkingHousehold(true);
     try {
-      const { data, error } = await supabase.rpc("resident_link_to_household", {
+      const { data, error } = await supabase.rpc("resident_request_household_link", {
         p_user_id: user.id,
         p_household_number: householdNumber.trim(),
+        p_reason: householdReason.trim() || null,
       });
 
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string; household_number?: string; household_address?: string };
+      const result = data as { success: boolean; error?: string; request_id?: string; message?: string };
       
       if (result.success) {
-        toast.success(`Successfully linked to household ${result.household_number}`);
+        toast.success(result.message || "Request submitted successfully");
         setHouseholdNumber("");
-        loadProfile(); // Reload to show household data
-        refetchProfile();
+        setHouseholdReason("");
+        loadHouseholdLinkRequests();
       } else {
-        toast.error(result.error || "Failed to link household");
+        toast.error(result.error || "Failed to submit request");
       }
     } catch (error: any) {
-      console.error("Error linking household:", error);
-      toast.error(error.message || "Failed to link to household");
+      console.error("Error requesting household link:", error);
+      toast.error(error.message || "Failed to submit request");
     } finally {
       setIsLinkingHousehold(false);
+    }
+  };
+
+  const getRequestStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      case "approved":
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
+      case "rejected":
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -567,50 +601,107 @@ const ResidentProfile = () => {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    <div className="text-center py-8">
-                      <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                      <h3 className="font-medium text-lg mb-2">No Household Linked</h3>
-                      <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                        Your profile is not yet linked to a household record. Enter your household number below to link your account.
-                      </p>
-                    </div>
-                    
-                    <div className="max-w-md mx-auto space-y-4">
-                      <div className="p-4 border rounded-lg bg-muted/30">
-                        <Label htmlFor="householdNumber" className="text-sm font-medium">
-                          Enter Your Household Number
-                        </Label>
-                        <p className="text-xs text-muted-foreground mb-3">
-                          You can find this number on your census form or ask your household head.
+                    {/* Check for pending requests */}
+                    {householdLinkRequests.some(r => r.status === "pending") ? (
+                      <div className="text-center py-8">
+                        <Clock className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
+                        <h3 className="font-medium text-lg mb-2">Request Pending Approval</h3>
+                        <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                          Your household link request is waiting for staff approval. You'll be notified once it's reviewed.
                         </p>
-                        <div className="flex gap-2">
-                          <Input
-                            id="householdNumber"
-                            value={householdNumber}
-                            onChange={(e) => setHouseholdNumber(e.target.value)}
-                            placeholder="e.g., 12345678"
-                            className="flex-1"
-                          />
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                        <h3 className="font-medium text-lg mb-2">No Household Linked</h3>
+                        <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                          Your profile is not yet linked to a household record. Request to link your account below.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Request Form - only show if no pending request */}
+                    {!householdLinkRequests.some(r => r.status === "pending") && (
+                      <div className="max-w-md mx-auto space-y-4">
+                        <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+                          <div>
+                            <Label htmlFor="householdNumber" className="text-sm font-medium">
+                              Household Number *
+                            </Label>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              You can find this number on your census form or ask your household head.
+                            </p>
+                            <Input
+                              id="householdNumber"
+                              value={householdNumber}
+                              onChange={(e) => setHouseholdNumber(e.target.value)}
+                              placeholder="e.g., 12345678"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="householdReason" className="text-sm font-medium">
+                              Reason (Optional)
+                            </Label>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              Explain why you're requesting this household assignment
+                            </p>
+                            <Textarea
+                              id="householdReason"
+                              value={householdReason}
+                              onChange={(e) => setHouseholdReason(e.target.value)}
+                              placeholder="e.g., I live at this address with my family"
+                              rows={2}
+                            />
+                          </div>
                           <Button 
                             onClick={handleLinkHousehold}
                             disabled={isLinkingHousehold || !householdNumber.trim()}
+                            className="w-full"
                           >
                             {isLinkingHousehold ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             ) : (
-                              <>
-                                <Link className="h-4 w-4 mr-2" />
-                                Link
-                              </>
+                              <Link className="h-4 w-4 mr-2" />
                             )}
+                            Request Link
                           </Button>
                         </div>
+                        
+                        <p className="text-sm text-muted-foreground text-center">
+                          Don't know your household number? Contact the Barangay office for assistance.
+                        </p>
                       </div>
-                      
-                      <p className="text-sm text-muted-foreground text-center">
-                        Don't know your household number? Contact the Barangay office for assistance.
-                      </p>
-                    </div>
+                    )}
+
+                    {/* Request History */}
+                    {householdLinkRequests.length > 0 && (
+                      <div className="max-w-md mx-auto mt-6">
+                        <h4 className="font-medium mb-3">Request History</h4>
+                        <div className="space-y-2">
+                          {householdLinkRequests.map((request) => (
+                            <div key={request.id} className="p-3 border rounded-lg bg-muted/20">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-medium text-sm">{request.household_number}</span>
+                                {getRequestStatusBadge(request.status)}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Requested: {format(new Date(request.created_at), "MMM dd, yyyy HH:mm")}
+                              </p>
+                              {request.household_address && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Address: {request.household_address}
+                                </p>
+                              )}
+                              {request.status === "rejected" && request.rejection_reason && (
+                                <p className="text-xs text-red-600 mt-2 p-2 bg-red-50 rounded">
+                                  Reason: {request.rejection_reason}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </TabsContent>

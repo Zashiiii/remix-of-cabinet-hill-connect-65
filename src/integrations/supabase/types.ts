@@ -488,6 +488,63 @@ export type Database = {
           },
         ]
       }
+      household_link_requests: {
+        Row: {
+          created_at: string | null
+          household_id: string
+          household_number: string
+          id: string
+          reason: string | null
+          rejection_reason: string | null
+          resident_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          household_id: string
+          household_number: string
+          id?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          resident_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          household_id?: string
+          household_number?: string
+          id?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          resident_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_link_requests_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_link_requests_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       households: {
         Row: {
           address: string | null
@@ -1473,6 +1530,25 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_household_link_requests_for_staff: {
+        Args: { p_status?: string }
+        Returns: {
+          created_at: string
+          household_address: string
+          household_id: string
+          household_number: string
+          id: string
+          reason: string
+          rejection_reason: string
+          resident_contact: string
+          resident_email: string
+          resident_id: string
+          resident_name: string
+          reviewed_at: string
+          reviewed_by: string
+          status: string
+        }[]
+      }
       get_households_paginated_for_staff: {
         Args: {
           p_limit?: number
@@ -1564,6 +1640,10 @@ export type Database = {
       }
       get_pending_certificate_requests_count: { Args: never; Returns: number }
       get_pending_ecological_submissions_count: { Args: never; Returns: number }
+      get_pending_household_link_requests_count: {
+        Args: never
+        Returns: number
+      }
       get_pending_incidents_count: { Args: never; Returns: number }
       get_pending_name_change_requests_count: { Args: never; Returns: number }
       get_pending_registration_count: { Args: never; Returns: number }
@@ -1613,6 +1693,19 @@ export type Database = {
         }
       }
       get_resident_count: { Args: never; Returns: number }
+      get_resident_household_link_requests: {
+        Args: { p_user_id: string }
+        Returns: {
+          created_at: string
+          household_address: string
+          household_number: string
+          id: string
+          reason: string
+          rejection_reason: string
+          reviewed_at: string
+          status: string
+        }[]
+      }
       get_resident_names_by_user_ids: {
         Args: { p_user_ids: string[] }
         Returns: {
@@ -1690,6 +1783,14 @@ export type Database = {
         Args: { p_household_number: string; p_user_id: string }
         Returns: Json
       }
+      resident_request_household_link: {
+        Args: {
+          p_household_number: string
+          p_reason?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       review_ecological_submission: {
         Args: {
           p_rejection_reason?: string
@@ -1703,6 +1804,10 @@ export type Database = {
       soft_delete_ecological_submission: {
         Args: { p_deleted_by: string; p_submission_id: string }
         Returns: boolean
+      }
+      staff_approve_household_link: {
+        Args: { p_approved_by: string; p_request_id: string }
+        Returns: undefined
       }
       staff_approve_incident: {
         Args: { p_incident_id: string; p_reviewed_by: string }
@@ -1792,6 +1897,14 @@ export type Database = {
       }
       staff_mark_message_read: {
         Args: { p_message_id: string; p_staff_id: string }
+        Returns: undefined
+      }
+      staff_reject_household_link: {
+        Args: {
+          p_rejected_by: string
+          p_rejection_reason: string
+          p_request_id: string
+        }
         Returns: undefined
       }
       staff_reject_incident: {

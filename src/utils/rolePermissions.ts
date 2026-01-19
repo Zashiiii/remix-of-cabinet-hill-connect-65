@@ -14,6 +14,7 @@ export type FeatureKey =
   | 'resident_approval'
   | 'ecological_submissions'
   | 'name_change_requests'
+  | 'household_link_requests'
   | 'view_reports'
   | 'certificate_requests'
   | 'manage_residents'
@@ -34,6 +35,7 @@ const ROLE_PERMISSIONS: Record<FeatureKey, StaffRole[]> = {
   resident_approval: ['admin', 'barangay_captain', 'barangay_official'],
   ecological_submissions: ['admin', 'barangay_captain', 'barangay_official', 'secretary'],
   name_change_requests: ['admin', 'barangay_captain', 'barangay_official', 'secretary'],
+  household_link_requests: ['admin', 'barangay_captain', 'barangay_official', 'secretary'],
   manage_residents: ['admin', 'barangay_captain', 'barangay_official', 'secretary'],
   manage_households: ['admin', 'barangay_captain', 'barangay_official', 'secretary'],
   announcements: ['admin', 'barangay_captain', 'barangay_official', 'secretary'],
@@ -80,7 +82,8 @@ export const canAccessAdminSection = (role: string | undefined): boolean => {
     hasPermission(role, 'audit_logs') ||
     hasPermission(role, 'resident_approval') ||
     hasPermission(role, 'ecological_submissions') ||
-    hasPermission(role, 'name_change_requests')
+    hasPermission(role, 'name_change_requests') ||
+    hasPermission(role, 'household_link_requests')
   );
 };
 

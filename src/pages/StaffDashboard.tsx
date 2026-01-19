@@ -127,6 +127,7 @@ import ViewReportsTab from "@/components/staff/ViewReportsTab";
 import NameChangeRequestsTab from "@/components/staff/NameChangeRequestsTab";
 import EcologicalProfileTab from "@/components/staff/EcologicalProfileTab";
 import EcologicalSubmissionsTab from "@/components/staff/EcologicalSubmissionsTab";
+import HouseholdLinkRequestsTab from "@/components/staff/HouseholdLinkRequestsTab";
 import CertificateRequestForm from "@/components/CertificateRequestForm";
 import CertificateRequestCard from "@/components/staff/CertificateRequestCard";
 import { hasPermission, canAccessAdminSection, FeatureKey } from "@/utils/rolePermissions";
@@ -172,6 +173,7 @@ const StaffSidebar = ({
   pendingRegistrationCount,
   pendingEcologicalCount,
   pendingNameChangeCount,
+  pendingHouseholdLinkCount,
   pendingIncidentsCount,
   pendingCertificatesCount,
 }: { 
@@ -182,6 +184,7 @@ const StaffSidebar = ({
   pendingRegistrationCount?: number;
   pendingEcologicalCount?: number;
   pendingNameChangeCount?: number;
+  pendingHouseholdLinkCount?: number;
   pendingIncidentsCount?: number;
   pendingCertificatesCount?: number;
 }) => {
@@ -206,6 +209,7 @@ const StaffSidebar = ({
     { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions", badge: pendingEcologicalCount && pendingEcologicalCount > 0 ? pendingEcologicalCount : undefined, feature: "ecological_submissions" as FeatureKey },
     { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined, feature: "resident_approval" as FeatureKey },
     { title: "Name Change Requests", icon: User, tab: "name-change-requests", badge: pendingNameChangeCount && pendingNameChangeCount > 0 ? pendingNameChangeCount : undefined, feature: "name_change_requests" as FeatureKey },
+    { title: "Household Link Requests", icon: Home, tab: "household-link-requests", badge: pendingHouseholdLinkCount && pendingHouseholdLinkCount > 0 ? pendingHouseholdLinkCount : undefined, feature: "household_link_requests" as FeatureKey },
     { title: "Staff Management", icon: Shield, route: "/admin/staff", feature: "staff_management" as FeatureKey },
     { title: "Audit Logs", icon: History, tab: "audit-logs", feature: "audit_logs" as FeatureKey },
   ];
@@ -340,6 +344,7 @@ const StaffDashboard = () => {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [pendingEcologicalCount, setPendingEcologicalCount] = useState(0);
   const [pendingNameChangeCount, setPendingNameChangeCount] = useState(0);
+  const [pendingHouseholdLinkCount, setPendingHouseholdLinkCount] = useState(0);
   const [pendingIncidentsCount, setPendingIncidentsCount] = useState(0);
   const [pendingCertificatesCount, setPendingCertificatesCount] = useState(0);
 
@@ -598,6 +603,19 @@ const StaffDashboard = () => {
       };
       loadNameChangeCount();
 
+      // Load pending household link requests count
+      const loadHouseholdLinkCount = async () => {
+        try {
+          const { data, error } = await supabase.rpc("get_pending_household_link_requests_count");
+          if (!error && data !== null) {
+            setPendingHouseholdLinkCount(data);
+          }
+        } catch (err) {
+          console.error("Error loading household link count:", err);
+        }
+      };
+      loadHouseholdLinkCount();
+
       // Load pending incidents count
       const loadIncidentsCount = async () => {
         try {
@@ -677,11 +695,25 @@ const StaffDashboard = () => {
         })
         .subscribe();
 
+      // Real-time subscription for household link requests
+      const householdLinkChannel = supabase
+        .channel('household-link-requests-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'household_link_requests'
+        }, () => {
+          console.log('Household link request changed, reloading count...');
+          loadHouseholdLinkCount();
+        })
+        .subscribe();
+
       return () => {
         supabase.removeChannel(requestsChannel);
         supabase.removeChannel(ecologicalChannel);
         supabase.removeChannel(nameChangeChannel);
         supabase.removeChannel(incidentsChannel);
+        supabase.removeChannel(householdLinkChannel);
       };
     }
   }, [isAuthenticated, loadRequests]);
@@ -1595,7 +1627,7 @@ const StaffDashboard = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} pendingNameChangeCount={pendingNameChangeCount} pendingIncidentsCount={pendingIncidentsCount} pendingCertificatesCount={pendingCertificatesCount} />
+        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} pendingNameChangeCount={pendingNameChangeCount} pendingHouseholdLinkCount={pendingHouseholdLinkCount} pendingIncidentsCount={pendingIncidentsCount} pendingCertificatesCount={pendingCertificatesCount} />
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}
@@ -2549,6 +2581,8 @@ const StaffDashboard = () => {
             {activeTab === "ecological-profile" && <EcologicalProfileTab />}
             
             {activeTab === "ecological-submissions" && <EcologicalSubmissionsTab />}
+
+            {activeTab === "household-link-requests" && <HouseholdLinkRequestsTab staffName={user?.fullName || "Staff Admin"} />}
           </main>
         </div>
       </div>
