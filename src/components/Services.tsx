@@ -11,7 +11,7 @@ const services = [
   },
   {
     icon: ClipboardList,
-    title: "Barangay Census",
+    title: "Barangay Profile Census",
     description: "Submit household ecological profile data (registration required)",
     path: "/auth",
   },
