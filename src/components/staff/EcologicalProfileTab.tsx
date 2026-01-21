@@ -724,34 +724,18 @@ const EcologicalProfileTab = () => {
     
     setIsDeleting(true);
     try {
-      // Delete residents linked to this household (that don't have user accounts)
-      const { error: residentsError } = await supabase
-        .from("residents")
-        .delete()
-        .eq("household_id", householdToDelete.id)
-        .is("user_id", null);
+      // Use RPC function to delete (bypasses RLS for staff)
+      const { data, error } = await supabase.rpc("staff_delete_household", {
+        p_household_id: householdToDelete.id
+      });
       
-      if (residentsError) {
-        console.error("Error deleting residents:", residentsError);
+      if (error) throw error;
+      
+      const result = data as { success: boolean; error?: string; residents_deleted?: number; submissions_deleted?: number } | null;
+      
+      if (result && !result.success) {
+        throw new Error(result.error || "Failed to delete household");
       }
-
-      // Delete ecological submissions linked to this household
-      const { error: submissionsError } = await supabase
-        .from("ecological_profile_submissions")
-        .delete()
-        .eq("household_id", householdToDelete.id);
-      
-      if (submissionsError) {
-        console.error("Error deleting submissions:", submissionsError);
-      }
-
-      // Delete the household
-      const { error: householdError } = await supabase
-        .from("households")
-        .delete()
-        .eq("id", householdToDelete.id);
-      
-      if (householdError) throw householdError;
 
       // Create audit log
       await createAuditLog({
@@ -763,7 +747,8 @@ const EcologicalProfileTab = () => {
         details: {
           household_number: householdToDelete.household_number,
           address: householdToDelete.address,
-          residents_count: householdToDelete.residents?.length || 0
+          residents_deleted: result?.residents_deleted || 0,
+          submissions_deleted: result?.submissions_deleted || 0
         }
       });
 

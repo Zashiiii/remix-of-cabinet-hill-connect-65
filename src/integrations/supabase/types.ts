@@ -1851,7 +1851,7 @@ export type Database = {
       staff_delete_announcement: { Args: { p_id: string }; Returns: undefined }
       staff_delete_household: {
         Args: { p_household_id: string }
-        Returns: undefined
+        Returns: Json
       }
       staff_delete_resident: {
         Args: { p_resident_id: string }
