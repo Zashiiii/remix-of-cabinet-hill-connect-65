@@ -46,6 +46,7 @@ import {
   generateImportTemplate,
   type EcologicalSubmission 
 } from "@/utils/ecologicalCsv";
+import { importEcologicalSubmission } from "@/utils/staffApi";
 
 interface HouseholdMember {
   id?: string;
@@ -504,65 +505,46 @@ const EcologicalSubmissionsTab = () => {
       let errorCount = 0;
 
       for (const submission of importPreview) {
-        // Generate submission number
-        const { data: submissionNumber, error: numError } = await supabase.rpc(
-          "generate_ecological_submission_number"
-        );
-
-        if (numError) {
-          console.error("Error generating submission number:", numError);
-          errorCount++;
-          continue;
-        }
-
-        const insertData: Record<string, unknown> = {
-          submission_number: submissionNumber,
-          status: 'pending',
-          household_number: submission.household_number,
-          house_number: submission.house_number,
-          street_purok: submission.street_purok,
-          address: submission.address,
-          barangay: submission.barangay || 'Sample Barangay',
-          city: submission.city || 'Sample City',
-          province: submission.province || 'Sample Province',
-          district: submission.district,
-          respondent_name: submission.respondent_name,
-          respondent_relation: submission.respondent_relation,
-          interview_date: submission.interview_date,
-          years_staying: submission.years_staying,
-          place_of_origin: submission.place_of_origin,
-          ethnic_group: submission.ethnic_group,
-          house_ownership: submission.house_ownership,
-          lot_ownership: submission.lot_ownership,
-          dwelling_type: submission.dwelling_type,
-          lighting_source: submission.lighting_source,
-          water_supply_level: submission.water_supply_level,
-          water_storage: submission.water_storage,
-          food_storage_type: submission.food_storage_type,
-          toilet_facilities: submission.toilet_facilities,
-          drainage_facilities: submission.drainage_facilities,
-          garbage_disposal: submission.garbage_disposal,
-          communication_services: submission.communication_services,
-          means_of_transport: submission.means_of_transport,
-          info_sources: submission.info_sources,
-          is_4ps_beneficiary: submission.is_4ps_beneficiary,
-          solo_parent_count: submission.solo_parent_count,
-          pwd_count: submission.pwd_count,
-          additional_notes: submission.additional_notes,
-          household_members: submission.household_members || [],
-        };
-
-        // Use RPC for staff import
-        const { error: insertError } = await supabase.rpc(
-          "staff_import_ecological_submission",
-          { p_data: insertData }
-        );
-
-        if (insertError) {
-          console.error("Error inserting submission:", insertError);
-          errorCount++;
-        } else {
+        try {
+          // Use the staff API to import ecological submission
+          await importEcologicalSubmission({
+            household_number: submission.household_number,
+            house_number: submission.house_number,
+            street_purok: submission.street_purok,
+            address: submission.address,
+            barangay: submission.barangay || 'Sample Barangay',
+            city: submission.city || 'Sample City',
+            province: submission.province || 'Sample Province',
+            district: submission.district,
+            respondent_name: submission.respondent_name,
+            respondent_relation: submission.respondent_relation,
+            interview_date: submission.interview_date,
+            years_staying: submission.years_staying,
+            place_of_origin: submission.place_of_origin,
+            ethnic_group: submission.ethnic_group,
+            house_ownership: submission.house_ownership,
+            lot_ownership: submission.lot_ownership,
+            dwelling_type: submission.dwelling_type,
+            lighting_source: submission.lighting_source,
+            water_supply_level: submission.water_supply_level,
+            water_storage: submission.water_storage,
+            food_storage_type: submission.food_storage_type,
+            toilet_facilities: submission.toilet_facilities,
+            drainage_facilities: submission.drainage_facilities,
+            garbage_disposal: submission.garbage_disposal,
+            communication_services: submission.communication_services,
+            means_of_transport: submission.means_of_transport,
+            info_sources: submission.info_sources,
+            is_4ps_beneficiary: submission.is_4ps_beneficiary,
+            solo_parent_count: submission.solo_parent_count,
+            pwd_count: submission.pwd_count,
+            additional_notes: submission.additional_notes,
+            household_members: submission.household_members || [],
+          });
           successCount++;
+        } catch (error) {
+          console.error("Error inserting submission:", error);
+          errorCount++;
         }
       }
 
