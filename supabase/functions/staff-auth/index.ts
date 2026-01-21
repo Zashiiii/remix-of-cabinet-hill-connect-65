@@ -1568,6 +1568,116 @@ serve(async (req) => {
       );
     }
 
+    // ========== IMPORT ECOLOGICAL SUBMISSION ==========
+    if (action === 'import-ecological-submission') {
+      // Security: Only accept token from httpOnly cookie
+      const token = getTokenFromCookie(req);
+      console.log('Processing IMPORT-ECOLOGICAL-SUBMISSION');
+
+      if (!token) {
+        return new Response(
+          JSON.stringify({ error: 'Staff authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validate the session token and check for staff/admin role
+      const { data: sessionData, error: sessionError } = await supabase.rpc('validate_session', { session_token: token });
+
+      if (sessionError || !sessionData || sessionData.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { 
+            status: 401, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'Set-Cookie': createLogoutCookie(isSecure),
+            } 
+          }
+        );
+      }
+
+      const session = sessionData[0];
+      // Allow all staff roles that can access ecological submissions
+      const allowedRoles = ['admin', 'barangay_captain', 'barangay_official', 'secretary'];
+      if (!allowedRoles.includes(session.role)) {
+        return new Response(
+          JSON.stringify({ error: 'Staff access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Generate submission number
+      const { data: submissionNumber, error: numError } = await supabase.rpc('generate_ecological_submission_number');
+
+      if (numError) {
+        console.error('Error generating submission number:', numError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to generate submission number' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Insert the submission
+      const insertData = {
+        submission_number: submissionNumber,
+        status: 'pending',
+        household_number: body.household_number,
+        house_number: body.house_number,
+        street_purok: body.street_purok,
+        address: body.address,
+        barangay: body.barangay || 'Sample Barangay',
+        city: body.city || 'Sample City',
+        province: body.province || 'Sample Province',
+        district: body.district,
+        respondent_name: body.respondent_name,
+        respondent_relation: body.respondent_relation,
+        interview_date: body.interview_date || null,
+        years_staying: body.years_staying || null,
+        place_of_origin: body.place_of_origin,
+        ethnic_group: body.ethnic_group,
+        house_ownership: body.house_ownership,
+        lot_ownership: body.lot_ownership,
+        dwelling_type: body.dwelling_type,
+        lighting_source: body.lighting_source,
+        water_supply_level: body.water_supply_level,
+        water_storage: body.water_storage || [],
+        food_storage_type: body.food_storage_type || [],
+        toilet_facilities: body.toilet_facilities || [],
+        drainage_facilities: body.drainage_facilities || [],
+        garbage_disposal: body.garbage_disposal || [],
+        communication_services: body.communication_services || [],
+        means_of_transport: body.means_of_transport || [],
+        info_sources: body.info_sources || [],
+        is_4ps_beneficiary: body.is_4ps_beneficiary || false,
+        solo_parent_count: body.solo_parent_count || 0,
+        pwd_count: body.pwd_count || 0,
+        additional_notes: body.additional_notes,
+        household_members: body.household_members || [],
+      };
+
+      const { data: newSubmission, error: insertError } = await supabase
+        .from('ecological_profile_submissions')
+        .insert(insertData)
+        .select('id, submission_number')
+        .single();
+
+      if (insertError || !newSubmission) {
+        console.error('Error inserting ecological submission:', insertError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to import submission', details: insertError?.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Ecological submission imported:', newSubmission?.submission_number);
+      return new Response(
+        JSON.stringify({ success: true, data: newSubmission }),
+        { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== LOGIN (default) ==========
     console.log('Processing LOGIN action');
     const username = body?.username;
@@ -1728,116 +1838,6 @@ serve(async (req) => {
         } 
       }
     );
-
-    // ========== IMPORT ECOLOGICAL SUBMISSION ==========
-    if (action === 'import-ecological-submission') {
-      // Security: Only accept token from httpOnly cookie
-      const token = getTokenFromCookie(req);
-      console.log('Processing IMPORT-ECOLOGICAL-SUBMISSION');
-
-      if (!token) {
-        return new Response(
-          JSON.stringify({ error: 'Staff authentication required' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Validate the session token and check for staff/admin role
-      const { data: sessionData, error: sessionError } = await supabase.rpc('validate_session', { session_token: token });
-
-      if (sessionError || !sessionData || sessionData.length === 0) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid or expired session' }),
-          { 
-            status: 401, 
-            headers: { 
-              ...corsHeaders, 
-              'Content-Type': 'application/json',
-              'Set-Cookie': createLogoutCookie(isSecure),
-            } 
-          }
-        );
-      }
-
-      const session = sessionData[0];
-      // Allow all staff roles that can access ecological submissions
-      const allowedRoles = ['admin', 'barangay_captain', 'barangay_official', 'secretary'];
-      if (!allowedRoles.includes(session.role)) {
-        return new Response(
-          JSON.stringify({ error: 'Staff access required' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Generate submission number
-      const { data: submissionNumber, error: numError } = await supabase.rpc('generate_ecological_submission_number');
-
-      if (numError) {
-        console.error('Error generating submission number:', numError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to generate submission number' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Insert the submission
-      const insertData = {
-        submission_number: submissionNumber,
-        status: 'pending',
-        household_number: body.household_number,
-        house_number: body.house_number,
-        street_purok: body.street_purok,
-        address: body.address,
-        barangay: body.barangay || 'Sample Barangay',
-        city: body.city || 'Sample City',
-        province: body.province || 'Sample Province',
-        district: body.district,
-        respondent_name: body.respondent_name,
-        respondent_relation: body.respondent_relation,
-        interview_date: body.interview_date || null,
-        years_staying: body.years_staying || null,
-        place_of_origin: body.place_of_origin,
-        ethnic_group: body.ethnic_group,
-        house_ownership: body.house_ownership,
-        lot_ownership: body.lot_ownership,
-        dwelling_type: body.dwelling_type,
-        lighting_source: body.lighting_source,
-        water_supply_level: body.water_supply_level,
-        water_storage: body.water_storage || [],
-        food_storage_type: body.food_storage_type || [],
-        toilet_facilities: body.toilet_facilities || [],
-        drainage_facilities: body.drainage_facilities || [],
-        garbage_disposal: body.garbage_disposal || [],
-        communication_services: body.communication_services || [],
-        means_of_transport: body.means_of_transport || [],
-        info_sources: body.info_sources || [],
-        is_4ps_beneficiary: body.is_4ps_beneficiary || false,
-        solo_parent_count: body.solo_parent_count || 0,
-        pwd_count: body.pwd_count || 0,
-        additional_notes: body.additional_notes,
-        household_members: body.household_members || [],
-      };
-
-      const { data: newSubmission, error: insertError } = await supabase
-        .from('ecological_profile_submissions')
-        .insert(insertData)
-        .select('id, submission_number')
-        .single();
-
-      if (insertError || !newSubmission) {
-        console.error('Error inserting ecological submission:', insertError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to import submission', details: insertError?.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      console.log('Ecological submission imported:', newSubmission?.submission_number);
-      return new Response(
-        JSON.stringify({ success: true, data: newSubmission }),
-        { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
   } catch (error) {
     console.error('Staff auth error:', error);
