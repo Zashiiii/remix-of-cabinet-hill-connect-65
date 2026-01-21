@@ -1760,7 +1760,9 @@ serve(async (req) => {
       }
 
       const session = sessionData[0];
-      if (session.role !== 'admin' && session.role !== 'staff') {
+      // Allow all staff roles that can access ecological submissions
+      const allowedRoles = ['admin', 'barangay_captain', 'barangay_official', 'secretary'];
+      if (!allowedRoles.includes(session.role)) {
         return new Response(
           JSON.stringify({ error: 'Staff access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

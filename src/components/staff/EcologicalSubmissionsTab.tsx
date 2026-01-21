@@ -1512,6 +1512,98 @@ const EcologicalSubmissionsTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Preview Dialog */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Import CSV Preview
+            </DialogTitle>
+            <DialogDescription>
+              Review the data before importing. {importPreview.length} record(s) found.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-auto">
+            {importErrors.length > 0 && (
+              <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <h4 className="font-medium text-destructive mb-2 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  Validation Errors ({importErrors.length})
+                </h4>
+                <ul className="text-sm text-destructive space-y-1 max-h-32 overflow-auto">
+                  {importErrors.map((error, idx) => (
+                    <li key={idx}>• {error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {importPreview.length > 0 && (
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Household #</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>Respondent</TableHead>
+                      <TableHead>Members</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {importPreview.slice(0, 10).map((row, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{row.household_number || "—"}</TableCell>
+                        <TableCell>{row.address || row.street_purok || "—"}</TableCell>
+                        <TableCell>{row.respondent_name || "—"}</TableCell>
+                        <TableCell>{row.household_members?.length || 0}</TableCell>
+                      </TableRow>
+                    ))}
+                    {importPreview.length > 10 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground">
+                          ... and {importPreview.length - 10} more records
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {importPreview.length === 0 && importErrors.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileSpreadsheet className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No valid data found in the CSV file.</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleImportSubmissions} 
+              disabled={isImporting || importPreview.length === 0 || importErrors.length > 0}
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import {importPreview.length} Records
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
