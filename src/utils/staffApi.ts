@@ -150,3 +150,8 @@ export const deleteStaffUser = async (id: string) => {
 export const toggleStaffUserActive = async (id: string) => {
   return callStaffApi('toggle-staff-user-active', { id });
 };
+
+// Ecological submission import
+export const importEcologicalSubmission = async (data: Record<string, unknown>) => {
+  return callStaffApi('import-ecological-submission', data);
+};
