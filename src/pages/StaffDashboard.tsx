@@ -198,6 +198,7 @@ const StaffSidebar = ({
     { title: "Certificate Requests", icon: FileText, tab: "certificate-requests", badge: pendingCertificatesCount && pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined, feature: "certificate_requests" as FeatureKey },
     { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", badge: pendingIncidentsCount && pendingIncidentsCount > 0 ? pendingIncidentsCount : undefined, feature: "incidents" as FeatureKey },
     { title: "Ecological Profile Census", icon: FileText, tab: "ecological-profile", feature: "ecological_profile" as FeatureKey },
+    { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions", badge: pendingEcologicalCount && pendingEcologicalCount > 0 ? pendingEcologicalCount : undefined, feature: "ecological_submissions" as FeatureKey },
     { title: "Manage Announcements", icon: Bell, tab: "announcements", feature: "announcements" as FeatureKey },
     { title: "Manage Residents", icon: Users, tab: "residents", feature: "manage_residents" as FeatureKey },
     { title: "Manage Households", icon: Home, tab: "households", feature: "manage_households" as FeatureKey },
@@ -206,7 +207,6 @@ const StaffSidebar = ({
   ];
 
   const adminMenuItemsRaw = [
-    { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions", badge: pendingEcologicalCount && pendingEcologicalCount > 0 ? pendingEcologicalCount : undefined, feature: "ecological_submissions" as FeatureKey },
     { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined, feature: "resident_approval" as FeatureKey },
     { title: "Name Change Requests", icon: User, tab: "name-change-requests", badge: pendingNameChangeCount && pendingNameChangeCount > 0 ? pendingNameChangeCount : undefined, feature: "name_change_requests" as FeatureKey },
     { title: "Household Link Requests", icon: Home, tab: "household-link-requests", badge: pendingHouseholdLinkCount && pendingHouseholdLinkCount > 0 ? pendingHouseholdLinkCount : undefined, feature: "household_link_requests" as FeatureKey },
