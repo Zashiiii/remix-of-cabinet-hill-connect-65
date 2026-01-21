@@ -39,7 +39,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Trash2,
 } from "lucide-react";
+import { createAuditLog } from "@/utils/auditLog";
+import { useStaffAuth } from "@/hooks/useStaffAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useBarangayStats } from "@/context/BarangayStatsContext";
 import { toast } from "sonner";
@@ -175,6 +178,14 @@ const EcologicalProfileTab = () => {
   // Sort state for households table
   const [sortField, setSortField] = useState<'household_number' | 'address' | 'members' | 'created_at'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
+  // Delete state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [householdToDelete, setHouseholdToDelete] = useState<HouseholdData | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Get staff auth for audit logging
+  const { user: staffUser } = useStaffAuth();
 
   // Census form state
   const [censusData, setCensusData] = useState({
@@ -706,6 +717,76 @@ const EcologicalProfileTab = () => {
       setIsSaving(false);
     }
   };
+
+  // Handle delete household
+  const handleDeleteHousehold = async () => {
+    if (!householdToDelete || !staffUser) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete residents linked to this household (that don't have user accounts)
+      const { error: residentsError } = await supabase
+        .from("residents")
+        .delete()
+        .eq("household_id", householdToDelete.id)
+        .is("user_id", null);
+      
+      if (residentsError) {
+        console.error("Error deleting residents:", residentsError);
+      }
+
+      // Delete ecological submissions linked to this household
+      const { error: submissionsError } = await supabase
+        .from("ecological_profile_submissions")
+        .delete()
+        .eq("household_id", householdToDelete.id);
+      
+      if (submissionsError) {
+        console.error("Error deleting submissions:", submissionsError);
+      }
+
+      // Delete the household
+      const { error: householdError } = await supabase
+        .from("households")
+        .delete()
+        .eq("id", householdToDelete.id);
+      
+      if (householdError) throw householdError;
+
+      // Create audit log
+      await createAuditLog({
+        action: "delete",
+        entityType: "household",
+        entityId: householdToDelete.household_number,
+        performedBy: staffUser.fullName,
+        performedByType: "staff",
+        details: {
+          household_number: householdToDelete.household_number,
+          address: householdToDelete.address,
+          residents_count: householdToDelete.residents?.length || 0
+        }
+      });
+
+      toast.success("Household deleted successfully");
+      
+      // Clear selection if deleted household was selected
+      if (selectedHousehold?.id === householdToDelete.id) {
+        setSelectedHousehold(null);
+      }
+      
+      // Reload data
+      loadData();
+      refreshGlobalStats();
+      setShowDeleteDialog(false);
+      setHouseholdToDelete(null);
+    } catch (error: any) {
+      console.error("Error deleting household:", error);
+      toast.error("Failed to delete household", { description: error.message });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const validateData = useCallback(() => {
     const warnings: ValidationWarning[] = [];
 
@@ -1527,14 +1608,26 @@ const EcologicalProfileTab = () => {
                         {h.interview_date ? format(new Date(h.interview_date), "MMM dd, yyyy") : "-"}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant={selectedHousehold?.id === h.id ? "default" : "outline"}
-                          onClick={() => handleSelectHousehold(h)}
-                        >
-                          {selectedHousehold?.id === h.id ? <CheckCircle2 className="h-4 w-4 mr-1" /> : null}
-                          {selectedHousehold?.id === h.id ? "Selected" : "Select"}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={selectedHousehold?.id === h.id ? "default" : "outline"}
+                            onClick={() => handleSelectHousehold(h)}
+                          >
+                            {selectedHousehold?.id === h.id ? <CheckCircle2 className="h-4 w-4 mr-1" /> : null}
+                            {selectedHousehold?.id === h.id ? "Selected" : "Select"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              setHouseholdToDelete(h);
+                              setShowDeleteDialog(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -2817,6 +2910,63 @@ const EcologicalProfileTab = () => {
             <Button onClick={() => generateReport("print")}>
               <Printer className="h-4 w-4 mr-2" />
               Print
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Household
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete household <strong>{householdToDelete?.household_number}</strong>? 
+              This will also delete:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+              <li>All residents without user accounts in this household ({householdToDelete?.residents?.filter(r => !r.id)?.length || householdToDelete?.residents?.length || 0} members)</li>
+              <li>All ecological profile submissions for this household</li>
+              <li>All census data associated with this household</li>
+            </ul>
+            <Alert variant="destructive" className="mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Warning</AlertTitle>
+              <AlertDescription>This action cannot be undone.</AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setHouseholdToDelete(null);
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteHousehold}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Household
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
