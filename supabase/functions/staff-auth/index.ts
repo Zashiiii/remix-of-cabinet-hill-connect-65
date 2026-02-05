@@ -34,9 +34,10 @@ function isAllowedOrigin(origin: string | null): boolean {
   // Check exact match first
   if (allowedOrigins.includes(origin)) return true;
   
-  // Allow any Lovable preview origin (UUID-based subdomains on both domains)
-  const lovablePreviewPattern = /^https:\/\/[a-z0-9-]+--[a-f0-9-]+\.lovable\.app$/;
-  const lovableProjectPattern = /^https:\/\/[a-f0-9-]+\.lovableproject\.com$/;
+  // Allow any Lovable preview/project origin
+  // Patterns: id-preview--UUID.lovable.app, UUID.lovableproject.com, etc.
+  const lovablePreviewPattern = /^https:\/\/[a-z0-9-]+\.lovable\.app$/;
+  const lovableProjectPattern = /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/;
   if (lovablePreviewPattern.test(origin) || lovableProjectPattern.test(origin)) return true;
   
   return false;
