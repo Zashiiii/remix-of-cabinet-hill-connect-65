@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getCertificateRequests } from "@/utils/staffApi";
 import { cn } from "@/lib/utils";
+import CertificateMonthlyChart from "@/components/staff/CertificateMonthlyChart";
 
 interface IncidentReport {
   id: string;
@@ -290,6 +291,8 @@ const ViewReportsTab = () => {
             </TabsTrigger>
           </TabsList>
         </Tabs>
+
+        <CertificateMonthlyChart certificates={certificates} />
 
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
