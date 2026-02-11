@@ -38,6 +38,7 @@ import IncidentYearlySummary from "@/components/staff/IncidentYearlySummary";
 import EcologicalCompletionCard from "@/components/staff/EcologicalCompletionCard";
 import ResidentAgeBracketChart from "@/components/staff/ResidentAgeBracketChart";
 import HouseholdIncomeChart from "@/components/staff/HouseholdIncomeChart";
+import ResidentsPerPurokChart from "@/components/staff/ResidentsPerPurokChart";
 
 interface IncidentReport {
   id: string;
@@ -326,9 +327,13 @@ const ViewReportsTab = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <ResidentAgeBracketChart />
           <HouseholdIncomeChart />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <ResidentsPerPurokChart />
           <EcologicalCompletionCard />
         </div>
 
