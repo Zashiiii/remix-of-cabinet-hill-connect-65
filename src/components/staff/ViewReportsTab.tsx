@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import CertificateMonthlyChart from "@/components/staff/CertificateMonthlyChart";
 import CertificateTypePieChart from "@/components/staff/CertificateTypePieChart";
 import TopCertificateTypes from "@/components/staff/TopCertificateTypes";
+import IncidentMonthlyChart from "@/components/staff/IncidentMonthlyChart";
 
 interface IncidentReport {
   id: string;
@@ -298,6 +299,15 @@ const ViewReportsTab = () => {
           <CertificateMonthlyChart certificates={certificates} />
           <CertificateTypePieChart certificates={certificates} />
           <TopCertificateTypes certificates={certificates} />
+        </div>
+
+        <div className="mb-6">
+          <IncidentMonthlyChart
+            incidents={incidents.map((i) => ({
+              incidentType: i.incidentType,
+              createdAt: i.createdAt,
+            }))}
+          />
         </div>
 
         <div className="flex flex-col gap-4 mb-6">
