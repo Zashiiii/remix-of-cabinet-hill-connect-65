@@ -31,6 +31,7 @@ import { getCertificateRequests } from "@/utils/staffApi";
 import { cn } from "@/lib/utils";
 import CertificateMonthlyChart from "@/components/staff/CertificateMonthlyChart";
 import CertificateTypePieChart from "@/components/staff/CertificateTypePieChart";
+import TopCertificateTypes from "@/components/staff/TopCertificateTypes";
 
 interface IncidentReport {
   id: string;
@@ -293,9 +294,10 @@ const ViewReportsTab = () => {
           </TabsList>
         </Tabs>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <CertificateMonthlyChart certificates={certificates} />
           <CertificateTypePieChart certificates={certificates} />
+          <TopCertificateTypes certificates={certificates} />
         </div>
 
         <div className="flex flex-col gap-4 mb-6">
