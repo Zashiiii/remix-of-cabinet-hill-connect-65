@@ -1163,6 +1163,15 @@ export type Database = {
           retry_after_seconds: number
         }[]
       }
+      create_audit_log: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_entity_id?: string
+          p_entity_type: string
+        }
+        Returns: undefined
+      }
       generate_ecological_submission_number: { Args: never; Returns: string }
       get_active_announcements: {
         Args: never
