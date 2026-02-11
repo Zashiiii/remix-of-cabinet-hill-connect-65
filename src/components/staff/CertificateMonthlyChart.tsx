@@ -72,7 +72,7 @@ const CertificateMonthlyChart = ({ certificates }: { certificates: CertificateDa
   }
 
   return (
-    <Card className="mb-6">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <BarChart3 className="h-5 w-5" />

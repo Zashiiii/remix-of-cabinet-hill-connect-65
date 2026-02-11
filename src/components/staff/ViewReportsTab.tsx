@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getCertificateRequests } from "@/utils/staffApi";
 import { cn } from "@/lib/utils";
 import CertificateMonthlyChart from "@/components/staff/CertificateMonthlyChart";
+import CertificateTypePieChart from "@/components/staff/CertificateTypePieChart";
 
 interface IncidentReport {
   id: string;
@@ -292,7 +293,10 @@ const ViewReportsTab = () => {
           </TabsList>
         </Tabs>
 
-        <CertificateMonthlyChart certificates={certificates} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CertificateMonthlyChart certificates={certificates} />
+          <CertificateTypePieChart certificates={certificates} />
+        </div>
 
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
