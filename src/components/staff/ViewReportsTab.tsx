@@ -35,6 +35,7 @@ import TopCertificateTypes from "@/components/staff/TopCertificateTypes";
 import IncidentMonthlyChart from "@/components/staff/IncidentMonthlyChart";
 import IncidentPurokChart from "@/components/staff/IncidentPurokChart";
 import IncidentYearlySummary from "@/components/staff/IncidentYearlySummary";
+import EcologicalCompletionCard from "@/components/staff/EcologicalCompletionCard";
 
 interface IncidentReport {
   id: string;
@@ -321,6 +322,10 @@ const ViewReportsTab = () => {
               rawCreatedAt: i.rawCreatedAt,
             }))}
           />
+        </div>
+
+        <div className="mb-6">
+          <EcologicalCompletionCard />
         </div>
 
         <div className="flex flex-col gap-4 mb-6">
