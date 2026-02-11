@@ -40,6 +40,7 @@ import ResidentAgeBracketChart from "@/components/staff/ResidentAgeBracketChart"
 import HouseholdIncomeChart from "@/components/staff/HouseholdIncomeChart";
 import ResidentsPerPurokChart from "@/components/staff/ResidentsPerPurokChart";
 import StaffRoleActionsChart from "@/components/staff/StaffRoleActionsChart";
+import LoginActivityChart from "@/components/staff/LoginActivityChart";
 
 interface IncidentReport {
   id: string;
@@ -338,8 +339,9 @@ const ViewReportsTab = () => {
           <EcologicalCompletionCard />
         </div>
 
-        <div className="mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <StaffRoleActionsChart />
+          <LoginActivityChart />
         </div>
 
         <div className="flex flex-col gap-4 mb-6">
