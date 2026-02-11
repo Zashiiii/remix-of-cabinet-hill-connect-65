@@ -89,18 +89,29 @@ interface AuditLogData {
 
 export const createAuditLog = async (data: AuditLogData): Promise<boolean> => {
   try {
-    const { error } = await supabase.from("audit_logs").insert({
-      action: data.action,
-      entity_type: data.entityType,
-      entity_id: data.entityId || null,
-      performed_by: data.performedBy,
-      performed_by_type: data.performedByType,
-      details: data.details || null,
+    // Try using the secure RPC function first
+    const { error: rpcError } = await supabase.rpc("create_audit_log" as any, {
+      p_action: data.action,
+      p_entity_type: data.entityType,
+      p_entity_id: data.entityId || null,
+      p_details: data.details ? JSON.stringify(data.details) : null,
     });
 
-    if (error) {
-      console.error("Error creating audit log:", error);
-      return false;
+    if (rpcError) {
+      // Fallback to direct insert for backward compatibility (e.g. staff auth via edge function)
+      const { error } = await supabase.from("audit_logs").insert({
+        action: data.action,
+        entity_type: data.entityType,
+        entity_id: data.entityId || null,
+        performed_by: data.performedBy,
+        performed_by_type: data.performedByType,
+        details: data.details || null,
+      });
+
+      if (error) {
+        console.error("Error creating audit log:", error);
+        return false;
+      }
     }
 
     return true;
