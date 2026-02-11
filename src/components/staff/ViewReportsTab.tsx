@@ -33,6 +33,7 @@ import CertificateMonthlyChart from "@/components/staff/CertificateMonthlyChart"
 import CertificateTypePieChart from "@/components/staff/CertificateTypePieChart";
 import TopCertificateTypes from "@/components/staff/TopCertificateTypes";
 import IncidentMonthlyChart from "@/components/staff/IncidentMonthlyChart";
+import IncidentPurokChart from "@/components/staff/IncidentPurokChart";
 
 interface IncidentReport {
   id: string;
@@ -51,6 +52,7 @@ interface IncidentReport {
   rejectionReason?: string;
   photoEvidenceUrl?: string;
   createdAt: string;
+  rawCreatedAt: string;
 }
 
 interface CertificateRequest {
@@ -116,6 +118,7 @@ const ViewReportsTab = () => {
           rejectionReason: i.rejection_reason || undefined,
           photoEvidenceUrl: i.photo_evidence_url || undefined,
           createdAt: new Date(i.created_at || "").toLocaleDateString(),
+          rawCreatedAt: i.created_at || "",
         })));
       }
     } catch (error) {
@@ -301,11 +304,17 @@ const ViewReportsTab = () => {
           <TopCertificateTypes certificates={certificates} />
         </div>
 
-        <div className="mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <IncidentMonthlyChart
             incidents={incidents.map((i) => ({
               incidentType: i.incidentType,
               createdAt: i.createdAt,
+            }))}
+          />
+          <IncidentPurokChart
+            incidents={incidents.map((i) => ({
+              incidentLocation: i.incidentLocation,
+              rawCreatedAt: i.rawCreatedAt,
             }))}
           />
         </div>
