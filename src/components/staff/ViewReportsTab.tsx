@@ -34,6 +34,7 @@ import CertificateTypePieChart from "@/components/staff/CertificateTypePieChart"
 import TopCertificateTypes from "@/components/staff/TopCertificateTypes";
 import IncidentMonthlyChart from "@/components/staff/IncidentMonthlyChart";
 import IncidentPurokChart from "@/components/staff/IncidentPurokChart";
+import IncidentYearlySummary from "@/components/staff/IncidentYearlySummary";
 
 interface IncidentReport {
   id: string;
@@ -304,7 +305,10 @@ const ViewReportsTab = () => {
           <TopCertificateTypes certificates={certificates} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <IncidentYearlySummary
+            incidents={incidents.map((i) => ({ rawCreatedAt: i.rawCreatedAt }))}
+          />
           <IncidentMonthlyChart
             incidents={incidents.map((i) => ({
               incidentType: i.incidentType,
