@@ -884,6 +884,72 @@ export type Database = {
           },
         ]
       }
+      monitoring_reports: {
+        Row: {
+          age_bracket_data: Json | null
+          average_household_size: number | null
+          barangay: string | null
+          calendar_year: number | null
+          city_municipality: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          province: string | null
+          region: string | null
+          sector_data: Json | null
+          semester: string | null
+          status: string
+          total_families: number | null
+          total_households: number | null
+          total_inhabitants: number | null
+          total_registered_voters: number | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          age_bracket_data?: Json | null
+          average_household_size?: number | null
+          barangay?: string | null
+          calendar_year?: number | null
+          city_municipality?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          province?: string | null
+          region?: string | null
+          sector_data?: Json | null
+          semester?: string | null
+          status?: string
+          total_families?: number | null
+          total_households?: number | null
+          total_inhabitants?: number | null
+          total_registered_voters?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          age_bracket_data?: Json | null
+          average_household_size?: number | null
+          barangay?: string | null
+          calendar_year?: number | null
+          city_municipality?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          province?: string | null
+          region?: string | null
+          sector_data?: Json | null
+          semester?: string | null
+          status?: string
+          total_families?: number | null
+          total_households?: number | null
+          total_inhabitants?: number | null
+          total_registered_voters?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       name_change_requests: {
         Row: {
           created_at: string | null

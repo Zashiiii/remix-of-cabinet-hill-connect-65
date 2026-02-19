@@ -23,13 +23,15 @@ export type FeatureKey =
   | 'announcements'
   | 'ecological_profile'
   | 'create_certificate'
-  | 'settings';
+  | 'settings'
+  | 'monitoring_reports';
 
 // Define which roles can access each feature
 const ROLE_PERMISSIONS: Record<FeatureKey, StaffRole[]> = {
   // Admin-level features
   staff_management: ['admin', 'barangay_captain'],
   audit_logs: ['admin', 'barangay_captain'],
+  monitoring_reports: ['admin'],
   
   // Management features
   resident_approval: ['admin', 'barangay_captain', 'barangay_official'],
@@ -83,7 +85,8 @@ export const canAccessAdminSection = (role: string | undefined): boolean => {
     hasPermission(role, 'resident_approval') ||
     hasPermission(role, 'ecological_submissions') ||
     hasPermission(role, 'name_change_requests') ||
-    hasPermission(role, 'household_link_requests')
+    hasPermission(role, 'household_link_requests') ||
+    hasPermission(role, 'monitoring_reports')
   );
 };
 
