@@ -175,3 +175,26 @@ export const updateCertificateType = async (id: string, name: string) => {
 export const toggleCertificateType = async (id: string) => {
   return callStaffApi('toggle-certificate-type', { id });
 };
+
+// Monitoring report operations (admin only)
+export const getMonitoringReports = async () => {
+  const result = await callStaffApi('get-monitoring-reports');
+  return result.data || [];
+};
+
+export const getMonitoringReport = async (id: string) => {
+  const result = await callStaffApi('get-monitoring-report', { id });
+  return result.data || null;
+};
+
+export const createMonitoringReport = async (payload: Record<string, unknown>) => {
+  return callStaffApi('create-monitoring-report', payload);
+};
+
+export const updateMonitoringReport = async (id: string, payload: Record<string, unknown>) => {
+  return callStaffApi('update-monitoring-report', { id, ...payload });
+};
+
+export const deleteMonitoringReport = async (id: string) => {
+  return callStaffApi('delete-monitoring-report', { id });
+};

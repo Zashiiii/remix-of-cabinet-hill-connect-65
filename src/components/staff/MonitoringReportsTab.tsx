@@ -14,7 +14,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { getMonitoringReports, deleteMonitoringReport } from "@/utils/staffApi";
 import MonitoringReportForm from "./MonitoringReportForm";
 
 interface MonitoringReport {
@@ -45,13 +45,8 @@ const MonitoringReportsTab = () => {
   const loadReports = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("monitoring_reports")
-        .select("id, region, province, city_municipality, barangay, semester, calendar_year, status, created_by, created_at, updated_at")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setReports((data as MonitoringReport[]) || []);
+      const data = await getMonitoringReports();
+      setReports(data || []);
     } catch (error) {
       console.error("Error loading reports:", error);
       toast.error("Failed to load monitoring reports");
@@ -68,11 +63,7 @@ const MonitoringReportsTab = () => {
     if (!reportToDelete) return;
     setIsDeleting(true);
     try {
-      const { error } = await supabase
-        .from("monitoring_reports")
-        .delete()
-        .eq("id", reportToDelete.id);
-      if (error) throw error;
+      await deleteMonitoringReport(reportToDelete.id);
       toast.success("Report deleted successfully");
       loadReports();
     } catch (error) {

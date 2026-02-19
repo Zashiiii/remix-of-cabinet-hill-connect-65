@@ -17,7 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { getMonitoringReport, createMonitoringReport, updateMonitoringReport } from "@/utils/staffApi";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 
 const AGE_BRACKETS = [
@@ -109,16 +109,9 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
     const load = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("monitoring_reports")
-          .select("*")
-          .eq("id", reportId)
-          .single();
+        const d = await getMonitoringReport(reportId);
+        if (!d) return;
 
-        if (error) throw error;
-        if (!data) return;
-
-        const d = data as any;
         setRegion(d.region || "");
         setProvince(d.province || "");
         setCityMunicipality(d.city_municipality || "");
@@ -131,7 +124,6 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
         setSemester(d.semester || "");
         setCalendarYear(d.calendar_year || new Date().getFullYear());
 
-        // Parse age bracket data
         if (d.age_bracket_data && Array.isArray(d.age_bracket_data)) {
           const parsed = AGE_BRACKETS.map((bracket) => {
             const found = (d.age_bracket_data as any[]).find(
@@ -142,7 +134,6 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
           setAgeBrackets(parsed);
         }
 
-        // Parse sector data
         if (d.sector_data && typeof d.sector_data === "object") {
           const sd = d.sector_data as Record<string, any>;
           setSectors(
@@ -235,16 +226,9 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
       const payload = buildPayload(status);
 
       if (reportId) {
-        const { error } = await supabase
-          .from("monitoring_reports")
-          .update(payload as any)
-          .eq("id", reportId);
-        if (error) throw error;
+        await updateMonitoringReport(reportId, payload as Record<string, unknown>);
       } else {
-        const { error } = await supabase
-          .from("monitoring_reports")
-          .insert({ ...payload, created_by: user?.fullName || "Admin" } as any);
-        if (error) throw error;
+        await createMonitoringReport({ ...payload, created_by: user?.fullName || "Admin" } as Record<string, unknown>);
       }
 
       toast.success(
