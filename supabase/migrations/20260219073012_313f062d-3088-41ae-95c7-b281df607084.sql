@@ -1,0 +1,1 @@
+ALTER TABLE public.certificate_requests ADD COLUMN urgency_reason text;

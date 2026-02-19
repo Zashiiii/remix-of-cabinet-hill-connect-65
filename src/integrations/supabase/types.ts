@@ -173,6 +173,7 @@ export type Database = {
           status: string | null
           updated_at: string | null
           uploaded_id_url: string | null
+          urgency_reason: string | null
         }
         Insert: {
           birth_date?: string | null
@@ -195,6 +196,7 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           uploaded_id_url?: string | null
+          urgency_reason?: string | null
         }
         Update: {
           birth_date?: string | null
@@ -217,6 +219,7 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           uploaded_id_url?: string | null
+          urgency_reason?: string | null
         }
         Relationships: [
           {
@@ -1270,6 +1273,7 @@ export type Database = {
           status: string | null
           updated_at: string | null
           uploaded_id_url: string | null
+          urgency_reason: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -1689,6 +1693,7 @@ export type Database = {
           status: string | null
           updated_at: string | null
           uploaded_id_url: string | null
+          urgency_reason: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -2075,6 +2080,7 @@ export type Database = {
           status: string | null
           updated_at: string | null
           uploaded_id_url: string | null
+          urgency_reason: string | null
         }[]
         SetofOptions: {
           from: "*"
