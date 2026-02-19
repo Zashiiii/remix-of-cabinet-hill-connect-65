@@ -11,6 +11,7 @@ const corsHeaders = {
 
 interface CertificateRequestData {
   certificateType: string;
+  customCertificateName?: string;
   fullName: string;
   contactNumber: string;
   email?: string;
@@ -166,12 +167,22 @@ serve(async (req) => {
       'Barangay Clearance',
       'Certificate of Residency', 
       'Certificate of Indigency',
-      'Business Permit',
-      'Barangay ID',
-      'Other'
+      'Business Clearance',
+      'Solo Parent Certification',
+      'Good Moral',
+      'Others'
     ];
     if (!allowedCertificateTypes.includes(data.certificateType)) {
       validationErrors.push('Invalid certificate type');
+    }
+    
+    // Validate custom certificate name when "Others" is selected
+    if (data.certificateType === 'Others') {
+      if (!data.customCertificateName || data.customCertificateName.trim() === '') {
+        validationErrors.push('Please specify the certificate type');
+      } else if (data.customCertificateName.length > 200) {
+        validationErrors.push('Custom certificate name must be 200 characters or less');
+      }
     }
 
     if (validationErrors.length > 0) {
@@ -222,6 +233,7 @@ serve(async (req) => {
       .insert({
         control_number: controlNumber,
         certificate_type: data.certificateType,
+        custom_certificate_name: data.certificateType === 'Others' ? (data.customCertificateName?.trim() || null) : null,
         full_name: data.fullName,
         contact_number: data.contactNumber,
         email: data.email || null,

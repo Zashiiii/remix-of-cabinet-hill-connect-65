@@ -158,6 +158,7 @@ export type Database = {
           contact_number: string | null
           control_number: string
           created_at: string | null
+          custom_certificate_name: string | null
           email: string | null
           full_name: string
           household_number: string | null
@@ -179,6 +180,7 @@ export type Database = {
           contact_number?: string | null
           control_number: string
           created_at?: string | null
+          custom_certificate_name?: string | null
           email?: string | null
           full_name: string
           household_number?: string | null
@@ -200,6 +202,7 @@ export type Database = {
           contact_number?: string | null
           control_number?: string
           created_at?: string | null
+          custom_certificate_name?: string | null
           email?: string | null
           full_name?: string
           household_number?: string | null
@@ -1228,6 +1231,7 @@ export type Database = {
           contact_number: string | null
           control_number: string
           created_at: string | null
+          custom_certificate_name: string | null
           email: string | null
           full_name: string
           household_number: string | null
@@ -1646,6 +1650,7 @@ export type Database = {
           contact_number: string | null
           control_number: string
           created_at: string | null
+          custom_certificate_name: string | null
           email: string | null
           full_name: string
           household_number: string | null
@@ -2031,6 +2036,7 @@ export type Database = {
           contact_number: string | null
           control_number: string
           created_at: string | null
+          custom_certificate_name: string | null
           email: string | null
           full_name: string
           household_number: string | null

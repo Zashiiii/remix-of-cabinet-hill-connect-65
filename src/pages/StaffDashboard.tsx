@@ -139,6 +139,7 @@ interface PendingRequest {
   dbId?: string;
   residentName: string;
   certificateType: string;
+  customCertificateName?: string;
   dateSubmitted: string;
   status: "pending" | "processing" | "approved" | "rejected" | "verifying" | "released";
   verificationStatus?: "verified" | "not-verified" | "checking";
@@ -496,6 +497,7 @@ const StaffDashboard = () => {
           dbId: item.id, // Store the database UUID
           residentName: item.full_name,
           certificateType: item.certificate_type,
+          customCertificateName: item.custom_certificate_name || undefined,
           dateSubmitted: item.created_at 
             ? new Date(item.created_at).toLocaleDateString() 
             : new Date().toLocaleDateString(),
@@ -534,6 +536,7 @@ const StaffDashboard = () => {
           id: item.control_number,
           residentName: item.full_name,
           certificateType: item.certificate_type,
+          customCertificateName: item.custom_certificate_name || undefined,
           dateSubmitted: item.created_at 
             ? new Date(item.created_at).toLocaleDateString() 
             : new Date().toLocaleDateString(),
