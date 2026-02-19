@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useCertificateTypes } from "@/hooks/useCertificateTypes";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,24 +29,31 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Search, User, XCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { submitCertificateRequest } from "@/utils/api";
 import { toast } from "sonner";
 import { logResidentCertificateRequest } from "@/utils/auditLog";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ResidentResult {
+  id: string;
+  fullName: string;
+  email: string;
+  contactNumber: string;
+  householdNumber: string | null;
+}
 
 const formSchema = z.object({
+  residentId: z.string().min(1, "Please select a resident"),
   certificateType: z.string().min(1, "Please select a certificate type"),
   customCertificateName: z.string().trim().max(200, "Custom certificate name is too long").optional(),
-  fullName: z.string().trim().min(2, "Full name must be at least 2 characters").max(100, "Full name is too long"),
-  contactNumber: z.string().trim().regex(/^09\d{9}$/, "Contact number must be 11 digits starting with 09 (e.g., 09123456789)"),
-  email: z.string().trim().email("Please enter a valid email address").optional().or(z.literal("")),
-  householdNumber: z.string().trim().min(3, "Household number must be at least 3 characters").max(5, "Household number must be at most 5 characters"),
   purpose: z.string().trim().min(10, "Please provide more details about the purpose (at least 10 characters)").max(500, "Purpose is too long"),
   priority: z.enum(["normal", "urgent"], {
     required_error: "Please select a priority level",
   }),
+  urgencyReason: z.string().trim().max(500, "Urgency reason is too long").optional(),
   preferredPickupDate: z.date({
     required_error: "Please select your preferred pickup date",
   }).refine((date) => {
@@ -62,6 +69,14 @@ const formSchema = z.object({
 }, {
   message: "Please specify the certificate type",
   path: ["customCertificateName"],
+}).refine((data) => {
+  if (data.priority === "urgent" && (!data.urgencyReason || data.urgencyReason.trim() === "")) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please provide a reason for urgency",
+  path: ["urgencyReason"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -71,64 +86,238 @@ interface CertificateRequestFormProps {
 }
 
 const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
-  const { types: certificateTypeOptions, isLoading: isLoadingTypes } = useCertificateTypes();
+  const { types: certificateTypeOptions } = useCertificateTypes();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<ResidentResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedResident, setSelectedResident] = useState<ResidentResult | null>(null);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      residentId: "",
       certificateType: "",
       customCertificateName: "",
-      fullName: "",
-      contactNumber: "",
-      email: "",
-      householdNumber: "",
       purpose: "",
       priority: "normal",
+      urgencyReason: "",
     },
   });
 
   const selectedCertificateType = form.watch("certificateType");
+  const selectedPriority = form.watch("priority");
+
+  const searchResidents = useCallback(async (query: string) => {
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase
+        .from("residents")
+        .select(`
+          id, first_name, middle_name, last_name, suffix,
+          email, contact_number, household_id,
+          households ( household_number )
+        `)
+        .eq("approval_status", "approved")
+        .is("deleted_at", null)
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
+        .limit(10);
+
+      if (error) throw error;
+
+      const results: ResidentResult[] = (data || []).map((r: any) => ({
+        id: r.id,
+        fullName: `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}${r.suffix ? ' ' + r.suffix : ''}`.trim(),
+        email: r.email || "",
+        contactNumber: r.contact_number || "",
+        householdNumber: r.households?.household_number || null,
+      }));
+
+      setSearchResults(results);
+      setShowDropdown(results.length > 0);
+    } catch (err) {
+      console.error("Error searching residents:", err);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery && !selectedResident) {
+        searchResidents(searchQuery);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchResidents, selectedResident]);
+
+  const handleSelectResident = (resident: ResidentResult) => {
+    setSelectedResident(resident);
+    setSearchQuery(resident.fullName);
+    setShowDropdown(false);
+    form.setValue("residentId", resident.id);
+  };
+
+  const handleClearResident = () => {
+    setSelectedResident(null);
+    setSearchQuery("");
+    setSearchResults([]);
+    form.setValue("residentId", "");
+  };
 
   const onSubmit = async (data: FormValues) => {
+    if (!selectedResident) {
+      toast.error("Please select a resident.");
+      return;
+    }
+
+    if (!selectedResident.householdNumber) {
+      toast.error("Selected resident has no household assigned. Cannot create certificate.");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
-      
-      // Call the API function
+
       const controlNumber = await submitCertificateRequest({
         certificateType: data.certificateType,
         customCertificateName: data.certificateType === "Others" ? data.customCertificateName : undefined,
-        fullName: data.fullName,
-        contactNumber: data.contactNumber,
-        email: data.email,
-        householdNumber: data.householdNumber,
+        fullName: selectedResident.fullName,
+        contactNumber: selectedResident.contactNumber,
+        email: selectedResident.email,
+        householdNumber: selectedResident.householdNumber,
         purpose: data.purpose,
         priority: data.priority,
         preferredPickupDate: data.preferredPickupDate,
       });
-      
-      // Log the certificate request in audit log
-      await logResidentCertificateRequest(controlNumber, data.fullName, data.certificateType);
-      
-      // Show success
+
+      await logResidentCertificateRequest(controlNumber, selectedResident.fullName, data.certificateType);
+
       onSuccess(controlNumber);
-      
-      // Reset the form
       form.reset();
+      handleClearResident();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Something went wrong";
-      console.error('Form submission error:', errorMessage);
+      console.error("Form submission error:", errorMessage);
       toast.error(errorMessage, {
-        description: "Please try again or visit the barangay hall."
+        description: "Please try again or visit the barangay hall.",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const noHousehold = selectedResident && !selectedResident.householdNumber;
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Resident Search */}
+        <div className="space-y-2">
+          <FormField
+            control={form.control}
+            name="residentId"
+            render={() => (
+              <FormItem>
+                <FormLabel>Search Resident / Hanapin ang Residente *</FormLabel>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Type resident name or email..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      if (selectedResident) {
+                        handleClearResident();
+                      }
+                    }}
+                    className="pl-9 pr-9"
+                    disabled={!!selectedResident}
+                  />
+                  {(searchQuery || selectedResident) && (
+                    <button
+                      type="button"
+                      onClick={handleClearResident}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </button>
+                  )}
+                  {isSearching && (
+                    <Loader2 className="absolute right-9 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+
+                  {showDropdown && !selectedResident && (
+                    <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-60 overflow-auto">
+                      {searchResults.map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2.5 hover:bg-accent hover:text-accent-foreground text-sm flex items-start gap-2 border-b border-border last:border-b-0"
+                          onClick={() => handleSelectResident(r)}
+                        >
+                          <User className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{r.fullName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {r.email || "No email"} · HH: {r.householdNumber || "None"}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <FormDescription>Search by name or email to find the resident</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Selected Resident Info */}
+        {selectedResident && (
+          <div className="p-4 rounded-lg bg-muted/50 border">
+            <div className="flex items-center gap-2 mb-3">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">Selected Resident</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-muted-foreground">Full Name:</span>
+                <p className="font-medium">{selectedResident.fullName}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Email:</span>
+                <p className="font-medium">{selectedResident.email || "Not set"}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Contact Number:</span>
+                <p className="font-medium">{selectedResident.contactNumber || "Not set"}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Household Number:</span>
+                <p className="font-medium">{selectedResident.householdNumber || "Not assigned"}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* No household warning */}
+        {noHousehold && (
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <p>This resident has no household assigned. Certificate cannot be created until a household is linked.</p>
+          </div>
+        )}
+
         {/* Certificate Type */}
         <FormField
           control={form.control}
@@ -161,7 +350,6 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
           )}
         />
 
-        {/* Custom Certificate Name - shown when "Others" is selected */}
         {selectedCertificateType === "Others" && (
           <FormField
             control={form.control}
@@ -178,94 +366,12 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
           />
         )}
 
-        {/* Personal Information Section */}
-        <div className="pt-4 border-t border-border">
-          <h3 className="text-lg font-semibold mb-4">
-            Personal Information / Pansariling Impormasyon
-          </h3>
-          
-          <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="fullName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name / Buong Pangalan *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Juan Dela Cruz" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="contactNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contact Number / Numero ng Telepono *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="09123456789" type="tel" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address / Email Address</FormLabel>
-                  <FormControl>
-                    <Input placeholder="juan@example.com" type="email" {...field} />
-                  </FormControl>
-                  <FormDescription>Optional - for email notifications</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-
-        {/* Verification Section */}
-        <div className="pt-4 border-t border-border">
-          <h3 className="text-lg font-semibold mb-4">
-            Verification / Pagpapatunay
-          </h3>
-          
-          <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="householdNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Household Number / Numero ng Sambahayan *</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="001, A-10, etc." 
-                      maxLength={5}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Enter 3-5 character household code
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-
         {/* Request Details Section */}
         <div className="pt-4 border-t border-border">
           <h3 className="text-lg font-semibold mb-4">
             Request Details / Detalye ng Kahilingan
           </h3>
-          
+
           <div className="space-y-4">
             <FormField
               control={form.control}
@@ -274,10 +380,10 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                 <FormItem>
                   <FormLabel>Purpose / Layunin *</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <Textarea
                       placeholder="Please describe the purpose of your certificate request..."
                       className="min-h-[100px]"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -301,17 +407,13 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                         <FormControl>
                           <RadioGroupItem value="normal" />
                         </FormControl>
-                        <FormLabel className="font-normal cursor-pointer">
-                          Normal
-                        </FormLabel>
+                        <FormLabel className="font-normal cursor-pointer">Normal</FormLabel>
                       </FormItem>
                       <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl>
                           <RadioGroupItem value="urgent" />
                         </FormControl>
-                        <FormLabel className="font-normal cursor-pointer">
-                          Urgent
-                        </FormLabel>
+                        <FormLabel className="font-normal cursor-pointer">Urgent</FormLabel>
                       </FormItem>
                     </RadioGroup>
                   </FormControl>
@@ -319,6 +421,26 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                 </FormItem>
               )}
             />
+
+            {selectedPriority === "urgent" && (
+              <FormField
+                control={form.control}
+                name="urgencyReason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reason for Urgency / Dahilan ng Pagmamadali *</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Please explain why this request is urgent..."
+                        className="min-h-[80px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
@@ -336,11 +458,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                             !field.value && "text-muted-foreground"
                           )}
                         >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
+                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
@@ -354,7 +472,6 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
                           const dayOfWeek = date.getDay();
-                          // Disable past dates and weekends (0 = Sunday, 6 = Saturday)
                           return date < today || dayOfWeek === 0 || dayOfWeek === 6;
                         }}
                         initialFocus
@@ -362,9 +479,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormDescription>
-                    Select when you would like to pick up your certificate
-                  </FormDescription>
+                  <FormDescription>Select when the resident would like to pick up the certificate</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -372,11 +487,11 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
           </div>
         </div>
 
-        <Button 
-          type="submit" 
-          size="lg" 
+        <Button
+          type="submit"
+          size="lg"
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !!noHousehold}
         >
           {isSubmitting ? (
             <>
