@@ -2034,6 +2034,43 @@ serve(async (req) => {
       );
     }
 
+    if (action === 'reopen-monitoring-report') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session || session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const id = body?.id;
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'Report ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase
+        .from('monitoring_reports')
+        .update({ status: 'draft', updated_at: new Date().toISOString(), updated_by: session.fullName })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error reopening monitoring report:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to reopen monitoring report' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== LOGIN (default) ==========
     console.log('Processing LOGIN action');
     const username = body?.username;
