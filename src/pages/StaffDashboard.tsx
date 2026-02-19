@@ -11,7 +11,6 @@ import {
   XCircle,
   Eye,
   Clock,
-  TrendingUp,
   Activity,
   Bell,
   Plus,
@@ -1714,6 +1713,39 @@ const StaffDashboard = () => {
                     </>
                   ) : (
                     <>
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("certificate-requests")}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Pending Certificates</CardTitle>
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{pendingCertificatesCount}</div>
+                          <p className="text-xs text-muted-foreground">Awaiting processing</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("incidents")}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Pending Incidents</CardTitle>
+                          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{pendingIncidentsCount}</div>
+                          <p className="text-xs text-muted-foreground">Awaiting review</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("ecological-submissions")}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Pending Ecological</CardTitle>
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{pendingEcologicalCount}</div>
+                          <p className="text-xs text-muted-foreground">Submissions to review</p>
+                        </CardContent>
+                      </Card>
+
                       <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                           <CardTitle className="text-sm font-medium">Total Residents</CardTitle>
@@ -1724,57 +1756,64 @@ const StaffDashboard = () => {
                           <p className="text-xs text-muted-foreground">Registered residents</p>
                         </CardContent>
                       </Card>
-
-                      <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold">{pendingCount}</div>
-                          <p className="text-xs text-muted-foreground">Awaiting processing</p>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-sm font-medium">Processed Today</CardTitle>
-                          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold">
-                            {(() => {
-                              const today = new Date().toDateString();
-                              const certCount = requests.filter(r => {
-                                if (r.status !== "approved" && r.status !== "rejected") return false;
-                                const processedDate = r.processedDate ? new Date(r.processedDate).toDateString() : null;
-                                return processedDate === today;
-                              }).length;
-                              const incidentCount = allIncidents.filter(i => {
-                                if (i.approvalStatus !== "approved" && i.approvalStatus !== "rejected") return false;
-                                const reviewedDate = i.reviewedAt ? new Date(i.reviewedAt).toDateString() : null;
-                                return reviewedDate === today;
-                              }).length;
-                              return certCount + incidentCount;
-                            })()}
-                          </div>
-                          <p className="text-xs text-muted-foreground">Certificates & incidents processed</p>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-sm font-medium">System Status</CardTitle>
-                          <Activity className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-green-600">Online</div>
-                          <p className="text-xs text-muted-foreground">All systems operational</p>
-                        </CardContent>
-                      </Card>
                     </>
                   )}
                 </div>
+
+                {/* Urgent Requests */}
+                {(() => {
+                  const urgentRequests = requests.filter(r => 
+                    r.priority?.toLowerCase() === 'urgent' && 
+                    (r.status === 'pending' || r.status === 'verifying' || r.status === 'processing')
+                  );
+                  if (urgentRequests.length === 0) return null;
+                  return (
+                    <Card className="mb-8 border-l-4 border-l-destructive">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                          <AlertCircle className="h-5 w-5 text-destructive" />
+                          Urgent Requests
+                        </CardTitle>
+                        <Badge variant="destructive">
+                          {urgentRequests.length} urgent
+                        </Badge>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Control No.</TableHead>
+                              <TableHead>Resident</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Priority</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {urgentRequests.slice(0, 10).map((req) => (
+                              <TableRow key={req.id} className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                                setActiveTab("certificate-requests");
+                              }}>
+                                <TableCell className="font-medium text-xs">{req.id}</TableCell>
+                                <TableCell className="text-sm">{req.residentName}</TableCell>
+                                <TableCell className="text-sm">{req.certificateType}</TableCell>
+                                <TableCell className="text-sm">{req.dateSubmitted}</TableCell>
+                                <TableCell>
+                                  <Badge variant="destructive" className="text-xs">
+                                    <AlertCircle className="h-3 w-3 mr-1" />
+                                    Urgent
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{getStatusBadge(req.status)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
 
                 {/* Pending Registrations Widget (Admin Only) */}
                 {user?.role === 'admin' && pendingRegistrationCount > 0 && (
