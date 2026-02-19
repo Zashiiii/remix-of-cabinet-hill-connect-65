@@ -893,12 +893,15 @@ export type Database = {
           city_municipality: string | null
           created_at: string
           created_by: string | null
+          date_accomplished: string | null
           id: string
+          prepared_by_name: string | null
           province: string | null
           region: string | null
           sector_data: Json | null
           semester: string | null
           status: string
+          submitted_by_name: string | null
           total_families: number | null
           total_households: number | null
           total_inhabitants: number | null
@@ -914,12 +917,15 @@ export type Database = {
           city_municipality?: string | null
           created_at?: string
           created_by?: string | null
+          date_accomplished?: string | null
           id?: string
+          prepared_by_name?: string | null
           province?: string | null
           region?: string | null
           sector_data?: Json | null
           semester?: string | null
           status?: string
+          submitted_by_name?: string | null
           total_families?: number | null
           total_households?: number | null
           total_inhabitants?: number | null
@@ -935,12 +941,15 @@ export type Database = {
           city_municipality?: string | null
           created_at?: string
           created_by?: string | null
+          date_accomplished?: string | null
           id?: string
+          prepared_by_name?: string | null
           province?: string | null
           region?: string | null
           sector_data?: Json | null
           semester?: string | null
           status?: string
+          submitted_by_name?: string | null
           total_families?: number | null
           total_households?: number | null
           total_inhabitants?: number | null

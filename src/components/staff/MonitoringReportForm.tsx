@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
-  ArrowLeft, Save, Send, Loader2,
+  ArrowLeft, Save, Send, Loader2, Printer, CalendarIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,9 +16,16 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { getMonitoringReport, createMonitoringReport, updateMonitoringReport } from "@/utils/staffApi";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
+import MonitoringReportPrint from "./MonitoringReportPrint";
 
 const AGE_BRACKETS = [
   "Under 5 years old",
@@ -80,6 +87,8 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
   const [isSaving, setIsSaving] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
+  const printRef = useRef<HTMLDivElement>(null);
+
   // Basic info
   const [region, setRegion] = useState("");
   const [province, setProvince] = useState("");
@@ -92,6 +101,11 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
   const [averageHouseholdSize, setAverageHouseholdSize] = useState(0);
   const [semester, setSemester] = useState<string>("");
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+
+  // Signature fields
+  const [preparedByName, setPreparedByName] = useState("");
+  const [submittedByName, setSubmittedByName] = useState("");
+  const [dateAccomplished, setDateAccomplished] = useState<Date | undefined>(undefined);
 
   // Age bracket data
   const [ageBrackets, setAgeBrackets] = useState<AgeBracketRow[]>(
@@ -143,6 +157,13 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
               female: sd[s.key]?.female || 0,
             }))
           );
+        }
+
+        // Signature fields
+        setPreparedByName(d.prepared_by_name || "");
+        setSubmittedByName(d.submitted_by_name || "");
+        if (d.date_accomplished) {
+          setDateAccomplished(new Date(d.date_accomplished));
         }
       } catch (error) {
         console.error("Error loading report:", error);
@@ -216,6 +237,9 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
       sector_data: sectorData,
       status,
       updated_by: user?.fullName || "Admin",
+      prepared_by_name: preparedByName || null,
+      submitted_by_name: submittedByName || null,
+      date_accomplished: dateAccomplished ? format(dateAccomplished, "yyyy-MM-dd") : null,
     };
   };
 
@@ -244,6 +268,75 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
       setIsSaving(false);
       setShowSubmitDialog(false);
     }
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow || !printRef.current) return;
+    const content = printRef.current.innerHTML;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>RBI Form C - Monitoring Report</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #000; }
+          .print-report { padding: 20mm; max-width: 210mm; margin: 0 auto; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 1.5em; }
+          th, td { border: 1px solid #000; padding: 2px 6px; font-size: 10pt; }
+          th { background: #f0f0f0; }
+          .text-center { text-align: center; }
+          .text-left { text-align: left; }
+          .text-right { text-align: right; }
+          .text-xs { font-size: 9pt; }
+          .text-sm { font-size: 10pt; }
+          .text-lg { font-size: 14pt; }
+          .font-bold, strong { font-weight: bold; }
+          .font-semibold { font-weight: 600; }
+          .italic { font-style: italic; }
+          .mb-1 { margin-bottom: 4px; }
+          .mb-2 { margin-bottom: 8px; }
+          .mb-4 { margin-bottom: 16px; }
+          .mb-6 { margin-bottom: 24px; }
+          .mb-8 { margin-bottom: 32px; }
+          .mt-1 { margin-top: 4px; }
+          .pt-2 { padding-top: 8px; }
+          .pb-1 { padding-bottom: 4px; }
+          .px-2 { padding-left: 8px; padding-right: 8px; }
+          .py-0\\.5 { padding-top: 2px; padding-bottom: 2px; }
+          .py-1 { padding-top: 4px; padding-bottom: 4px; }
+          .p-8 { padding: 32px; }
+          .min-w-\\[150px\\] { min-width: 150px; }
+          .min-w-\\[200px\\] { min-width: 200px; }
+          .w-20 { width: 80px; }
+          .grid { display: grid; }
+          .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+          .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+          .gap-x-4 { column-gap: 16px; }
+          .gap-x-8 { column-gap: 32px; }
+          .gap-y-1 { row-gap: 4px; }
+          .flex { display: flex; }
+          .justify-between { justify-content: space-between; }
+          .items-start { align-items: flex-start; }
+          .inline-block { display: inline-block; }
+          .border-b { border-bottom: 1px solid #000; }
+          .border-t { border-top: 1px solid #ccc; }
+          .border-black { border-color: #000; }
+          .border-gray-300 { border-color: #ccc; }
+          .bg-gray-100 { background: #f0f0f0; }
+          .text-gray-600 { color: #666; }
+          .tracking-wider { letter-spacing: 0.05em; }
+          .tracking-wide { letter-spacing: 0.025em; }
+          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>${content}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 300);
   };
 
   if (isLoading) {
@@ -283,6 +376,12 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
                 Submit
               </Button>
             </div>
+          )}
+          {readOnly && (
+            <Button variant="outline" onClick={handlePrint}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print Report
+            </Button>
           )}
         </div>
 
@@ -468,6 +567,65 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
             </div>
           </CardContent>
         </Card>
+        {/* Section 4: Signature */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">4. Signatories</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Prepared by:</Label>
+                <Input
+                  value={preparedByName}
+                  onChange={(e) => setPreparedByName(e.target.value)}
+                  disabled={readOnly}
+                  placeholder="Enter name"
+                />
+                <p className="text-sm font-medium">Position: Barangay Secretary</p>
+                <p className="text-xs text-muted-foreground italic">(Signature over Printed Name)</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Submitted by:</Label>
+                <Input
+                  value={submittedByName}
+                  onChange={(e) => setSubmittedByName(e.target.value)}
+                  disabled={readOnly}
+                  placeholder="Enter name"
+                />
+                <p className="text-sm font-medium">Position: Punong Barangay</p>
+                <p className="text-xs text-muted-foreground italic">(Signature over Printed Name)</p>
+              </div>
+            </div>
+            <div className="mt-6 max-w-xs space-y-2">
+              <Label>Date Accomplished</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateAccomplished && "text-muted-foreground"
+                    )}
+                    disabled={readOnly}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateAccomplished ? format(dateAccomplished, "MMMM d, yyyy") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateAccomplished}
+                    onSelect={setDateAccomplished}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Bottom actions */}
         {!readOnly && (
@@ -483,6 +641,29 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
             </Button>
           </div>
         )}
+      </div>
+
+      {/* Hidden print component */}
+      <div className="hidden">
+        <MonitoringReportPrint
+          ref={printRef}
+          region={region}
+          province={province}
+          cityMunicipality={cityMunicipality}
+          barangay={barangay}
+          totalInhabitants={totalInhabitants}
+          totalRegisteredVoters={totalRegisteredVoters}
+          totalHouseholds={totalHouseholds}
+          totalFamilies={totalFamilies}
+          averageHouseholdSize={averageHouseholdSize}
+          semester={semester}
+          calendarYear={calendarYear}
+          ageBrackets={ageBrackets}
+          sectors={sectors}
+          preparedByName={preparedByName}
+          submittedByName={submittedByName}
+          dateAccomplished={dateAccomplished ? format(dateAccomplished, "MMMM d, yyyy") : ""}
+        />
       </div>
 
       {/* Submit Confirmation Dialog */}
