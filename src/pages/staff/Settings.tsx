@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useStaffAuth } from "@/hooks/useStaffAuth";
 import { useTheme } from "@/components/theme-provider";
 import { supabase } from "@/integrations/supabase/client";
+import CertificateTypeManagement from "@/components/staff/CertificateTypeManagement";
 
 const StaffSettings = () => {
   const navigate = useNavigate();
@@ -19,10 +20,8 @@ const StaffSettings = () => {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   
-  // Profile form state
   const [fullName, setFullName] = useState(user?.fullName || "");
   
-  // Password form state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -71,7 +70,6 @@ const StaffSettings = () => {
 
     setIsChangingPassword(true);
     try {
-      // Use edge function to securely hash and update password
       const { data, error } = await supabase.functions.invoke("staff-auth", {
         body: { 
           action: "change-password", 
@@ -113,9 +111,7 @@ const StaffSettings = () => {
               <User className="h-5 w-5" />
               Profile Information
             </CardTitle>
-            <CardDescription>
-              Update your staff profile
-            </CardDescription>
+            <CardDescription>Update your staff profile</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -151,9 +147,7 @@ const StaffSettings = () => {
               <Lock className="h-5 w-5" />
               Change Password
             </CardTitle>
-            <CardDescription>
-              Update your account password
-            </CardDescription>
+            <CardDescription>Update your account password</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -183,6 +177,11 @@ const StaffSettings = () => {
           </CardContent>
         </Card>
 
+        {/* Certificate Type Management */}
+        <div className="mb-6">
+          <CertificateTypeManagement />
+        </div>
+
         {/* Theme Settings */}
         <Card>
           <CardHeader>
@@ -190,9 +189,7 @@ const StaffSettings = () => {
               <Palette className="h-5 w-5" />
               Appearance
             </CardTitle>
-            <CardDescription>
-              Customize how the app looks
-            </CardDescription>
+            <CardDescription>Customize how the app looks</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
