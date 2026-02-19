@@ -35,6 +35,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  X,
+  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -163,6 +165,7 @@ interface Announcement {
   description: string;
   descriptionTl: string;
   date: string;
+  imageUrl?: string;
 }
 
 const StaffSidebar = ({ 
@@ -1445,6 +1448,8 @@ const StaffDashboard = () => {
     description: "",
     descriptionTl: "",
     type: "general" as "important" | "general",
+    imageFile: null as File | null,
+    imageUrl: "" as string,
   });
 
   const handleDeleteAnnouncement = async () => {
@@ -1484,6 +1489,7 @@ const StaffDashboard = () => {
             month: "long", 
             day: "numeric" 
           }),
+          imageUrl: item.image_url || undefined,
         }));
         setAnnouncements(mapped);
       } else {
@@ -1525,32 +1531,50 @@ const StaffDashboard = () => {
     }
 
     try {
+      // Upload image if a new file was selected
+      let finalImageUrl = announcementForm.imageUrl;
+      if (announcementForm.imageFile) {
+        const file = announcementForm.imageFile;
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('announcement-images')
+          .upload(filePath, file);
+        
+        if (uploadError) throw uploadError;
+        
+        const { data: urlData } = supabase.storage
+          .from('announcement-images')
+          .getPublicUrl(filePath);
+        
+        finalImageUrl = urlData.publicUrl;
+      }
+
       if (editingAnnouncement) {
-        // Update existing announcement
         await updateAnnouncementStaff(editingAnnouncement.id, {
           title: announcementForm.title,
           content: announcementForm.description,
           titleTl: announcementForm.titleTl,
           contentTl: announcementForm.descriptionTl,
           type: announcementForm.type,
+          imageUrl: finalImageUrl || undefined,
         });
         toast.success("Announcement updated successfully");
       } else {
-        // Create new announcement
         await createAnnouncementStaff({
           title: announcementForm.title,
           content: announcementForm.description,
           titleTl: announcementForm.titleTl,
           contentTl: announcementForm.descriptionTl,
           type: announcementForm.type,
+          imageUrl: finalImageUrl || undefined,
         });
         toast.success("Announcement created successfully");
       }
 
-      // Reload announcements
       await loadAnnouncements();
 
-      // Also update localStorage for backward compatibility
       const localAnnouncement: Announcement = {
         id: editingAnnouncement?.id || `ann-${Date.now()}`,
         type: announcementForm.type,
@@ -1559,6 +1583,7 @@ const StaffDashboard = () => {
         description: announcementForm.description,
         descriptionTl: announcementForm.descriptionTl || announcementForm.description,
         date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+        imageUrl: finalImageUrl || undefined,
       };
 
       const storedAnnouncements = JSON.parse(localStorage.getItem("barangay_announcements") || "[]");
@@ -1579,7 +1604,7 @@ const StaffDashboard = () => {
 
       setShowAnnouncementDialog(false);
       setEditingAnnouncement(null);
-      setAnnouncementForm({ title: "", titleTl: "", description: "", descriptionTl: "", type: "general" });
+      setAnnouncementForm({ title: "", titleTl: "", description: "", descriptionTl: "", type: "general", imageFile: null, imageUrl: "" });
     } catch (error) {
       console.error("Error saving announcement:", error);
       toast.error("Failed to save announcement");
@@ -1594,6 +1619,8 @@ const StaffDashboard = () => {
       description: announcement.description,
       descriptionTl: announcement.descriptionTl,
       type: announcement.type,
+      imageFile: null,
+      imageUrl: announcement.imageUrl || "",
     });
     setShowAnnouncementDialog(true);
   };
@@ -2464,7 +2491,7 @@ const StaffDashboard = () => {
                     </Button>
                     <Button onClick={() => {
                       setEditingAnnouncement(null);
-                      setAnnouncementForm({ title: "", titleTl: "", description: "", descriptionTl: "", type: "general" });
+                      setAnnouncementForm({ title: "", titleTl: "", description: "", descriptionTl: "", type: "general", imageFile: null, imageUrl: "" });
                       setShowAnnouncementDialog(true);
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -2495,9 +2522,14 @@ const StaffDashboard = () => {
                           {announcements.map((announcement) => (
                             <TableRow key={announcement.id}>
                               <TableCell>
-                                <div>
-                                  <p className="font-medium">{announcement.title}</p>
-                                  <p className="text-sm text-muted-foreground line-clamp-2">{announcement.description}</p>
+                                <div className="flex items-center gap-3">
+                                  {announcement.imageUrl && (
+                                    <img src={announcement.imageUrl} alt="" className="h-10 w-10 rounded object-cover shrink-0" />
+                                  )}
+                                  <div>
+                                    <p className="font-medium">{announcement.title}</p>
+                                    <p className="text-sm text-muted-foreground line-clamp-2">{announcement.description}</p>
+                                  </div>
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -2521,6 +2553,8 @@ const StaffDashboard = () => {
                                         description: announcement.description,
                                         descriptionTl: announcement.descriptionTl,
                                         type: announcement.type,
+                                        imageFile: null,
+                                        imageUrl: announcement.imageUrl || "",
                                       });
                                       setShowAnnouncementDialog(true);
                                     }}
@@ -2981,6 +3015,35 @@ const StaffDashboard = () => {
                   <SelectItem value="general">General (Blue)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="announcementImage">Image (Optional)</Label>
+              <Input
+                id="announcementImage"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setAnnouncementForm({ ...announcementForm, imageFile: file });
+                }}
+              />
+              {(announcementForm.imageFile || announcementForm.imageUrl) && (
+                <div className="mt-2 relative inline-block">
+                  <img
+                    src={announcementForm.imageFile ? URL.createObjectURL(announcementForm.imageFile) : announcementForm.imageUrl}
+                    alt="Preview"
+                    className="h-20 w-20 rounded-md object-cover border"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground"
+                    onClick={() => setAnnouncementForm({ ...announcementForm, imageFile: null, imageUrl: "" })}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
