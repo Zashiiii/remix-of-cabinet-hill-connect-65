@@ -157,3 +157,21 @@ export const toggleStaffUserActive = async (id: string) => {
 export const importEcologicalSubmission = async (data: Record<string, unknown>) => {
   return callStaffApi('import-ecological-submission', data);
 };
+
+// Certificate type management
+export const getCertificateTypes = async () => {
+  const result = await callStaffApi('get-certificate-types');
+  return result.data || [];
+};
+
+export const createCertificateType = async (name: string) => {
+  return callStaffApi('create-certificate-type', { name });
+};
+
+export const updateCertificateType = async (id: string, name: string) => {
+  return callStaffApi('update-certificate-type', { id, name });
+};
+
+export const toggleCertificateType = async (id: string) => {
+  return callStaffApi('toggle-certificate-type', { id });
+};

@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useState } from "react";
+import { useCertificateTypes } from "@/hooks/useCertificateTypes";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -69,17 +70,8 @@ interface CertificateRequestFormProps {
   onSuccess: (controlNumber: string) => void;
 }
 
-const certificateTypes = [
-  "Certificate of Indigency",
-  "Certificate of Residency",
-  "Barangay Clearance",
-  "Business Clearance",
-  "Solo Parent Certification",
-  "Good Moral",
-  "Others",
-];
-
 const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
+  const { types: certificateTypeOptions, isLoading: isLoadingTypes } = useCertificateTypes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<FormValues>({
@@ -156,11 +148,12 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent className="bg-popover z-50">
-                  {certificateTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type === "Others" ? "Others (Specify)" : type}
+                  {certificateTypeOptions.map((type) => (
+                    <SelectItem key={type.id} value={type.name}>
+                      {type.name}
                     </SelectItem>
                   ))}
+                  <SelectItem value="Others">Others (Specify)</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

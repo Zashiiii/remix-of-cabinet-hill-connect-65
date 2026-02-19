@@ -1702,6 +1702,164 @@ serve(async (req) => {
       );
     }
 
+    // ========== CERTIFICATE TYPE MANAGEMENT ==========
+    if (action === 'get-certificate-types') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('certificate_types')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch certificate types' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'create-certificate-type') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { name } = body;
+      if (!name || !name.trim()) {
+        return new Response(
+          JSON.stringify({ error: 'Certificate type name is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('certificate_types')
+        .insert({ name: name.trim() })
+        .select()
+        .single();
+
+      if (error) {
+        const msg = error.message?.includes('duplicate') ? 'A certificate type with this name already exists' : 'Failed to create certificate type';
+        return new Response(
+          JSON.stringify({ error: msg }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'update-certificate-type') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { id, name } = body;
+      if (!id || !name || !name.trim()) {
+        return new Response(
+          JSON.stringify({ error: 'ID and name are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('certificate_types')
+        .update({ name: name.trim(), updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        const msg = error.message?.includes('duplicate') ? 'A certificate type with this name already exists' : 'Failed to update certificate type';
+        return new Response(
+          JSON.stringify({ error: msg }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'toggle-certificate-type') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { id } = body;
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'Certificate type ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get current state
+      const { data: current, error: fetchError } = await supabase
+        .from('certificate_types')
+        .select('is_active')
+        .eq('id', id)
+        .single();
+
+      if (fetchError || !current) {
+        return new Response(
+          JSON.stringify({ error: 'Certificate type not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('certificate_types')
+        .update({ is_active: !current.is_active, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to toggle certificate type' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== LOGIN (default) ==========
     console.log('Processing LOGIN action');
     const username = body?.username;
