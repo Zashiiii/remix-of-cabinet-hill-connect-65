@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import EcologicalProfileForm from "@/components/resident/EcologicalProfileForm";
 
@@ -20,7 +21,14 @@ const EcologicalProfile = () => {
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Ecological Profile Census</h1>
                 <p className="text-muted-foreground">Submit your household's ecological profile data</p>
-              </div>
+            </div>
+
+            <Alert className="mb-6 border-primary/20 bg-primary/5">
+              <Info className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-sm text-muted-foreground">
+                This feature helps reduce manual house-to-house data collection and improves barangay reporting efficiency. Your submission will be reviewed and approved by staff before being included in analytics.
+              </AlertDescription>
+            </Alert>
             </div>
 
             <EcologicalProfileForm 
