@@ -32,6 +32,7 @@ export const checkTrackingRateLimit = async (): Promise<{ allowed: boolean; retr
 
 export interface CertificateRequestData {
   certificateType: string;
+  customCertificateName?: string;
   fullName: string;
   contactNumber: string;
   email?: string;
@@ -111,6 +112,7 @@ export const submitCertificateRequest = async (data: CertificateRequestData): Pr
     const { data: response, error } = await supabase.functions.invoke('submit-certificate', {
       body: {
         certificateType: data.certificateType,
+        customCertificateName: data.customCertificateName || null,
         fullName: data.fullName,
         contactNumber: data.contactNumber,
         email: data.email || null,

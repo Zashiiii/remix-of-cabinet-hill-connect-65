@@ -37,6 +37,7 @@ import { logResidentCertificateRequest } from "@/utils/auditLog";
 
 const formSchema = z.object({
   certificateType: z.string().min(1, "Please select a certificate type"),
+  customCertificateName: z.string().trim().max(200, "Custom certificate name is too long").optional(),
   purpose: z.string().trim().min(10, "Please provide more details about the purpose (at least 10 characters)").max(500, "Purpose is too long"),
   priority: z.enum(["normal", "urgent"], {
     required_error: "Please select a priority level",
@@ -48,6 +49,14 @@ const formSchema = z.object({
     today.setHours(0, 0, 0, 0);
     return date >= today;
   }, "Pickup date must be today or a future date"),
+}).refine((data) => {
+  if (data.certificateType === "Others" && (!data.customCertificateName || data.customCertificateName.trim() === "")) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please specify the certificate type",
+  path: ["customCertificateName"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -66,13 +75,13 @@ interface ResidentCertificateRequestFormProps {
 }
 
 const certificateTypes = [
-  "Barangay Clearance",
   "Certificate of Indigency",
   "Certificate of Residency",
-  "Certificate of Good Moral Character",
-  "Business Permit Clearance",
-  "First Time Job Seeker Certificate",
-  "Certificate for Senior Citizen/PWD ID",
+  "Barangay Clearance",
+  "Business Clearance",
+  "Solo Parent Certification",
+  "Good Moral",
+  "Others",
 ];
 
 const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertificateRequestFormProps) => {
@@ -101,10 +110,13 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
     resolver: zodResolver(formSchema),
     defaultValues: {
       certificateType: "",
+      customCertificateName: "",
       purpose: "",
       priority: "normal",
     },
   });
+
+  const selectedCertificateType = form.watch("certificateType");
 
   const generateControlNumber = (): string => {
     const prefix = "BRG";
@@ -130,6 +142,7 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
         .insert({
           control_number: controlNumber,
           certificate_type: data.certificateType,
+          custom_certificate_name: data.certificateType === "Others" ? (data.customCertificateName?.trim() || null) : null,
           full_name: profile.fullName,
           contact_number: profile.contactNumber || "",
           email: profile.email,
@@ -204,7 +217,12 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
           render={({ field }) => (
             <FormItem>
               <FormLabel>Certificate Type / Uri ng Sertipiko *</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={(value) => {
+                field.onChange(value);
+                if (value !== "Others") {
+                  form.setValue("customCertificateName", "");
+                }
+              }} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger className="bg-background">
                     <SelectValue placeholder="Select certificate type" />
@@ -213,7 +231,7 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
                 <SelectContent className="bg-popover z-50">
                   {certificateTypes.map((type) => (
                     <SelectItem key={type} value={type}>
-                      {type}
+                      {type === "Others" ? "Others (Specify)" : type}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -222,6 +240,23 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
             </FormItem>
           )}
         />
+
+        {/* Custom Certificate Name - shown when "Others" is selected */}
+        {selectedCertificateType === "Others" && (
+          <FormField
+            control={form.control}
+            name="customCertificateName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Specify Certificate Type *</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter the certificate type you need" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* Request Details Section */}
         <div className="pt-4 border-t border-border">

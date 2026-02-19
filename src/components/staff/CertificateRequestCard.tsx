@@ -16,6 +16,7 @@ interface CertificateRequest {
   dbId?: string;
   residentName: string;
   certificateType: string;
+  customCertificateName?: string;
   dateSubmitted: string;
   status: RequestStatus;
   email?: string;
@@ -81,8 +82,13 @@ export function CertificateRequestCard({
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           {/* Header: Certificate Type + Status */}
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold">{request.certificateType}</h3>
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <h3 className="font-semibold">
+              {request.certificateType}
+              {request.certificateType === "Others" && request.customCertificateName && (
+                <span className="text-muted-foreground font-normal"> — {request.customCertificateName}</span>
+              )}
+            </h3>
             {getStatusBadge(request.status)}
           </div>
 

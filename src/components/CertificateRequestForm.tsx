@@ -37,6 +37,7 @@ import { logResidentCertificateRequest } from "@/utils/auditLog";
 
 const formSchema = z.object({
   certificateType: z.string().min(1, "Please select a certificate type"),
+  customCertificateName: z.string().trim().max(200, "Custom certificate name is too long").optional(),
   fullName: z.string().trim().min(2, "Full name must be at least 2 characters").max(100, "Full name is too long"),
   contactNumber: z.string().trim().regex(/^09\d{9}$/, "Contact number must be 11 digits starting with 09 (e.g., 09123456789)"),
   email: z.string().trim().email("Please enter a valid email address").optional().or(z.literal("")),
@@ -52,6 +53,14 @@ const formSchema = z.object({
     today.setHours(0, 0, 0, 0);
     return date >= today;
   }, "Pickup date must be today or a future date"),
+}).refine((data) => {
+  if (data.certificateType === "Others" && (!data.customCertificateName || data.customCertificateName.trim() === "")) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please specify the certificate type",
+  path: ["customCertificateName"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -61,13 +70,13 @@ interface CertificateRequestFormProps {
 }
 
 const certificateTypes = [
-  "Barangay Clearance",
   "Certificate of Indigency",
   "Certificate of Residency",
-  "Certificate of Good Moral Character",
-  "Business Permit Clearance",
-  "First Time Job Seeker Certificate",
-  "Certificate for Senior Citizen/PWD ID",
+  "Barangay Clearance",
+  "Business Clearance",
+  "Solo Parent Certification",
+  "Good Moral",
+  "Others",
 ];
 
 const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
@@ -77,6 +86,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       certificateType: "",
+      customCertificateName: "",
       fullName: "",
       contactNumber: "",
       email: "",
@@ -86,6 +96,8 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
     },
   });
 
+  const selectedCertificateType = form.watch("certificateType");
+
   const onSubmit = async (data: FormValues) => {
     try {
       setIsSubmitting(true);
@@ -93,6 +105,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
       // Call the API function
       const controlNumber = await submitCertificateRequest({
         certificateType: data.certificateType,
+        customCertificateName: data.certificateType === "Others" ? data.customCertificateName : undefined,
         fullName: data.fullName,
         contactNumber: data.contactNumber,
         email: data.email,
@@ -131,7 +144,12 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Certificate Type / Uri ng Sertipiko *</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={(value) => {
+                field.onChange(value);
+                if (value !== "Others") {
+                  form.setValue("customCertificateName", "");
+                }
+              }} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger className="bg-background">
                     <SelectValue placeholder="Select certificate type" />
@@ -140,7 +158,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
                 <SelectContent className="bg-popover z-50">
                   {certificateTypes.map((type) => (
                     <SelectItem key={type} value={type}>
-                      {type}
+                      {type === "Others" ? "Others (Specify)" : type}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -149,6 +167,23 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
             </FormItem>
           )}
         />
+
+        {/* Custom Certificate Name - shown when "Others" is selected */}
+        {selectedCertificateType === "Others" && (
+          <FormField
+            control={form.control}
+            name="customCertificateName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Specify Certificate Type *</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter the certificate type you need" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* Personal Information Section */}
         <div className="pt-4 border-t border-border">
