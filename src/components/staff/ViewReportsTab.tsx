@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import { 
   FileText, 
@@ -11,7 +11,11 @@ import {
   Loader2,
   Filter,
   CalendarIcon,
-  X
+  X,
+  Users,
+  Home,
+  ShieldAlert,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,12 +33,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getCertificateRequests } from "@/utils/staffApi";
 import { cn } from "@/lib/utils";
+import { useBarangayStats } from "@/context/BarangayStatsContext";
 import CertificateMonthlyChart from "@/components/staff/CertificateMonthlyChart";
 import CertificateTypePieChart from "@/components/staff/CertificateTypePieChart";
-import TopCertificateTypes from "@/components/staff/TopCertificateTypes";
 import IncidentMonthlyChart from "@/components/staff/IncidentMonthlyChart";
 import IncidentPurokChart from "@/components/staff/IncidentPurokChart";
-import IncidentYearlySummary from "@/components/staff/IncidentYearlySummary";
 import EcologicalCompletionCard from "@/components/staff/EcologicalCompletionCard";
 import ResidentAgeBracketChart from "@/components/staff/ResidentAgeBracketChart";
 import HouseholdIncomeChart from "@/components/staff/HouseholdIncomeChart";
@@ -75,8 +78,23 @@ interface CertificateRequest {
   rejectionReason?: string;
   createdAt: string;
 }
+const OverviewStatCard = ({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) => (
+  <Card>
+    <CardContent className="flex items-center gap-4 p-4">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="text-2xl font-bold tabular-nums">{value.toLocaleString()}</p>
+      </div>
+    </CardContent>
+  </Card>
+);
+
 
 const ViewReportsTab = () => {
+  const { totalResidents, totalHouseholds, incidentSummary } = useBarangayStats();
   const [activeTab, setActiveTab] = useState("incidents");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -268,6 +286,14 @@ const ViewReportsTab = () => {
   const pendingIncidentsCount = incidents.filter(i => i.approvalStatus === "pending").length;
   const pendingCertificatesCount = certificates.filter(c => c.status === "pending").length;
 
+  const certificatesThisMonth = useMemo(() => {
+    const now = new Date();
+    return certificates.filter(c => {
+      const d = new Date(c.createdAt);
+      return !isNaN(d.getTime()) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+  }, [certificates]);
+
   return (
     <Card>
       <CardHeader>
@@ -303,39 +329,77 @@ const ViewReportsTab = () => {
           </TabsList>
         </Tabs>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <CertificateMonthlyChart certificates={certificates} />
-          <CertificateTypePieChart certificates={certificates} />
-          <TopCertificateTypes certificates={certificates} />
+        {/* ── Section 1: Overview ── */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            Overview
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <OverviewStatCard label="Total Residents" value={totalResidents} icon={<Users className="h-5 w-5 text-primary" />} />
+            <OverviewStatCard label="Total Households" value={totalHouseholds} icon={<Home className="h-5 w-5 text-primary" />} />
+            <OverviewStatCard label="Total Incidents (This Year)" value={incidentSummary.total} icon={<ShieldAlert className="h-5 w-5 text-destructive" />} />
+            <OverviewStatCard label="Certificate Requests (This Month)" value={certificatesThisMonth} icon={<FileText className="h-5 w-5 text-primary" />} />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <IncidentYearlySummary
-            incidents={incidents.map((i) => ({ rawCreatedAt: i.rawCreatedAt }))}
-          />
-          <IncidentMonthlyChart
-            incidents={incidents.map((i) => ({
-              incidentType: i.incidentType,
-              createdAt: i.createdAt,
-            }))}
-          />
-          <IncidentPurokChart
-            incidents={incidents.map((i) => ({
-              incidentLocation: i.incidentLocation,
-              rawCreatedAt: i.rawCreatedAt,
-            }))}
-          />
+        <Separator className="mb-8" />
+
+        {/* ── Section 2: Incident Analytics ── */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            Incident Analytics
+          </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <IncidentMonthlyChart
+              incidents={incidents.map((i) => ({
+                incidentType: i.incidentType,
+                createdAt: i.createdAt,
+              }))}
+            />
+            <IncidentPurokChart
+              incidents={incidents.map((i) => ({
+                incidentLocation: i.incidentLocation,
+                rawCreatedAt: i.rawCreatedAt,
+              }))}
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <ResidentAgeBracketChart />
-          <HouseholdIncomeChart />
+        <Separator className="mb-8" />
+
+        {/* ── Section 3: Population & Household Analytics ── */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <Users className="h-5 w-5 text-primary" />
+            Population &amp; Household Analytics
+          </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <ResidentAgeBracketChart />
+            <ResidentsPerPurokChart />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <HouseholdIncomeChart />
+            <EcologicalCompletionCard />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <ResidentsPerPurokChart />
-          <EcologicalCompletionCard />
+        <Separator className="mb-8" />
+
+        {/* ── Section 4: Certificate Services Analytics ── */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <FileText className="h-5 w-5 text-primary" />
+            Certificate Services Analytics
+          </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <CertificateMonthlyChart certificates={certificates} />
+            <CertificateTypePieChart certificates={certificates} />
+          </div>
         </div>
+
+        <Separator className="mb-8" />
 
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
