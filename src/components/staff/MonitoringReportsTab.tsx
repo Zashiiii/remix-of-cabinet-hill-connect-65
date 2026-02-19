@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  FileText, Plus, Pencil, Trash2, Loader2, Eye, Search, Send,
+  FileText, Plus, Pencil, Trash2, Loader2, Eye, Search, Send, RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { getMonitoringReports, deleteMonitoringReport } from "@/utils/staffApi";
+import { getMonitoringReports, deleteMonitoringReport, reopenMonitoringReport } from "@/utils/staffApi";
 import MonitoringReportForm from "./MonitoringReportForm";
 
 interface MonitoringReport {
@@ -86,11 +86,24 @@ const MonitoringReportsTab = () => {
     );
   });
 
+  const handleReopen = async (report: MonitoringReport) => {
+    try {
+      await reopenMonitoringReport(report.id);
+      toast.success("Report reopened as draft");
+      loadReports();
+    } catch (error) {
+      console.error("Error reopening report:", error);
+      toast.error("Failed to reopen report");
+    }
+  };
+
   if (showForm || editingReport || viewingReport) {
+    const viewedReport = viewingReport ? reports.find(r => r.id === viewingReport) : null;
+    const isSubmitted = viewedReport?.status === "submitted";
     return (
       <MonitoringReportForm
         reportId={editingReport || viewingReport || undefined}
-        readOnly={!!viewingReport}
+        readOnly={isSubmitted}
         onBack={() => {
           setShowForm(false);
           setEditingReport(null);
@@ -214,6 +227,16 @@ const MonitoringReportsTab = () => {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </>
+                          )}
+                          {report.status === "submitted" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleReopen(report)}
+                              title="Reopen as Draft"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>

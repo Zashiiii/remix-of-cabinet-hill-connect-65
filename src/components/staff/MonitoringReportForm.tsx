@@ -258,7 +258,9 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
       toast.success(
         asSubmitted
           ? "Report submitted successfully"
-          : "Report saved as draft"
+          : reportId
+            ? "Monitoring Report successfully updated."
+            : "Report saved as draft"
       );
       onBack();
     } catch (error: any) {

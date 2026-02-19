@@ -198,3 +198,7 @@ export const updateMonitoringReport = async (id: string, payload: Record<string,
 export const deleteMonitoringReport = async (id: string) => {
   return callStaffApi('delete-monitoring-report', { id });
 };
+
+export const reopenMonitoringReport = async (id: string) => {
+  return callStaffApi('reopen-monitoring-report', { id });
+};
