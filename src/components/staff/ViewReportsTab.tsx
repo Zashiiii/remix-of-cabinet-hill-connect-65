@@ -99,6 +99,7 @@ const ViewReportsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [analyticsCategory, setAnalyticsCategory] = useState("all");
   
   // Date range filter state
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
@@ -329,6 +330,32 @@ const ViewReportsTab = () => {
           </TabsList>
         </Tabs>
 
+        {/* ── Analytics Category Filter ── */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {(["all", "incidents", "certificates", "residents", "household"] as const).map((cat) => {
+            const labels: Record<string, { label: string; icon: React.ReactNode }> = {
+              all: { label: "All", icon: <BarChart3 className="h-4 w-4" /> },
+              incidents: { label: "Incidents", icon: <ShieldAlert className="h-4 w-4" /> },
+              certificates: { label: "Certificates", icon: <FileText className="h-4 w-4" /> },
+              residents: { label: "Residents", icon: <Users className="h-4 w-4" /> },
+              household: { label: "Household", icon: <Home className="h-4 w-4" /> },
+            };
+            const { label, icon } = labels[cat];
+            return (
+              <Button
+                key={cat}
+                variant={analyticsCategory === cat ? "default" : "outline"}
+                size="sm"
+                onClick={() => setAnalyticsCategory(cat)}
+                className="gap-1.5"
+              >
+                {icon}
+                {label}
+              </Button>
+            );
+          })}
+        </div>
+
         {/* ── Section 1: Overview ── */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
@@ -336,68 +363,89 @@ const ViewReportsTab = () => {
             Overview
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <OverviewStatCard label="Total Residents" value={totalResidents} icon={<Users className="h-5 w-5 text-primary" />} />
-            <OverviewStatCard label="Total Households" value={totalHouseholds} icon={<Home className="h-5 w-5 text-primary" />} />
-            <OverviewStatCard label="Total Incidents (This Year)" value={incidentSummary.total} icon={<ShieldAlert className="h-5 w-5 text-destructive" />} />
-            <OverviewStatCard label="Certificate Requests (This Month)" value={certificatesThisMonth} icon={<FileText className="h-5 w-5 text-primary" />} />
+            {(analyticsCategory === "all" || analyticsCategory === "residents") && (
+              <OverviewStatCard label="Total Residents" value={totalResidents} icon={<Users className="h-5 w-5 text-primary" />} />
+            )}
+            {(analyticsCategory === "all" || analyticsCategory === "household") && (
+              <OverviewStatCard label="Total Households" value={totalHouseholds} icon={<Home className="h-5 w-5 text-primary" />} />
+            )}
+            {(analyticsCategory === "all" || analyticsCategory === "incidents") && (
+              <OverviewStatCard label="Total Incidents (This Year)" value={incidentSummary.total} icon={<ShieldAlert className="h-5 w-5 text-destructive" />} />
+            )}
+            {(analyticsCategory === "all" || analyticsCategory === "certificates") && (
+              <OverviewStatCard label="Certificate Requests (This Month)" value={certificatesThisMonth} icon={<FileText className="h-5 w-5 text-primary" />} />
+            )}
           </div>
         </div>
-
-        <Separator className="mb-8" />
 
         {/* ── Section 2: Incident Analytics ── */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            Incident Analytics
-          </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <IncidentMonthlyChart
-              incidents={incidents.map((i) => ({
-                incidentType: i.incidentType,
-                createdAt: i.createdAt,
-              }))}
-            />
-            <IncidentPurokChart
-              incidents={incidents.map((i) => ({
-                incidentLocation: i.incidentLocation,
-                rawCreatedAt: i.rawCreatedAt,
-              }))}
-            />
-          </div>
-        </div>
-
-        <Separator className="mb-8" />
+        {(analyticsCategory === "all" || analyticsCategory === "incidents") && (
+          <>
+            <Separator className="mb-8" />
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Incident Analytics
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <IncidentMonthlyChart
+                  incidents={incidents.map((i) => ({
+                    incidentType: i.incidentType,
+                    createdAt: i.createdAt,
+                  }))}
+                />
+                <IncidentPurokChart
+                  incidents={incidents.map((i) => ({
+                    incidentLocation: i.incidentLocation,
+                    rawCreatedAt: i.rawCreatedAt,
+                  }))}
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* ── Section 3: Population & Household Analytics ── */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-            <Users className="h-5 w-5 text-primary" />
-            Population &amp; Household Analytics
-          </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <ResidentAgeBracketChart />
-            <ResidentsPerPurokChart />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <HouseholdIncomeChart />
-            <EcologicalCompletionCard />
-          </div>
-        </div>
-
-        <Separator className="mb-8" />
+        {(analyticsCategory === "all" || analyticsCategory === "residents" || analyticsCategory === "household") && (
+          <>
+            <Separator className="mb-8" />
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                <Users className="h-5 w-5 text-primary" />
+                Population &amp; Household Analytics
+              </h3>
+              {(analyticsCategory === "all" || analyticsCategory === "residents") && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <ResidentAgeBracketChart />
+                  <ResidentsPerPurokChart />
+                </div>
+              )}
+              {(analyticsCategory === "all" || analyticsCategory === "household") && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <HouseholdIncomeChart />
+                  <EcologicalCompletionCard />
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {/* ── Section 4: Certificate Services Analytics ── */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-            <FileText className="h-5 w-5 text-primary" />
-            Certificate Services Analytics
-          </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <CertificateMonthlyChart certificates={certificates} />
-            <CertificateTypePieChart certificates={certificates} />
-          </div>
-        </div>
+        {(analyticsCategory === "all" || analyticsCategory === "certificates") && (
+          <>
+            <Separator className="mb-8" />
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                <FileText className="h-5 w-5 text-primary" />
+                Certificate Services Analytics
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <CertificateMonthlyChart certificates={certificates} />
+                <CertificateTypePieChart certificates={certificates} />
+              </div>
+            </div>
+          </>
+        )}
 
         <Separator className="mb-8" />
 
