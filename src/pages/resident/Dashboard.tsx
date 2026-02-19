@@ -15,7 +15,8 @@ import {
   ChevronRight,
   Loader2,
   ArrowLeft,
-  Leaf
+  Leaf,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -49,6 +50,8 @@ interface Request {
   status: string;
   dateSubmitted: string;
   rejectionReason?: string;
+  priority?: string;
+  preferredPickupDate?: string;
 }
 
 interface Announcement {
@@ -57,7 +60,10 @@ interface Announcement {
   content: string;
   type: string;
   createdAt: string;
+  imageUrl?: string;
 }
+
+type EcoStatus = "none" | "pending" | "approved" | "rejected";
 
 const ResidentSidebar = ({ 
   activeTab, 
@@ -141,6 +147,39 @@ const ResidentSidebar = ({
   );
 };
 
+const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = announcement.content.length > 200;
+
+  return (
+    <div className="p-3 rounded-lg border bg-card">
+      <div className="flex items-start justify-between">
+        <h4 className="font-medium">{announcement.title}</h4>
+        <Badge variant={announcement.type === "important" ? "destructive" : "secondary"}>
+          {announcement.type}
+        </Badge>
+      </div>
+      {announcement.imageUrl && (
+        <img
+          src={announcement.imageUrl}
+          alt={announcement.title}
+          className="w-full h-32 object-cover rounded-md mt-2"
+          loading="lazy"
+        />
+      )}
+      <p className={`text-sm text-muted-foreground mt-1 ${!expanded && isLong ? "line-clamp-3" : ""}`}>
+        {announcement.content}
+      </p>
+      {isLong && (
+        <Button variant="link" size="sm" className="px-0 h-auto text-xs" onClick={() => setExpanded(!expanded)}>
+          {expanded ? "Show Less" : "View More"}
+        </Button>
+      )}
+      <p className="text-xs text-muted-foreground mt-1">{announcement.createdAt}</p>
+    </div>
+  );
+};
+
 const ResidentDashboard = () => {
   const navigate = useNavigate();
   const { user, profile, isAuthenticated, isLoading: authLoading, logout } = useResidentAuth();
@@ -151,6 +190,7 @@ const ResidentDashboard = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submittedControlNumber, setSubmittedControlNumber] = useState("");
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [ecoStatus, setEcoStatus] = useState<EcoStatus>("none");
 
   // Auth is now handled by ResidentProtectedRoute wrapper
 
@@ -179,10 +219,14 @@ const ResidentDashboard = () => {
           status: r.status || "pending",
           dateSubmitted: new Date(r.created_at || "").toLocaleDateString(),
           rejectionReason: r.rejection_reason || r.notes,
+          priority: r.priority || "Normal",
+          preferredPickupDate: r.preferred_pickup_date
+            ? new Date(r.preferred_pickup_date).toLocaleDateString()
+            : undefined,
         })));
       }
 
-      // Load announcements
+      // Load announcements with image
       const announcementsData = await fetchActiveAnnouncements();
       if (announcementsData) {
         setAnnouncements(announcementsData.slice(0, 3).map((a: any) => ({
@@ -191,6 +235,7 @@ const ResidentDashboard = () => {
           content: a.content,
           type: a.type,
           createdAt: new Date(a.created_at).toLocaleDateString(),
+          imageUrl: a.image_url || undefined,
         })));
       }
 
@@ -200,6 +245,23 @@ const ResidentDashboard = () => {
           p_user_id: user.id,
         });
         setUnreadMessageCount(msgCount || 0);
+      }
+
+      // Load ecological profile status
+      if (profile?.id) {
+        const { data: ecoData } = await supabase
+          .from("ecological_profile_submissions")
+          .select("status")
+          .eq("submitted_by_resident_id", profile.id)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (ecoData && ecoData.length > 0) {
+          const s = ecoData[0].status;
+          setEcoStatus(s === "approved" ? "approved" : s === "rejected" ? "rejected" : "pending");
+        } else {
+          setEcoStatus("none");
+        }
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -271,6 +333,8 @@ const ResidentDashboard = () => {
     );
   };
 
+  const latestRequest = requests.length > 0 ? requests[0] : null;
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -308,8 +372,118 @@ const ResidentDashboard = () => {
                 </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* Status Cards Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* My Latest Request Status */}
+                <Card className="border-l-4 border-l-primary">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      My Latest Request Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    ) : latestRequest ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold">{latestRequest.certificateType}</p>
+                          {getStatusBadge(latestRequest.status)}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Control No: {latestRequest.controlNumber} • {latestRequest.dateSubmitted}
+                        </p>
+                        {latestRequest.priority?.toLowerCase() === "urgent" && (
+                          <Badge variant="destructive" className="text-xs">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Urgent
+                          </Badge>
+                        )}
+                        {latestRequest.preferredPickupDate && latestRequest.status === "approved" && (
+                          <p className="text-sm flex items-center gap-1 text-muted-foreground">
+                            <CalendarDays className="h-3 w-3" />
+                            Est. Pickup: {latestRequest.preferredPickupDate}
+                          </p>
+                        )}
+                        {latestRequest.status === "rejected" && latestRequest.rejectionReason && (
+                          <p className="text-sm text-destructive">Reason: {latestRequest.rejectionReason}</p>
+                        )}
+                        <Button variant="link" size="sm" className="px-0" onClick={() => setActiveTab("requests")}>
+                          View all requests →
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-muted-foreground">
+                        <p className="text-sm">No requests yet</p>
+                        <Button variant="link" size="sm" onClick={() => setActiveTab("request")}>
+                          Request your first certificate
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Ecological Profile Status */}
+                <Card className="border-l-4 border-l-accent">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Leaf className="h-4 w-4 text-accent" />
+                      Ecological Profile Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          {ecoStatus === "approved" && (
+                            <Badge variant="outline" className="capitalize">
+                              <CheckCircle className="h-3 w-3 mr-1" /> Approved
+                            </Badge>
+                          )}
+                          {ecoStatus === "pending" && (
+                            <Badge variant="secondary" className="capitalize">
+                              <Clock className="h-3 w-3 mr-1" /> Pending Approval
+                            </Badge>
+                          )}
+                          {ecoStatus === "rejected" && (
+                            <Badge variant="destructive" className="capitalize">
+                              <XCircle className="h-3 w-3 mr-1" /> Rejected
+                            </Badge>
+                          )}
+                          {ecoStatus === "none" && (
+                            <Badge variant="secondary" className="capitalize">
+                              Not Submitted
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {ecoStatus === "none"
+                            ? "Submit your household ecological profile to help improve barangay services."
+                            : ecoStatus === "pending"
+                            ? "Your submission is being reviewed by staff."
+                            : ecoStatus === "approved"
+                            ? "Your ecological profile has been approved and recorded."
+                            : "Your submission was returned. Please update and resubmit."}
+                        </p>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="px-0"
+                          onClick={() => navigate("/resident/ecological-profile")}
+                        >
+                          {ecoStatus === "none" ? "Submit Profile →" : "Update Profile →"}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Quick Actions - reduced */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <Card 
                   className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-primary"
                   onClick={() => setActiveTab("request")}
@@ -328,139 +502,48 @@ const ResidentDashboard = () => {
 
                 <Card 
                   className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-accent"
-                  onClick={() => setActiveTab("requests")}
+                  onClick={() => navigate("/resident/incidents")}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
                     <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-                      <Clock className="h-6 w-6 text-accent" />
+                      <AlertCircle className="h-6 w-6 text-accent" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">My Requests</h3>
-                      <p className="text-sm text-muted-foreground">Track your certificate requests</p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-amber-500"
-                  onClick={() => navigate("/resident/profile")}
-                >
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-                      <User className="h-6 w-6 text-amber-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">My Profile</h3>
-                      <p className="text-sm text-muted-foreground">Update your information</p>
+                      <h3 className="font-semibold">Report Incident</h3>
+                      <p className="text-sm text-muted-foreground">File a blotter or complaint</p>
                     </div>
                     <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
                   </CardContent>
                 </Card>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Recent Requests */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">Recent Requests</CardTitle>
-                      <CardDescription>Your latest certificate requests</CardDescription>
+              {/* Announcements - full width */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Announcements</CardTitle>
+                    <CardDescription>Latest barangay updates</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setActiveTab("requests")}>
-                      View All
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                      </div>
-                    ) : requests.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p>No certificate requests yet</p>
-                        <Button 
-                          variant="link" 
-                          className="mt-2"
-                          onClick={() => setActiveTab("request")}
-                        >
-                          Request your first certificate
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {requests.map((request) => (
-                          <div 
-                            key={request.id} 
-                            className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                          >
-                            <div>
-                              <p className="font-medium">{request.certificateType}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {request.controlNumber} • {request.dateSubmitted}
-                              </p>
-                              {request.status === "rejected" && request.rejectionReason && (
-                                <p className="text-sm text-destructive mt-1">
-                                  Reason: {request.rejectionReason}
-                                </p>
-                              )}
-                            </div>
-                            {getStatusBadge(request.status)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Announcements */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">Announcements</CardTitle>
-                      <CardDescription>Latest barangay updates</CardDescription>
+                  ) : announcements.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Bell className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No announcements at the moment</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setActiveTab("announcements")}>
-                      View All
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                      </div>
-                    ) : announcements.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Bell className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p>No announcements at the moment</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {announcements.map((announcement) => (
-                          <div 
-                            key={announcement.id} 
-                            className="p-3 rounded-lg border bg-card"
-                          >
-                            <div className="flex items-start justify-between">
-                              <h4 className="font-medium">{announcement.title}</h4>
-                              <Badge variant={announcement.type === "important" ? "destructive" : "secondary"}>
-                                {announcement.type}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              {announcement.content}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {announcement.createdAt}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {announcements.map((announcement) => (
+                        <AnnouncementItem key={announcement.id} announcement={announcement} />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </>
           )}
 
@@ -559,9 +642,15 @@ const ResidentDashboard = () => {
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <h3 className="font-semibold">{request.certificateType}</h3>
                                 {getStatusBadge(request.status)}
+                                {request.priority?.toLowerCase() === "urgent" && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    <AlertCircle className="h-3 w-3 mr-1" />
+                                    Urgent
+                                  </Badge>
+                                )}
                               </div>
                               <p className="text-sm text-muted-foreground">
                                 Control No: {request.controlNumber}
@@ -584,6 +673,12 @@ const ResidentDashboard = () => {
                                   <p className="text-sm text-accent font-medium">
                                     Ready for Pickup
                                   </p>
+                                  {request.preferredPickupDate && (
+                                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                      <CalendarDays className="h-3 w-3" />
+                                      Est. Pickup: {request.preferredPickupDate}
+                                    </p>
+                                  )}
                                 </div>
                               )}
                             </div>
