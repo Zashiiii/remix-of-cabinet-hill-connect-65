@@ -868,7 +868,7 @@ serve(async (req) => {
     // Create announcement
     if (action === 'create-announcement') {
       const token = getTokenFromCookie(req);
-      const { title, content, titleTl, contentTl, type } = body;
+      const { title, content, titleTl, contentTl, type, imageUrl } = body;
       
       const session = await validateStaffSession(token);
       if (!session) {
@@ -887,7 +887,8 @@ serve(async (req) => {
           content_tl: contentTl || null,
           type: type || 'info',
           created_by: session.full_name,
-          is_active: true
+          is_active: true,
+          image_url: imageUrl || null,
         })
         .select()
         .single();
@@ -910,7 +911,7 @@ serve(async (req) => {
     // Update announcement
     if (action === 'update-announcement') {
       const token = getTokenFromCookie(req);
-      const { id, title, content, titleTl, contentTl, type, isActive } = body;
+      const { id, title, content, titleTl, contentTl, type, isActive, imageUrl } = body;
       
       const session = await validateStaffSession(token);
       if (!session) {
@@ -934,6 +935,7 @@ serve(async (req) => {
       if (contentTl !== undefined) updateData.content_tl = contentTl;
       if (type !== undefined) updateData.type = type;
       if (isActive !== undefined) updateData.is_active = isActive;
+      if (imageUrl !== undefined) updateData.image_url = imageUrl;
 
       const { error } = await supabase
         .from('announcements')

@@ -69,6 +69,7 @@ export const createAnnouncementStaff = async (announcement: {
   titleTl?: string;
   contentTl?: string;
   type?: string;
+  imageUrl?: string;
 }) => {
   return callStaffApi('create-announcement', announcement);
 };
@@ -82,6 +83,7 @@ export const updateAnnouncementStaff = async (
     contentTl?: string;
     type?: string;
     isActive?: boolean;
+    imageUrl?: string;
   }
 ) => {
   return callStaffApi('update-announcement', { id, ...announcement });
