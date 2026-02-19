@@ -369,6 +369,10 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
           </div>
           {!readOnly && (
             <div className="flex gap-2">
+              <Button variant="outline" onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print Report
+              </Button>
               <Button variant="outline" onClick={() => handleSave(false)} disabled={isSaving}>
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                 Save Draft
