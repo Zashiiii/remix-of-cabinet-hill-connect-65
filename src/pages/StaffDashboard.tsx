@@ -131,6 +131,7 @@ import EcologicalSubmissionsTab from "@/components/staff/EcologicalSubmissionsTa
 import HouseholdLinkRequestsTab from "@/components/staff/HouseholdLinkRequestsTab";
 import CertificateRequestForm from "@/components/CertificateRequestForm";
 import CertificateRequestCard from "@/components/staff/CertificateRequestCard";
+import MonitoringReportsTab from "@/components/staff/MonitoringReportsTab";
 import { hasPermission, canAccessAdminSection, FeatureKey } from "@/utils/rolePermissions";
 
 interface PendingRequest {
@@ -215,6 +216,7 @@ const StaffSidebar = ({
     { title: "Household Link Requests", icon: Home, tab: "household-link-requests", badge: pendingHouseholdLinkCount && pendingHouseholdLinkCount > 0 ? pendingHouseholdLinkCount : undefined, feature: "household_link_requests" as FeatureKey },
     { title: "Staff Management", icon: Shield, route: "/admin/staff", feature: "staff_management" as FeatureKey },
     { title: "Audit Logs", icon: History, tab: "audit-logs", feature: "audit_logs" as FeatureKey },
+    { title: "Monitoring Reports", icon: BarChart3, tab: "monitoring-reports", feature: "monitoring_reports" as FeatureKey },
   ];
 
   // Filter menu items based on role permissions
@@ -2659,6 +2661,8 @@ const StaffDashboard = () => {
             {activeTab === "ecological-submissions" && <EcologicalSubmissionsTab />}
 
             {activeTab === "household-link-requests" && <HouseholdLinkRequestsTab staffName={user?.fullName || "Staff Admin"} />}
+
+            {activeTab === "monitoring-reports" && <MonitoringReportsTab />}
           </main>
         </div>
       </div>
