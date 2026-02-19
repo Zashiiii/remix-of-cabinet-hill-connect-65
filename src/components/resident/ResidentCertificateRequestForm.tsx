@@ -29,8 +29,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, User } from "lucide-react";
+import { CalendarIcon, Loader2, User, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,7 @@ const formSchema = z.object({
   priority: z.enum(["normal", "urgent"], {
     required_error: "Please select a priority level",
   }),
+  urgencyReason: z.string().trim().max(500, "Urgency reason is too long").optional(),
   preferredPickupDate: z.date({
     required_error: "Please select your preferred pickup date",
   }).refine((date) => {
@@ -58,6 +60,14 @@ const formSchema = z.object({
 }, {
   message: "Please specify the certificate type",
   path: ["customCertificateName"],
+}).refine((data) => {
+  if (data.priority === "urgent" && (!data.urgencyReason || data.urgencyReason.trim() === "")) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please provide a reason for urgency",
+  path: ["urgencyReason"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -79,6 +89,7 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
   const { types: certificateTypeOptions, isLoading: isLoadingTypes } = useCertificateTypes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [householdNumber, setHouseholdNumber] = useState<string | null>(null);
+  const navigate = useNavigate();
   
   useEffect(() => {
     const fetchHouseholdNumber = async () => {
@@ -105,10 +116,12 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
       customCertificateName: "",
       purpose: "",
       priority: "normal",
+      urgencyReason: "",
     },
   });
 
   const selectedCertificateType = form.watch("certificateType");
+  const selectedPriority = form.watch("priority");
 
   const generateControlNumber = (): string => {
     const prefix = "BRG";
@@ -141,6 +154,7 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
           household_number: householdNumber,
           purpose: data.purpose,
           priority: data.priority,
+          urgency_reason: data.priority === "urgent" ? (data.urgencyReason?.trim() || null) : null,
           preferred_pickup_date: format(data.preferredPickupDate, "yyyy-MM-dd"),
           status: "pending",
           resident_id: profile.id,
@@ -197,8 +211,18 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
         </div>
 
         {!householdNumber && (
-          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-            ⚠️ You need to be assigned to a household before requesting certificates. Please contact the Barangay office.
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm space-y-2">
+            <p>⚠️ You need to be assigned to a household before requesting certificates. Please contact the Barangay office or complete your Ecological Profile.</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => navigate("/resident/ecological-profile")}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Complete Ecological Profile
+            </Button>
           </div>
         )}
 
@@ -310,6 +334,26 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
                 </FormItem>
               )}
             />
+
+            {selectedPriority === "urgent" && (
+              <FormField
+                control={form.control}
+                name="urgencyReason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reason for Urgency / Dahilan ng Pagmamadali *</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Please explain why this request is urgent..."
+                        className="min-h-[80px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
