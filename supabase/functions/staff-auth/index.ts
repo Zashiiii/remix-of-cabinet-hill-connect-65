@@ -1860,6 +1860,180 @@ serve(async (req) => {
       );
     }
 
+    // ========== MONITORING REPORTS (admin only) ==========
+
+    if (action === 'get-monitoring-reports') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session || session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('monitoring_reports')
+        .select('id, region, province, city_municipality, barangay, semester, calendar_year, status, created_by, created_at, updated_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch monitoring reports' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'get-monitoring-report') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session || session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const id = body?.id;
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'Report ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('monitoring_reports')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch monitoring report' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'create-monitoring-report') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session || session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { action: _, ...payload } = body;
+      const { data, error } = await supabase
+        .from('monitoring_reports')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating monitoring report:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create monitoring report' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'update-monitoring-report') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session || session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { action: _, id, ...payload } = body;
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'Report ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('monitoring_reports')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating monitoring report:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update monitoring report' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'delete-monitoring-report') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session || session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const id = body?.id;
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'Report ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase
+        .from('monitoring_reports')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting monitoring report:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to delete monitoring report' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== LOGIN (default) ==========
     console.log('Processing LOGIN action');
     const username = body?.username;
