@@ -35,7 +35,7 @@ const ROLES = [
   { value: "barangay_captain", label: "Barangay Captain", description: "Head of barangay with full privileges" },
   { value: "barangay_official", label: "Barangay Kagawad", description: "Elected barangay council member" },
   { value: "secretary", label: "Barangay Secretary", description: "Handles documentation and records" },
-  { value: "treasurer", label: "Barangay Treasurer", description: "Handles financial matters" },
+  
   { value: "sk_chairman", label: "SK Chairman", description: "Head of Sangguniang Kabataan" },
 ];
 

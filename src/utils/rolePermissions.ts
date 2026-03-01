@@ -5,7 +5,6 @@ export type StaffRole =
   | 'barangay_captain' 
   | 'barangay_official' 
   | 'secretary' 
-  | 'treasurer' 
   | 'sk_chairman';
 
 export type FeatureKey =
@@ -43,12 +42,12 @@ const ROLE_PERMISSIONS: Record<FeatureKey, StaffRole[]> = {
   announcements: ['admin', 'barangay_captain', 'barangay_official', 'secretary'],
   
   // Common features
-  view_reports: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'treasurer', 'sk_chairman'],
-  certificate_requests: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'treasurer', 'sk_chairman'],
-  ecological_profile: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'treasurer', 'sk_chairman'],
-  create_certificate: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'treasurer', 'sk_chairman'],
+  view_reports: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
+  certificate_requests: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
+  ecological_profile: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
+  create_certificate: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
   incidents: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
-  settings: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'treasurer', 'sk_chairman'],
+  settings: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
 };
 
 // Role display names for UI
@@ -57,7 +56,6 @@ export const ROLE_DISPLAY_NAMES: Record<StaffRole, string> = {
   barangay_captain: 'Barangay Captain',
   barangay_official: 'Barangay Official',
   secretary: 'Secretary',
-  treasurer: 'Treasurer',
   sk_chairman: 'SK Chairman',
 };
 
