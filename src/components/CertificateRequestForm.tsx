@@ -128,7 +128,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
         fullName: `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}${r.suffix ? ' ' + r.suffix : ''}`.trim(),
         email: r.email || "",
         contactNumber: r.contact_number || "",
-        householdNumber: r.households?.household_number || null,
+        householdNumber: r.household_number || null,
       }));
 
       setSearchResults(results);
