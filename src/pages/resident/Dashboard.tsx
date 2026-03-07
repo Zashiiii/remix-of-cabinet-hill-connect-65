@@ -202,6 +202,10 @@ const ResidentDashboard = () => {
   const [pullDistance, setPullDistance] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
 
+  // Swipe animation state
+  const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
+  const [tabBounceKey, setTabBounceKey] = useState(0);
+
   // Touch refs for swipe and pull
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const mainContentRef = useRef<HTMLElement>(null);
@@ -339,9 +343,11 @@ const ResidentDashboard = () => {
       }
       if (deltaX < 0 && currentIndex < MOBILE_TAB_ORDER.length - 1) {
         // Swipe left → next tab
+        setSwipeDirection("left");
         handleTabChange(MOBILE_TAB_ORDER[currentIndex + 1]);
       } else if (deltaX > 0 && currentIndex > 0) {
         // Swipe right → previous tab
+        setSwipeDirection("right");
         handleTabChange(MOBILE_TAB_ORDER[currentIndex - 1]);
       }
     }
@@ -363,6 +369,10 @@ const ResidentDashboard = () => {
   };
 
   const handleTabChange = (tab: string) => {
+    setTabBounceKey(prev => prev + 1);
+    // Clear swipe animation after it plays
+    setTimeout(() => setSwipeDirection(null), 250);
+    
     if (tab === "profile") {
       navigate("/resident/profile");
     } else if (tab === "settings") {
@@ -434,7 +444,10 @@ const ResidentDashboard = () => {
         
         <main 
           ref={mainContentRef}
-          className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-auto"
+          className={`flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-auto ${
+            swipeDirection === "left" ? "animate-swipe-in-left" : 
+            swipeDirection === "right" ? "animate-swipe-in-right" : ""
+          }`}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -815,7 +828,7 @@ const ResidentDashboard = () => {
                     isActive ? "text-primary" : "text-muted-foreground"
                   }`}
                 >
-                  <item.icon className="h-5 w-5" />
+                  <item.icon className={`h-5 w-5 ${isActive ? "animate-tab-bounce" : ""}`} key={isActive ? tabBounceKey : undefined} />
                   {item.tab === "messages" && unreadMessageCount > 0 && (
                     <span className="absolute top-2 right-1/4 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
                       {unreadMessageCount}
