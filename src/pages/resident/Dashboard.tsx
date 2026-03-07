@@ -350,7 +350,7 @@ const ResidentDashboard = () => {
   }, [isMobile, isPulling, pullDistance, isRefreshing, activeTab]);
 
 
-    // Log the logout action
+    const handleLogout = async () => {
     if (user && profile) {
       const fullName = profile.firstName && profile.lastName 
         ? `${profile.firstName} ${profile.lastName}`
