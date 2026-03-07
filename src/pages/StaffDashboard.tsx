@@ -1976,6 +1976,7 @@ const StaffDashboard = () => {
                           <p className="text-sm">No incident reports yet</p>
                         </div>
                       ) : (
+                        <>
                         {/* Mobile cards */}
                         <div className="md:hidden space-y-3">
                           {recentIncidents.map((incident) => {
@@ -2038,6 +2039,7 @@ const StaffDashboard = () => {
                             </TableBody>
                           </Table>
                         </div>
+                        </>
                       )}
                     </CardContent>
                   </Card>
