@@ -432,7 +432,28 @@ const ResidentDashboard = () => {
           unreadMessageCount={unreadMessageCount}
         />
         
-        <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-auto">
+        <main 
+          ref={mainContentRef}
+          className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-auto"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Pull-to-refresh indicator */}
+          {isMobile && (isPulling || isRefreshing) && (
+            <div 
+              className="flex items-center justify-center transition-all duration-200 overflow-hidden"
+              style={{ height: isRefreshing ? 48 : pullDistance * 0.8 }}
+            >
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""} ${pullDistance >= pullThreshold ? "text-primary" : ""}`} />
+                <span>
+                  {isRefreshing ? "Refreshing..." : pullDistance >= pullThreshold ? "Release to refresh" : "Pull to refresh"}
+                </span>
+              </div>
+            </div>
+          )}
+
           {activeTab === "dashboard" && (
             <>
               <div className="flex items-center justify-between mb-6">
