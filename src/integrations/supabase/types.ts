@@ -1886,6 +1886,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      search_residents_for_certificate: {
+        Args: { p_query: string }
+        Returns: {
+          contact_number: string
+          email: string
+          first_name: string
+          household_id: string
+          household_number: string
+          id: string
+          last_name: string
+          middle_name: string
+          suffix: string
+        }[]
+      }
       soft_delete_ecological_submission: {
         Args: { p_deleted_by: string; p_submission_id: string }
         Returns: boolean
