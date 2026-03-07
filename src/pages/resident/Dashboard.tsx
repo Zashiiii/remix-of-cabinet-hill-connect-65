@@ -353,7 +353,7 @@ const ResidentDashboard = () => {
           unreadMessageCount={unreadMessageCount}
         />
         
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
+        <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-auto">
           {activeTab === "dashboard" && (
             <>
               <div className="flex items-center justify-between mb-6">
@@ -695,6 +695,38 @@ const ResidentDashboard = () => {
 
         {/* Floating Chat Widget */}
         <ChatWidget />
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background border-t shadow-medium">
+          <div className="flex items-center justify-around h-16">
+            {[
+              { icon: Home, label: "Home", tab: "dashboard" },
+              { icon: FileText, label: "Requests", tab: "requests" },
+              { icon: MessageSquare, label: "Messages", tab: "messages" },
+              { icon: AlertCircle, label: "Incidents", tab: "incidents" },
+              { icon: User, label: "Profile", tab: "profile" },
+            ].map((item) => {
+              const isActive = activeTab === item.tab;
+              return (
+                <button
+                  key={item.tab}
+                  onClick={() => handleTabChange(item.tab)}
+                  className={`flex flex-col items-center justify-center gap-1 flex-1 h-full relative transition-colors ${
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.tab === "messages" && unreadMessageCount > 0 && (
+                    <span className="absolute top-2 right-1/4 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
+                      {unreadMessageCount}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </div>
     </SidebarProvider>
   );
