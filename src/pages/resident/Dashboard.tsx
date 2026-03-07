@@ -286,7 +286,70 @@ const ResidentDashboard = () => {
     }
   };
 
-  const handleLogout = async () => {
+  // Swipe gesture handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isMobile) return;
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+  }, [isMobile]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isMobile || !touchStartRef.current) return;
+    const touch = e.touches[0];
+    const deltaY = touch.clientY - touchStartRef.current.y;
+
+    // Pull-to-refresh: only when scrolled to top and pulling down
+    if (mainContentRef.current && mainContentRef.current.scrollTop <= 0 && deltaY > 0) {
+      const clampedDistance = Math.min(deltaY * 0.5, 100);
+      setPullDistance(clampedDistance);
+      setIsPulling(true);
+      if (clampedDistance > 10) {
+        e.preventDefault();
+      }
+    }
+  }, [isMobile]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isMobile || !touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const elapsed = Date.now() - touchStartRef.current.time;
+
+    // Pull-to-refresh trigger
+    if (isPulling && pullDistance >= pullThreshold && !isRefreshing) {
+      setIsRefreshing(true);
+      setPullDistance(0);
+      setIsPulling(false);
+      loadData().finally(() => {
+        setIsRefreshing(false);
+        toast.success("Dashboard refreshed");
+      });
+    } else {
+      setPullDistance(0);
+      setIsPulling(false);
+    }
+
+    // Horizontal swipe detection (only if mostly horizontal and fast enough)
+    if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && elapsed < 500) {
+      const currentIndex = MOBILE_TAB_ORDER.indexOf(activeTab);
+      if (currentIndex === -1) {
+        touchStartRef.current = null;
+        return;
+      }
+      if (deltaX < 0 && currentIndex < MOBILE_TAB_ORDER.length - 1) {
+        // Swipe left → next tab
+        handleTabChange(MOBILE_TAB_ORDER[currentIndex + 1]);
+      } else if (deltaX > 0 && currentIndex > 0) {
+        // Swipe right → previous tab
+        handleTabChange(MOBILE_TAB_ORDER[currentIndex - 1]);
+      }
+    }
+
+    touchStartRef.current = null;
+  }, [isMobile, isPulling, pullDistance, isRefreshing, activeTab]);
+
+
     // Log the logout action
     if (user && profile) {
       const fullName = profile.firstName && profile.lastName 
