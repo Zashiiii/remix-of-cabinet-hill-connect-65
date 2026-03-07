@@ -84,10 +84,26 @@ export default {
             height: "0",
           },
         },
+        "swipe-in-left": {
+          "0%": { transform: "translateX(20px)", opacity: "0.7" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
+        "swipe-in-right": {
+          "0%": { transform: "translateX(-20px)", opacity: "0.7" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
+        "tab-bounce": {
+          "0%": { transform: "scale(0.85)" },
+          "50%": { transform: "scale(1.08)" },
+          "100%": { transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "swipe-in-left": "swipe-in-left 0.2s ease-out",
+        "swipe-in-right": "swipe-in-right 0.2s ease-out",
+        "tab-bounce": "tab-bounce 0.3s ease-out",
       },
     },
   },
