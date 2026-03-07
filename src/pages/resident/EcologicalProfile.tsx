@@ -21,6 +21,7 @@ const EcologicalProfile = () => {
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Ecological Profile Census</h1>
                 <p className="text-muted-foreground">Submit your household's ecological profile data</p>
+              </div>
             </div>
 
             <Alert className="mb-6 border-primary/20 bg-primary/5">
@@ -29,7 +30,6 @@ const EcologicalProfile = () => {
                 This feature helps reduce manual house-to-house data collection and improves barangay reporting efficiency. Your submission will be reviewed and approved by staff before being included in analytics.
               </AlertDescription>
             </Alert>
-            </div>
 
             <EcologicalProfileForm 
               onSuccess={() => navigate("/resident/dashboard")}

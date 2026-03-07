@@ -578,7 +578,7 @@ const Auth = () => {
                 </Alert>
 
                 <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label htmlFor="signup-firstname">First Name</Label>
                       <Input

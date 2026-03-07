@@ -17,7 +17,7 @@ const Footer = () => {
           
           {/* Copyright */}
           <div className="text-sm opacity-90">
-            <p>&copy; 2024 Barangay Salud Mitra. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Barangay Salud Mitra. All rights reserved.</p>
           </div>
         </div>
       </div>
