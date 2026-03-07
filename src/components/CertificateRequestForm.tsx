@@ -119,16 +119,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
     setIsSearching(true);
     try {
       const { data, error } = await supabase
-        .from("residents")
-        .select(`
-          id, first_name, middle_name, last_name, suffix,
-          email, contact_number, household_id,
-          households ( household_number )
-        `)
-        .eq("approval_status", "approved")
-        .is("deleted_at", null)
-        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
-        .limit(10);
+        .rpc("search_residents_for_certificate", { p_query: query });
 
       if (error) throw error;
 
@@ -137,7 +128,7 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
         fullName: `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}${r.suffix ? ' ' + r.suffix : ''}`.trim(),
         email: r.email || "",
         contactNumber: r.contact_number || "",
-        householdNumber: r.households?.household_number || null,
+        householdNumber: r.household_number || null,
       }));
 
       setSearchResults(results);
