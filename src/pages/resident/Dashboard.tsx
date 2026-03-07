@@ -182,8 +182,11 @@ const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
   );
 };
 
+const MOBILE_TAB_ORDER = ["dashboard", "requests", "messages", "incidents", "profile"];
+
 const ResidentDashboard = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { user, profile, isAuthenticated, isLoading: authLoading, logout } = useResidentAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [requests, setRequests] = useState<Request[]>([]);
@@ -193,6 +196,17 @@ const ResidentDashboard = () => {
   const [submittedControlNumber, setSubmittedControlNumber] = useState("");
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [ecoStatus, setEcoStatus] = useState<EcoStatus>("none");
+
+  // Pull-to-refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+
+  // Touch refs for swipe and pull
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const mainContentRef = useRef<HTMLElement>(null);
+  const pullThreshold = 60;
+  const swipeThreshold = 50;
 
   // Auth is now handled by ResidentProtectedRoute wrapper
 
