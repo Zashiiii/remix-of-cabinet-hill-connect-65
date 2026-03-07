@@ -1662,14 +1662,14 @@ const StaffDashboard = () => {
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}
-          <header className="h-16 border-b bg-card flex items-center justify-between px-6">
+          <header className="h-16 border-b bg-card flex items-center justify-between px-4 md:px-6">
             <div className="flex items-center gap-4">
               <SidebarTrigger>
                 <Button variant="ghost" size="icon">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SidebarTrigger>
-              <h1 className="text-xl font-bold text-foreground">Staff Dashboard</h1>
+              <h1 className="text-lg md:text-xl font-bold text-foreground">Staff Dashboard</h1>
             </div>
             
             <div className="flex items-center gap-6">
@@ -1693,7 +1693,7 @@ const StaffDashboard = () => {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-6 overflow-auto">
+          <main className="flex-1 p-4 md:p-6 overflow-auto">
             {activeTab === "home" && (
               <>
                 {/* Summary Cards */}
@@ -1781,37 +1781,39 @@ const StaffDashboard = () => {
                         </Badge>
                       </CardHeader>
                       <CardContent>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Control No.</TableHead>
-                              <TableHead>Resident</TableHead>
-                              <TableHead>Type</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Priority</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {urgentRequests.slice(0, 10).map((req) => (
-                              <TableRow key={req.id} className="cursor-pointer hover:bg-muted/50" onClick={() => {
-                                setActiveTab("certificate-requests");
-                              }}>
-                                <TableCell className="font-medium text-xs">{req.id}</TableCell>
-                                <TableCell className="text-sm">{req.residentName}</TableCell>
-                                <TableCell className="text-sm">{req.certificateType}</TableCell>
-                                <TableCell className="text-sm">{req.dateSubmitted}</TableCell>
-                                <TableCell>
-                                  <Badge variant="destructive" className="text-xs">
-                                    <AlertCircle className="h-3 w-3 mr-1" />
-                                    Urgent
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>{getStatusBadge(req.status)}</TableCell>
+                        <div className="overflow-x-auto">
+                          <Table className="min-w-[600px]">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Control No.</TableHead>
+                                <TableHead>Resident</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Priority</TableHead>
+                                <TableHead>Status</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {urgentRequests.slice(0, 10).map((req) => (
+                                <TableRow key={req.id} className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                                  setActiveTab("certificate-requests");
+                                }}>
+                                  <TableCell className="font-medium text-xs">{req.id}</TableCell>
+                                  <TableCell className="text-sm">{req.residentName}</TableCell>
+                                  <TableCell className="text-sm">{req.certificateType}</TableCell>
+                                  <TableCell className="text-sm">{req.dateSubmitted}</TableCell>
+                                  <TableCell>
+                                    <Badge variant="destructive" className="text-xs">
+                                      <AlertCircle className="h-3 w-3 mr-1" />
+                                      Urgent
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>{getStatusBadge(req.status)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </CardContent>
                     </Card>
                   );
@@ -1886,28 +1888,30 @@ const StaffDashboard = () => {
                           <p className="text-sm">No certificate requests yet</p>
                         </div>
                       ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Request ID</TableHead>
-                              <TableHead>Resident</TableHead>
-                              <TableHead>Type</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {requests.slice(0, 5).map((request) => (
-                              <TableRow key={request.id}>
-                                <TableCell className="font-medium text-xs">{request.id}</TableCell>
-                                <TableCell className="text-sm">{request.residentName}</TableCell>
-                                <TableCell className="text-sm">{request.certificateType}</TableCell>
-                                <TableCell className="text-sm">{request.dateSubmitted}</TableCell>
-                                <TableCell>{getStatusBadge(request.status)}</TableCell>
+                        <div className="overflow-x-auto">
+                          <Table className="min-w-[600px]">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Request ID</TableHead>
+                                <TableHead>Resident</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Status</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {requests.slice(0, 5).map((request) => (
+                                <TableRow key={request.id}>
+                                  <TableCell className="font-medium text-xs">{request.id}</TableCell>
+                                  <TableCell className="text-sm">{request.residentName}</TableCell>
+                                  <TableCell className="text-sm">{request.certificateType}</TableCell>
+                                  <TableCell className="text-sm">{request.dateSubmitted}</TableCell>
+                                  <TableCell>{getStatusBadge(request.status)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       )}
                     </CardContent>
                   </Card>
@@ -1932,22 +1936,23 @@ const StaffDashboard = () => {
                           <p className="text-sm">No incident reports yet</p>
                         </div>
                       ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Report ID</TableHead>
-                              <TableHead>Complainant</TableHead>
-                              <TableHead>Type</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {recentIncidents.map((incident) => (
-                              <TableRow key={incident.id}>
-                                <TableCell className="font-medium text-xs">{incident.incidentNumber}</TableCell>
-                                <TableCell className="text-sm">{incident.complainantName}</TableCell>
-                                <TableCell className="text-sm">{incident.incidentType}</TableCell>
+                        <div className="overflow-x-auto">
+                          <Table className="min-w-[600px]">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Report ID</TableHead>
+                                <TableHead>Complainant</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {recentIncidents.map((incident) => (
+                                <TableRow key={incident.id}>
+                                  <TableCell className="font-medium text-xs">{incident.incidentNumber}</TableCell>
+                                  <TableCell className="text-sm">{incident.complainantName}</TableCell>
+                                  <TableCell className="text-sm">{incident.incidentType}</TableCell>
                                 <TableCell className="text-sm">{incident.incidentDate}</TableCell>
                                 <TableCell>
                                   <Badge 
@@ -1966,8 +1971,9 @@ const StaffDashboard = () => {
                                 </TableCell>
                               </TableRow>
                             ))}
-                          </TableBody>
-                        </Table>
+                            </TableBody>
+                          </Table>
+                        </div>
                       )}
                     </CardContent>
                   </Card>

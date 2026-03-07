@@ -603,7 +603,7 @@ const ResidentDashboard = () => {
               </div>
 
               <Card className="max-w-4xl mx-auto">
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                     <CardTitle className="text-2xl flex items-center gap-2">
                       <Clock className="h-6 w-6" />
