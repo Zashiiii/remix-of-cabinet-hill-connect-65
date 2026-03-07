@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { 
   FileText, 
@@ -17,7 +17,9 @@ import {
   ArrowLeft,
   Leaf,
   CalendarDays,
+  RefreshCw,
 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -180,8 +182,11 @@ const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
   );
 };
 
+const MOBILE_TAB_ORDER = ["dashboard", "requests", "messages", "incidents", "profile"];
+
 const ResidentDashboard = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { user, profile, isAuthenticated, isLoading: authLoading, logout } = useResidentAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [requests, setRequests] = useState<Request[]>([]);
@@ -191,6 +196,17 @@ const ResidentDashboard = () => {
   const [submittedControlNumber, setSubmittedControlNumber] = useState("");
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [ecoStatus, setEcoStatus] = useState<EcoStatus>("none");
+
+  // Pull-to-refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+
+  // Touch refs for swipe and pull
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const mainContentRef = useRef<HTMLElement>(null);
+  const pullThreshold = 60;
+  const swipeThreshold = 50;
 
   // Auth is now handled by ResidentProtectedRoute wrapper
 
@@ -270,8 +286,71 @@ const ResidentDashboard = () => {
     }
   };
 
-  const handleLogout = async () => {
-    // Log the logout action
+  // Swipe gesture handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isMobile) return;
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+  }, [isMobile]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isMobile || !touchStartRef.current) return;
+    const touch = e.touches[0];
+    const deltaY = touch.clientY - touchStartRef.current.y;
+
+    // Pull-to-refresh: only when scrolled to top and pulling down
+    if (mainContentRef.current && mainContentRef.current.scrollTop <= 0 && deltaY > 0) {
+      const clampedDistance = Math.min(deltaY * 0.5, 100);
+      setPullDistance(clampedDistance);
+      setIsPulling(true);
+      if (clampedDistance > 10) {
+        e.preventDefault();
+      }
+    }
+  }, [isMobile]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isMobile || !touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const elapsed = Date.now() - touchStartRef.current.time;
+
+    // Pull-to-refresh trigger
+    if (isPulling && pullDistance >= pullThreshold && !isRefreshing) {
+      setIsRefreshing(true);
+      setPullDistance(0);
+      setIsPulling(false);
+      loadData().finally(() => {
+        setIsRefreshing(false);
+        toast.success("Dashboard refreshed");
+      });
+    } else {
+      setPullDistance(0);
+      setIsPulling(false);
+    }
+
+    // Horizontal swipe detection (only if mostly horizontal and fast enough)
+    if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && elapsed < 500) {
+      const currentIndex = MOBILE_TAB_ORDER.indexOf(activeTab);
+      if (currentIndex === -1) {
+        touchStartRef.current = null;
+        return;
+      }
+      if (deltaX < 0 && currentIndex < MOBILE_TAB_ORDER.length - 1) {
+        // Swipe left → next tab
+        handleTabChange(MOBILE_TAB_ORDER[currentIndex + 1]);
+      } else if (deltaX > 0 && currentIndex > 0) {
+        // Swipe right → previous tab
+        handleTabChange(MOBILE_TAB_ORDER[currentIndex - 1]);
+      }
+    }
+
+    touchStartRef.current = null;
+  }, [isMobile, isPulling, pullDistance, isRefreshing, activeTab]);
+
+
+    const handleLogout = async () => {
     if (user && profile) {
       const fullName = profile.firstName && profile.lastName 
         ? `${profile.firstName} ${profile.lastName}`
@@ -353,7 +432,28 @@ const ResidentDashboard = () => {
           unreadMessageCount={unreadMessageCount}
         />
         
-        <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-auto">
+        <main 
+          ref={mainContentRef}
+          className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-auto"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Pull-to-refresh indicator */}
+          {isMobile && (isPulling || isRefreshing) && (
+            <div 
+              className="flex items-center justify-center transition-all duration-200 overflow-hidden"
+              style={{ height: isRefreshing ? 48 : pullDistance * 0.8 }}
+            >
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""} ${pullDistance >= pullThreshold ? "text-primary" : ""}`} />
+                <span>
+                  {isRefreshing ? "Refreshing..." : pullDistance >= pullThreshold ? "Release to refresh" : "Pull to refresh"}
+                </span>
+              </div>
+            </div>
+          )}
+
           {activeTab === "dashboard" && (
             <>
               <div className="flex items-center justify-between mb-6">
