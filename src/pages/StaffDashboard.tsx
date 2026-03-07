@@ -1781,7 +1781,30 @@ const StaffDashboard = () => {
                         </Badge>
                       </CardHeader>
                       <CardContent>
-                        <div className="overflow-x-auto">
+                        {/* Mobile cards */}
+                        <div className="md:hidden space-y-3">
+                          {urgentRequests.slice(0, 10).map((req) => (
+                            <div
+                              key={req.id}
+                              className="p-3 rounded-lg border bg-card cursor-pointer hover:shadow-md transition-shadow"
+                              onClick={() => setActiveTab("certificate-requests")}
+                            >
+                              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                <span className="font-semibold text-sm">{req.residentName}</span>
+                                {getStatusBadge(req.status)}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{req.certificateType}</p>
+                              <p className="text-xs text-muted-foreground">Control No: {req.id}</p>
+                              <p className="text-xs text-muted-foreground">Date: {req.dateSubmitted}</p>
+                              <Badge variant="destructive" className="text-xs mt-2">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Urgent
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Desktop table */}
+                        <div className="hidden md:block overflow-x-auto">
                           <Table className="min-w-[600px]">
                             <TableHeader>
                               <TableRow>
@@ -1888,7 +1911,22 @@ const StaffDashboard = () => {
                           <p className="text-sm">No certificate requests yet</p>
                         </div>
                       ) : (
-                        <div className="overflow-x-auto">
+                        {/* Mobile cards */}
+                        <div className="md:hidden space-y-3">
+                          {requests.slice(0, 5).map((request) => (
+                            <div key={request.id} className="p-3 rounded-lg border bg-card">
+                              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                <span className="font-semibold text-sm">{request.residentName}</span>
+                                {getStatusBadge(request.status)}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{request.certificateType}</p>
+                              <p className="text-xs text-muted-foreground">ID: {request.id}</p>
+                              <p className="text-xs text-muted-foreground">Date: {request.dateSubmitted}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Desktop table */}
+                        <div className="hidden md:block overflow-x-auto">
                           <Table className="min-w-[600px]">
                             <TableHeader>
                               <TableRow>
@@ -1936,7 +1974,31 @@ const StaffDashboard = () => {
                           <p className="text-sm">No incident reports yet</p>
                         </div>
                       ) : (
-                        <div className="overflow-x-auto">
+                        {/* Mobile cards */}
+                        <div className="md:hidden space-y-3">
+                          {recentIncidents.map((incident) => {
+                            const badgeVariant = incident.approvalStatus === "approved" ? "outline" as const :
+                              incident.approvalStatus === "rejected" ? "destructive" as const : "secondary" as const;
+                            return (
+                              <div key={incident.id} className="p-3 rounded-lg border bg-card">
+                                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                  <span className="font-semibold text-sm">{incident.complainantName}</span>
+                                  <Badge variant={badgeVariant} className="capitalize">
+                                    {incident.approvalStatus === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
+                                    {incident.approvalStatus === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
+                                    {incident.approvalStatus === "pending" && <Clock className="h-3 w-3 mr-1" />}
+                                    {incident.approvalStatus}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground">{incident.incidentType}</p>
+                                <p className="text-xs text-muted-foreground">ID: {incident.incidentNumber}</p>
+                                <p className="text-xs text-muted-foreground">Date: {incident.incidentDate}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Desktop table */}
+                        <div className="hidden md:block overflow-x-auto">
                           <Table className="min-w-[600px]">
                             <TableHeader>
                               <TableRow>
@@ -1953,24 +2015,24 @@ const StaffDashboard = () => {
                                   <TableCell className="font-medium text-xs">{incident.incidentNumber}</TableCell>
                                   <TableCell className="text-sm">{incident.complainantName}</TableCell>
                                   <TableCell className="text-sm">{incident.incidentType}</TableCell>
-                                <TableCell className="text-sm">{incident.incidentDate}</TableCell>
-                                <TableCell>
-                                  <Badge 
-                                    variant={
-                                      incident.approvalStatus === "approved" ? "outline" :
-                                      incident.approvalStatus === "rejected" ? "destructive" :
-                                      "secondary"
-                                    }
-                                    className="capitalize"
-                                  >
-                                    {incident.approvalStatus === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
-                                    {incident.approvalStatus === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
-                                    {incident.approvalStatus === "pending" && <Clock className="h-3 w-3 mr-1" />}
-                                    {incident.approvalStatus}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                                  <TableCell className="text-sm">{incident.incidentDate}</TableCell>
+                                  <TableCell>
+                                    <Badge 
+                                      variant={
+                                        incident.approvalStatus === "approved" ? "outline" :
+                                        incident.approvalStatus === "rejected" ? "destructive" :
+                                        "secondary"
+                                      }
+                                      className="capitalize"
+                                    >
+                                      {incident.approvalStatus === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
+                                      {incident.approvalStatus === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
+                                      {incident.approvalStatus === "pending" && <Clock className="h-3 w-3 mr-1" />}
+                                      {incident.approvalStatus}
+                                    </Badge>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
                             </TableBody>
                           </Table>
                         </div>
