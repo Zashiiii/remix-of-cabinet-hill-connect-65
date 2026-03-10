@@ -426,6 +426,29 @@ const ViewReportsTab = () => {
 
         <Separator className="mb-8" />
 
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+          <TabsList>
+            <TabsTrigger value="incidents" className="relative">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Incident Reports
+              {pendingIncidentsCount > 0 && (
+                <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {pendingIncidentsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="certificates" className="relative">
+              <FileText className="h-4 w-4 mr-2" />
+              Certificate Requests
+              {pendingCertificatesCount > 0 && (
+                <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {pendingCertificatesCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
