@@ -426,7 +426,12 @@ const ViewReportsTab = () => {
 
         <Separator className="mb-8" />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <Tabs value={activeTab} onValueChange={(val) => {
+          setActiveTab(val);
+          setTimeout(() => {
+            document.getElementById('reports-table-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 50);
+        }} className="mb-6">
           <TabsList>
             <TabsTrigger value="incidents" className="relative">
               <AlertTriangle className="h-4 w-4 mr-2" />
@@ -449,7 +454,7 @@ const ViewReportsTab = () => {
           </TabsList>
         </Tabs>
 
-        <div className="flex flex-col gap-4 mb-6">
+        <div id="reports-table-section" className="flex flex-col gap-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
