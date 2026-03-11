@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import {
+  clearStaffForcedLogout,
+  isStaffForcedLogout,
+  markStaffForcedLogout,
+} from '@/utils/authNavigationGuard';
 
 interface StaffUser {
   id: string;
@@ -68,6 +73,16 @@ export const useStaffAuth = () => {
 
     const checkSession = async () => {
       try {
+        if (isStaffForcedLogout()) {
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            expiresAt: null,
+          });
+          return;
+        }
+
         console.log('Checking session via httpOnly cookie...');
         
         const { data, error } = await callStaffAuthFunction({ 
@@ -120,6 +135,16 @@ export const useStaffAuth = () => {
   useEffect(() => {
     const revalidateSession = async () => {
       try {
+        if (isStaffForcedLogout()) {
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            expiresAt: null,
+          });
+          return;
+        }
+
         const { data, error } = await callStaffAuthFunction({ 
           action: 'get-session'
         });
@@ -252,6 +277,10 @@ export const useStaffAuth = () => {
 
   const validateSession = useCallback(async (): Promise<boolean> => {
     try {
+      if (isStaffForcedLogout()) {
+        return false;
+      }
+
       console.log('Validating session with server...');
       // Session token is in httpOnly cookie - no need to send it
       const { data, error } = await callStaffAuthFunction({ 
@@ -297,6 +326,8 @@ export const useStaffAuth = () => {
         return { success: false, error: 'Invalid response from server' };
       }
 
+      clearStaffForcedLogout();
+
       // Token is now set via httpOnly cookie by the server - no localStorage needed
       setAuthState({
         user: data.user,
@@ -323,6 +354,8 @@ export const useStaffAuth = () => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      markStaffForcedLogout();
+
       if (warningTimerRef.current) {
         clearTimeout(warningTimerRef.current);
       }

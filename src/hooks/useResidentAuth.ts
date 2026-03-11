@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
+import {
+  clearResidentForcedLogout,
+  isResidentForcedLogout,
+  markResidentForcedLogout,
+} from "@/utils/authNavigationGuard";
 
 interface ResidentProfile {
   id: string;
@@ -32,6 +37,19 @@ export const useResidentAuth = () => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (event === "SIGNED_IN") {
+          clearResidentForcedLogout();
+        }
+
+        if (isResidentForcedLogout()) {
+          void supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setIsLoading(false);
+          return;
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -48,6 +66,15 @@ export const useResidentAuth = () => {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isResidentForcedLogout()) {
+        void supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setIsLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -61,6 +88,14 @@ export const useResidentAuth = () => {
     // Re-validate on browser back/forward and tab re-focus
     const revalidateSession = () => {
       supabase.auth.getSession().then(({ data: { session } }) => {
+        if (isResidentForcedLogout()) {
+          void supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          return;
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
         if (!session?.user) {
@@ -139,6 +174,7 @@ export const useResidentAuth = () => {
   };
 
   const logout = async () => {
+    markResidentForcedLogout();
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

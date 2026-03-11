@@ -17,6 +17,10 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import DataPrivacyModal from "@/components/DataPrivacyModal";
 import { logResidentLogin, logResidentRegistration } from "@/utils/auditLog";
+import {
+  clearResidentForcedLogout,
+  clearStaffForcedLogout,
+} from "@/utils/authNavigationGuard";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -220,8 +224,10 @@ const Auth = () => {
         
         await logResidentLogin(fullName, data.user.id);
 
+        clearResidentForcedLogout();
+        clearStaffForcedLogout();
         toast.success("Login successful!");
-        navigate("/resident/dashboard");
+        navigate("/resident/dashboard", { replace: true });
       }
     } catch (error: any) {
       toast.error("An unexpected error occurred. Please try again.");
