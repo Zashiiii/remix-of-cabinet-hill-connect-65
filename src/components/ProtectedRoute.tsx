@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { hasPermission, FeatureKey } from '@/utils/rolePermissions';
+import { isStaffForcedLogout, isResidentForcedLogout } from '@/utils/authNavigationGuard';
 
 interface StaffProtectedRouteProps {
   children: ReactNode;
