@@ -152,6 +152,10 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      // Clear forced logout flags BEFORE signing in so onAuthStateChange can process the session
+      clearResidentForcedLogout();
+      clearStaffForcedLogout();
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
