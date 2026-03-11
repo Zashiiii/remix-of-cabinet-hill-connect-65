@@ -354,6 +354,8 @@ export const useStaffAuth = () => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      markStaffForcedLogout();
+
       if (warningTimerRef.current) {
         clearTimeout(warningTimerRef.current);
       }
