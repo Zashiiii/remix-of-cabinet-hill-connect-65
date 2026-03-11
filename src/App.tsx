@@ -60,16 +60,24 @@ const AppContent = () => {
   };
 
   useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      // Force a real reload when page is restored from bfcache
-      // so protected routes re-evaluate auth from fresh state
-      if (event.persisted) {
+    const reloadForHistoryNavigation = () => {
+      window.location.reload();
+    };
+
+    const handlePageShow = (event: Event) => {
+      // Force reload when restored from browser back/forward cache
+      if ("persisted" in event && (event as { persisted?: boolean }).persisted) {
         window.location.reload();
       }
     };
 
-    window.addEventListener("pageshow", handlePageShow as EventListener);
-    return () => window.removeEventListener("pageshow", handlePageShow as EventListener);
+    window.addEventListener("popstate", reloadForHistoryNavigation);
+    window.addEventListener("pageshow", handlePageShow);
+
+    return () => {
+      window.removeEventListener("popstate", reloadForHistoryNavigation);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
   }, []);
 
   return (
