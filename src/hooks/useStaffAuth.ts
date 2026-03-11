@@ -84,7 +84,7 @@ export const useStaffAuth = () => {
           return;
         }
 
-        console.log('Checking session via httpOnly cookie...');
+        
         
         const { data, error } = await callStaffAuthFunction({ 
           action: 'get-session'
