@@ -67,8 +67,22 @@ const AppContent = () => {
       }
     };
 
+    // Also check forced logout on popstate (browser back/forward within SPA)
+    const handlePopState = () => {
+      const residentForced = localStorage.getItem("bris_resident_forced_logout") !== null;
+      const staffForced = localStorage.getItem("bris_staff_forced_logout") !== null;
+      if (residentForced || staffForced) {
+        // Force a full reload to clear React state and re-run ProtectedRoute checks
+        window.location.reload();
+      }
+    };
+
     window.addEventListener("pageshow", handlePageShow);
-    return () => window.removeEventListener("pageshow", handlePageShow);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("popstate", handlePopState);
+    };
   }, []);
 
   return (
