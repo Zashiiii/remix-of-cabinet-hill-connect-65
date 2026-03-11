@@ -326,6 +326,8 @@ export const useStaffAuth = () => {
         return { success: false, error: 'Invalid response from server' };
       }
 
+      clearStaffForcedLogout();
+
       // Token is now set via httpOnly cookie by the server - no localStorage needed
       setAuthState({
         user: data.user,
