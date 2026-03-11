@@ -65,6 +65,7 @@ export const useStaffAuth = () => {
   const initializedRef = useRef(false);
   const warningShownRef = useRef(false);
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLoginTimeRef = useRef<number>(0);
 
   // Check session on mount using httpOnly cookie
   useEffect(() => {
@@ -83,14 +84,14 @@ export const useStaffAuth = () => {
           return;
         }
 
-        console.log('Checking session via httpOnly cookie...');
+        
         
         const { data, error } = await callStaffAuthFunction({ 
           action: 'get-session'
         });
         
         if (error) {
-          console.log('Session check error:', error);
+          
           setAuthState({
             user: null,
             isAuthenticated: false,
@@ -101,7 +102,7 @@ export const useStaffAuth = () => {
         }
 
         if (data?.authenticated && data?.user) {
-          console.log('Session valid, user:', data.user.username);
+          
           setAuthState({
             user: data.user,
             isAuthenticated: true,
@@ -109,7 +110,7 @@ export const useStaffAuth = () => {
             expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
           });
         } else {
-          console.log('No valid session found');
+          
           setAuthState({
             user: null,
             isAuthenticated: false,
@@ -281,29 +282,29 @@ export const useStaffAuth = () => {
         return false;
       }
 
-      console.log('Validating session with server...');
-      // Session token is in httpOnly cookie - no need to send it
+      // Skip validation if we just logged in within the last 5 seconds
+      const timeSinceLogin = Date.now() - lastLoginTimeRef.current;
+      if (timeSinceLogin < 5000 && authState.isAuthenticated) {
+        return true;
+      }
+
       const { data, error } = await callStaffAuthFunction({ 
         action: 'validate'
       });
-
-      console.log('Validation response:', { data, error });
       
       if (error) {
-        console.error('Validation error:', error);
         return false;
       }
 
       return data?.valid === true;
     } catch (error) {
-      console.error('Session validation error:', error);
       return false;
     }
-  }, []);
+  }, [authState.isAuthenticated]);
 
   const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string; code?: string }> => {
     try {
-      console.log('Attempting login for:', username);
+      
       
       const { data, error } = await callStaffAuthFunction({ 
         action: 'login', 
@@ -311,7 +312,7 @@ export const useStaffAuth = () => {
         password 
       });
 
-      console.log('Login response:', { data: data ? { ...data, token: '[REDACTED]' } : null, error });
+      
 
       if (error) {
         console.error('Login invoke error:', error);
@@ -327,6 +328,7 @@ export const useStaffAuth = () => {
       }
 
       clearStaffForcedLogout();
+      lastLoginTimeRef.current = Date.now();
 
       // Token is now set via httpOnly cookie by the server - no localStorage needed
       setAuthState({
@@ -346,7 +348,7 @@ export const useStaffAuth = () => {
 
   const logout = useCallback(async () => {
     try {
-      console.log('Logging out...');
+      
       // Session token is in httpOnly cookie - server will clear it
       await callStaffAuthFunction({ 
         action: 'logout'
