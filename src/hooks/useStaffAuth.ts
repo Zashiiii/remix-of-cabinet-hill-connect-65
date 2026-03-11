@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import {
+  clearStaffForcedLogout,
+  isStaffForcedLogout,
+  markStaffForcedLogout,
+} from '@/utils/authNavigationGuard';
 
 interface StaffUser {
   id: string;
