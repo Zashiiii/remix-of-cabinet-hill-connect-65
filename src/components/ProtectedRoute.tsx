@@ -105,7 +105,7 @@ export const ResidentProtectedRoute = ({
 }: ResidentProtectedRouteProps) => {
   const { isAuthenticated, isLoading, profile } = useResidentAuth();
   const location = useLocation();
-  const navigate = useNavigate();
+  
   const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
   const [isCheckingApproval, setIsCheckingApproval] = useState(true);
   const [isSessionVerified, setIsSessionVerified] = useState(false);
