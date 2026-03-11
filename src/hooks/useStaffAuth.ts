@@ -312,7 +312,7 @@ export const useStaffAuth = () => {
         password 
       });
 
-      console.log('Login response:', { data: data ? { ...data, token: '[REDACTED]' } : null, error });
+      
 
       if (error) {
         console.error('Login invoke error:', error);
