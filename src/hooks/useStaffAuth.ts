@@ -348,7 +348,7 @@ export const useStaffAuth = () => {
 
   const logout = useCallback(async () => {
     try {
-      console.log('Logging out...');
+      
       // Session token is in httpOnly cookie - server will clear it
       await callStaffAuthFunction({ 
         action: 'logout'
