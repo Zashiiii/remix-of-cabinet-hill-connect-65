@@ -60,24 +60,15 @@ const AppContent = () => {
   };
 
   useEffect(() => {
-    const reloadForHistoryNavigation = () => {
-      window.location.reload();
-    };
-
     const handlePageShow = (event: Event) => {
-      // Force reload when restored from browser back/forward cache
+      // Force reload when restored from browser back/forward cache (bfcache)
       if ("persisted" in event && (event as { persisted?: boolean }).persisted) {
         window.location.reload();
       }
     };
 
-    window.addEventListener("popstate", reloadForHistoryNavigation);
     window.addEventListener("pageshow", handlePageShow);
-
-    return () => {
-      window.removeEventListener("popstate", reloadForHistoryNavigation);
-      window.removeEventListener("pageshow", handlePageShow);
-    };
+    return () => window.removeEventListener("pageshow", handlePageShow);
   }, []);
 
   return (
