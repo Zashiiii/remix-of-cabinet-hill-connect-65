@@ -68,7 +68,6 @@ export const useStaffAuth = () => {
       try {
         console.log('Checking session via httpOnly cookie...');
         
-        // Call get-session - the server will read the httpOnly cookie
         const { data, error } = await callStaffAuthFunction({ 
           action: 'get-session'
         });
@@ -113,6 +112,48 @@ export const useStaffAuth = () => {
     };
 
     checkSession();
+  }, []);
+
+  // Re-validate session on browser back/forward navigation and tab re-focus
+  useEffect(() => {
+    const revalidateSession = async () => {
+      try {
+        const { data, error } = await callStaffAuthFunction({ 
+          action: 'get-session'
+        });
+        
+        if (error || !data?.authenticated) {
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            expiresAt: null,
+          });
+        } else if (data?.user) {
+          setAuthState(prev => ({
+            ...prev,
+            user: data.user,
+            isAuthenticated: true,
+            expiresAt: data.expiresAt ? new Date(data.expiresAt) : prev.expiresAt,
+          }));
+        }
+      } catch {
+        // Silent fail on revalidation
+      }
+    };
+
+    const handlePopState = () => revalidateSession();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') revalidateSession();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Set up session expiration warning
