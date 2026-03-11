@@ -725,11 +725,11 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
     }));
   };
 
-  const updateHouseholdMember = (id: string, field: keyof HouseholdMember, value: any) => {
+  const updateHouseholdMember = (id: string, updates: Partial<HouseholdMember>) => {
     setFormData(prev => ({
       ...prev,
       household_members: prev.household_members.map((m: HouseholdMember) => 
-        m.id === id ? { ...m, [field]: value } : m
+        m.id === id ? { ...m, ...updates } : m
       )
     }));
   };
