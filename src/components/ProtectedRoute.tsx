@@ -34,11 +34,23 @@ export const StaffProtectedRoute = ({
   const location = useLocation();
   const [isSessionValid, setIsSessionValid] = useState(false);
   const [isRevalidating, setIsRevalidating] = useState(true);
+  const [forcedLogout, setForcedLogout] = useState(() => isStaffForcedLogout());
 
-  // Immediate synchronous check on every render — catches browser back/forward
-  if (isStaffForcedLogout()) {
-    return <Navigate to={redirectTo} state={{ from: location }} replace />;
-  }
+  // Re-check forced logout flag on every navigation change
+  useEffect(() => {
+    setForcedLogout(isStaffForcedLogout());
+  }, [location.key]);
+
+  // Also listen for popstate to catch browser back/forward
+  useEffect(() => {
+    const checkForcedLogout = () => {
+      if (isStaffForcedLogout()) {
+        setForcedLogout(true);
+      }
+    };
+    window.addEventListener('popstate', checkForcedLogout);
+    return () => window.removeEventListener('popstate', checkForcedLogout);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -46,9 +58,9 @@ export const StaffProtectedRoute = ({
     const revalidate = async () => {
       if (isLoading) return;
 
-      // Double-check forced logout flag
       if (!isAuthenticated || isStaffForcedLogout()) {
         if (isMounted) {
+          setForcedLogout(isStaffForcedLogout());
           setIsSessionValid(false);
           setIsRevalidating(false);
         }
@@ -74,6 +86,10 @@ export const StaffProtectedRoute = ({
       isMounted = false;
     };
   }, [isAuthenticated, isLoading, validateSession, logout, location.key]);
+
+  if (forcedLogout) {
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
 
   if (isLoading || isRevalidating) {
     return (
