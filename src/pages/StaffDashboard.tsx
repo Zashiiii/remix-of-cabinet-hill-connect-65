@@ -175,6 +175,50 @@ interface Announcement {
   imageUrl?: string;
 }
 
+const CollapsibleGroup = ({ label, items, defaultOpen = false, activeTab, isCollapsed, onMenuClick, renderMenuItem: renderItem }: { 
+  label: string; 
+  items: any[]; 
+  defaultOpen?: boolean;
+  activeTab: string;
+  isCollapsed: boolean;
+  onMenuClick: (item: { tab?: string; route?: string }) => void;
+  renderMenuItem: (item: any) => React.ReactNode;
+}) => {
+  if (items.length === 0) return null;
+  
+  if (isCollapsed) {
+    return (
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {items.map(renderItem)}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
+
+  return (
+    <Collapsible defaultOpen={defaultOpen} className="group/collapsible">
+      <SidebarGroup>
+        <SidebarGroupLabel asChild>
+          <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+            {label}
+            <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+          </CollapsibleTrigger>
+        </SidebarGroupLabel>
+        <CollapsibleContent>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map(renderItem)}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
+  );
+};
+
 const StaffSidebar = ({ 
   activeTab, 
   setActiveTab, 
@@ -203,15 +247,15 @@ const StaffSidebar = ({
   const isCollapsed = state === "collapsed";
   const showAdminSection = canAccessAdminSection(userRole);
 
-  const handleMenuClick = (item: { tab?: string; route?: string }) => {
+  const handleMenuClick = useCallback((item: { tab?: string; route?: string }) => {
     if (item.route) {
       navigate(item.route);
     } else if (item.tab) {
       setActiveTab(item.tab);
     }
-  };
+  }, [navigate, setActiveTab]);
 
-  const renderMenuItem = (item: { title: string; icon: any; tab?: string; route?: string; badge?: number }) => (
+  const renderMenuItem = useCallback((item: { title: string; icon: any; tab?: string; route?: string; badge?: number }) => (
     <SidebarMenuItem key={item.title}>
       <SidebarMenuButton
         onClick={() => handleMenuClick(item)}
@@ -235,29 +279,29 @@ const StaffSidebar = ({
         )}
       </SidebarMenuButton>
     </SidebarMenuItem>
-  );
+  ), [activeTab, isCollapsed, handleMenuClick]);
 
   // Services group
-  const servicesItems = [
+  const servicesItems = useMemo(() => [
     hasPermission(userRole, "certificate_requests") && { title: "Certificates", icon: FileText, tab: "certificate-requests", badge: pendingCertificatesCount && pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined },
     hasPermission(userRole, "incidents") && { title: "Incident / Blotter", icon: AlertTriangle, tab: "incidents", badge: pendingIncidentsCount && pendingIncidentsCount > 0 ? pendingIncidentsCount : undefined },
     hasPermission(userRole, "create_certificate") && { title: "Create Certificate", icon: Plus, tab: "create-certificate" },
-  ].filter(Boolean) as any[];
+  ].filter(Boolean) as any[], [userRole, pendingCertificatesCount, pendingIncidentsCount]);
 
   // Census group
-  const censusItems = [
+  const censusItems = useMemo(() => [
     hasPermission(userRole, "ecological_profile") && { title: "Ecological Census", icon: FileText, tab: "ecological-profile" },
     hasPermission(userRole, "ecological_submissions") && { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions", badge: pendingEcologicalCount && pendingEcologicalCount > 0 ? pendingEcologicalCount : undefined },
-  ].filter(Boolean) as any[];
+  ].filter(Boolean) as any[], [userRole, pendingEcologicalCount]);
 
   // Residents group
-  const residentsItems = [
+  const residentsItems = useMemo(() => [
     hasPermission(userRole, "manage_residents") && { title: "Manage Residents", icon: Users, tab: "residents" },
     hasPermission(userRole, "manage_households") && { title: "Households", icon: Home, tab: "households" },
-  ].filter(Boolean) as any[];
+  ].filter(Boolean) as any[], [userRole]);
 
   // Administration group
-  const adminItems = [
+  const adminItems = useMemo(() => [
     hasPermission(userRole, "announcements") && { title: "Announcements", icon: Bell, tab: "announcements" },
     hasPermission(userRole, "resident_approval") && { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount && pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined },
     hasPermission(userRole, "name_change_requests") && { title: "Name Change Requests", icon: User, tab: "name-change-requests", badge: pendingNameChangeCount && pendingNameChangeCount > 0 ? pendingNameChangeCount : undefined },
@@ -266,44 +310,7 @@ const StaffSidebar = ({
     hasPermission(userRole, "audit_logs") && { title: "Audit Logs", icon: History, tab: "audit-logs" },
     hasPermission(userRole, "monitoring_reports") && { title: "Monitoring Reports", icon: BarChart3, tab: "monitoring-reports" },
     hasPermission(userRole, "settings") && { title: "Settings", icon: Settings, tab: "settings" },
-  ].filter(Boolean) as any[];
-
-  const CollapsibleGroup = ({ label, items, defaultOpen = false }: { label: string; items: any[]; defaultOpen?: boolean }) => {
-    if (items.length === 0) return null;
-    
-    if (isCollapsed) {
-      return (
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map(renderMenuItem)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      );
-    }
-
-    return (
-      <Collapsible defaultOpen={defaultOpen} className="group/collapsible">
-        <SidebarGroup>
-          <SidebarGroupLabel asChild>
-            <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-              {label}
-              <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-            </CollapsibleTrigger>
-          </SidebarGroupLabel>
-          <CollapsibleContent>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {items.map(renderMenuItem)}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </CollapsibleContent>
-        </SidebarGroup>
-      </Collapsible>
-    );
-  };
-
+  ].filter(Boolean) as any[], [userRole, pendingRegistrationCount, pendingNameChangeCount, pendingHouseholdLinkCount]);
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
