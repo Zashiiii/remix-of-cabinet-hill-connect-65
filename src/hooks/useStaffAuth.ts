@@ -91,7 +91,7 @@ export const useStaffAuth = () => {
         });
         
         if (error) {
-          console.log('Session check error:', error);
+          
           setAuthState({
             user: null,
             isAuthenticated: false,
