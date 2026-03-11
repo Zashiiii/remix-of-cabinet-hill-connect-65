@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
+import {
+  clearResidentForcedLogout,
+  isResidentForcedLogout,
+  markResidentForcedLogout,
+} from "@/utils/authNavigationGuard";
 
 interface ResidentProfile {
   id: string;
