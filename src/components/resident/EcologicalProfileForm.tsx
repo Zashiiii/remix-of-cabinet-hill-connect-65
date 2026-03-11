@@ -1177,6 +1177,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                       Add Member
                     </Button>
                   </div>
+                  </>
                 )}
 
                 {/* Legend */}
