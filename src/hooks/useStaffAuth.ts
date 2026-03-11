@@ -73,6 +73,16 @@ export const useStaffAuth = () => {
 
     const checkSession = async () => {
       try {
+        if (isStaffForcedLogout()) {
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            expiresAt: null,
+          });
+          return;
+        }
+
         console.log('Checking session via httpOnly cookie...');
         
         const { data, error } = await callStaffAuthFunction({ 
