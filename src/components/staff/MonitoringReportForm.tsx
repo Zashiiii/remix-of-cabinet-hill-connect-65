@@ -94,6 +94,7 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
 
