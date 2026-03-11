@@ -81,19 +81,23 @@ interface MonitoringReportFormProps {
   onBack: () => void;
 }
 
+const HARDCODED_LOCATION = {
+  region: "CAR (Cordillera Administrative Region)",
+  province: "Benguet",
+  cityMunicipality: "Baguio City",
+  barangay: "Salud Mitra",
+};
+
 const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: MonitoringReportFormProps) => {
   const { user } = useStaffAuthContext();
   const [isLoading, setIsLoading] = useState(!!reportId);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Basic info
-  const [region, setRegion] = useState("");
-  const [province, setProvince] = useState("");
-  const [cityMunicipality, setCityMunicipality] = useState("");
-  const [barangay, setBarangay] = useState("");
+  // Basic info (location is hardcoded)
   const [totalInhabitants, setTotalInhabitants] = useState(0);
   const [totalRegisteredVoters, setTotalRegisteredVoters] = useState(0);
   const [totalHouseholds, setTotalHouseholds] = useState(0);
