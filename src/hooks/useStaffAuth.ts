@@ -65,6 +65,7 @@ export const useStaffAuth = () => {
   const initializedRef = useRef(false);
   const warningShownRef = useRef(false);
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLoginTimeRef = useRef<number>(0);
 
   // Check session on mount using httpOnly cookie
   useEffect(() => {
