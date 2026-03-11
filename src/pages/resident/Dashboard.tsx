@@ -664,10 +664,6 @@ const ResidentDashboard = () => {
             <>
               <div className="flex items-center gap-4 mb-6">
                 <SidebarTrigger />
-                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Dashboard
-                </Button>
               </div>
 
               <Card className="max-w-2xl mx-auto">
