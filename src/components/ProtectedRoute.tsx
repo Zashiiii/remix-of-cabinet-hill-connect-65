@@ -134,6 +134,22 @@ export const ResidentProtectedRoute = ({
   const [isSessionVerified, setIsSessionVerified] = useState(false);
   const [hasValidSession, setHasValidSession] = useState(false);
   const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
+  const [forcedLogout, setForcedLogout] = useState(() => isResidentForcedLogout());
+
+  // Re-check forced logout flag on navigation changes
+  useEffect(() => {
+    setForcedLogout(isResidentForcedLogout());
+  }, [location.key]);
+
+  useEffect(() => {
+    const checkForcedLogout = () => {
+      if (isResidentForcedLogout()) {
+        setForcedLogout(true);
+      }
+    };
+    window.addEventListener('popstate', checkForcedLogout);
+    return () => window.removeEventListener('popstate', checkForcedLogout);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
