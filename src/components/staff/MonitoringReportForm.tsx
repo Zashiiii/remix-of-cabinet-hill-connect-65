@@ -130,10 +130,7 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
         const d = await getMonitoringReport(reportId);
         if (!d) return;
 
-        setRegion(d.region || "");
-        setProvince(d.province || "");
-        setCityMunicipality(d.city_municipality || "");
-        setBarangay(d.barangay || "");
+        // Location is hardcoded, skip loading from DB
         setTotalInhabitants(d.total_inhabitants || 0);
         setTotalRegisteredVoters(d.total_registered_voters || 0);
         setTotalHouseholds(d.total_households || 0);
