@@ -1167,7 +1167,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                             </TableBody>
                           </Table>
                         </div>
-                      </ScrollArea>
+                      </div>
                     </CardContent>
                   </Card>
                 )}
