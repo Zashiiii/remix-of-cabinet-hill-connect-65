@@ -654,10 +654,10 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
       <div className="hidden">
         <MonitoringReportPrint
           ref={printRef}
-          region={region}
-          province={province}
-          cityMunicipality={cityMunicipality}
-          barangay={barangay}
+          region={HARDCODED_LOCATION.region}
+          province={HARDCODED_LOCATION.province}
+          cityMunicipality={HARDCODED_LOCATION.cityMunicipality}
+          barangay={HARDCODED_LOCATION.barangay}
           totalInhabitants={totalInhabitants}
           totalRegisteredVoters={totalRegisteredVoters}
           totalHouseholds={totalHouseholds}
