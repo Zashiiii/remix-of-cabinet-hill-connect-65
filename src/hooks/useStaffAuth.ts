@@ -282,25 +282,25 @@ export const useStaffAuth = () => {
         return false;
       }
 
-      console.log('Validating session with server...');
-      // Session token is in httpOnly cookie - no need to send it
+      // Skip validation if we just logged in within the last 5 seconds
+      const timeSinceLogin = Date.now() - lastLoginTimeRef.current;
+      if (timeSinceLogin < 5000 && authState.isAuthenticated) {
+        return true;
+      }
+
       const { data, error } = await callStaffAuthFunction({ 
         action: 'validate'
       });
-
-      console.log('Validation response:', { data, error });
       
       if (error) {
-        console.error('Validation error:', error);
         return false;
       }
 
       return data?.valid === true;
     } catch (error) {
-      console.error('Session validation error:', error);
       return false;
     }
-  }, []);
+  }, [authState.isAuthenticated]);
 
   const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string; code?: string }> => {
     try {
