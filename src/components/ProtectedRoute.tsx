@@ -157,6 +157,16 @@ export const ResidentProtectedRoute = ({
     const verifySession = async () => {
       if (isLoading) return;
 
+      // Check forced logout before any session verification
+      if (isResidentForcedLogout()) {
+        if (isMounted) {
+          setForcedLogout(true);
+          setHasValidSession(false);
+          setIsSessionVerified(true);
+        }
+        return;
+      }
+
       if (!isAuthenticated) {
         if (isMounted) {
           setHasValidSession(false);
@@ -169,6 +179,15 @@ export const ResidentProtectedRoute = ({
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!isMounted) return;
+      
+      // Re-check after async call
+      if (isResidentForcedLogout()) {
+        setForcedLogout(true);
+        setHasValidSession(false);
+        setIsSessionVerified(true);
+        return;
+      }
+
       setHasValidSession(!!session?.user);
       setIsSessionVerified(true);
     };
