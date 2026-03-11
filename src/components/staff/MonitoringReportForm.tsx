@@ -219,10 +219,10 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
     });
 
     return {
-      region,
-      province,
-      city_municipality: cityMunicipality,
-      barangay,
+      region: HARDCODED_LOCATION.region,
+      province: HARDCODED_LOCATION.province,
+      city_municipality: HARDCODED_LOCATION.cityMunicipality,
+      barangay: HARDCODED_LOCATION.barangay,
       total_inhabitants: totalInhabitants,
       total_registered_voters: totalRegisteredVoters,
       total_households: totalHouseholds,
