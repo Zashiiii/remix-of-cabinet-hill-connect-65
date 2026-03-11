@@ -304,7 +304,7 @@ export const useStaffAuth = () => {
 
   const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string; code?: string }> => {
     try {
-      console.log('Attempting login for:', username);
+      
       
       const { data, error } = await callStaffAuthFunction({ 
         action: 'login', 
