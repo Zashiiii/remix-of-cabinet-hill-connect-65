@@ -24,10 +24,13 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
   const displayText = !expanded && needsTruncation
     ? announcement.description.slice(0, TRUNCATE_LENGTH) + "..."
     : announcement.description;
+  const displayTextTl = !expanded && needsTruncation && announcement.descriptionTl.length > TRUNCATE_LENGTH
+    ? announcement.descriptionTl.slice(0, TRUNCATE_LENGTH) + "..."
+    : announcement.descriptionTl;
 
   return (
     <Card
-      className={`border-l-4 ${
+      className={`border-l-4 overflow-hidden ${
         announcement.type === "important"
           ? "border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/20"
           : "border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
@@ -39,16 +42,16 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
             <img
               src={announcement.imageUrl}
               alt=""
-              className="w-full sm:w-24 sm:h-24 h-40 rounded-lg object-cover shrink-0"
+              className="w-full sm:w-32 sm:h-32 h-48 rounded-lg object-cover shrink-0"
             />
           )}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
-              <div>
-                <h3 className="font-bold text-lg text-foreground">
+              <div className="min-w-0">
+                <h3 className="font-bold text-lg text-foreground break-words">
                   {announcement.title}
                 </h3>
-                <p className="text-sm text-muted-foreground italic">
+                <p className="text-sm text-muted-foreground italic break-words">
                   {announcement.titleTl}
                 </p>
               </div>
@@ -56,12 +59,15 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
                 {announcement.date}
               </span>
             </div>
-            <p className="text-foreground mb-1">{displayText}</p>
+            <p className="text-foreground break-words whitespace-pre-line">{displayText}</p>
+            <p className="text-sm text-muted-foreground italic mt-2 break-words whitespace-pre-line">
+              {displayTextTl}
+            </p>
             {needsTruncation && (
               <Button
                 variant="link"
                 size="sm"
-                className="h-auto p-0 text-primary"
+                className="h-auto p-0 text-primary mt-2"
                 onClick={() => setExpanded(!expanded)}
               >
                 {expanded ? (
@@ -71,9 +77,6 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
                 )}
               </Button>
             )}
-            <p className="text-sm text-muted-foreground italic mt-1">
-              {announcement.descriptionTl}
-            </p>
           </div>
         </div>
       </CardContent>
