@@ -89,12 +89,20 @@ export const useResidentAuth = () => {
 
     // Re-validate on browser back/forward and tab re-focus
     const revalidateSession = () => {
+      if (isResidentForcedLogout()) {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        supabase.auth.signOut({ scope: 'local' });
+        return;
+      }
+
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (isResidentForcedLogout()) {
-          void supabase.auth.signOut();
           setSession(null);
           setUser(null);
           setProfile(null);
+          supabase.auth.signOut({ scope: 'local' });
           return;
         }
 
