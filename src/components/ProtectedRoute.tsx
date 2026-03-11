@@ -108,6 +108,8 @@ export const ResidentProtectedRoute = ({
   const navigate = useNavigate();
   const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
   const [isCheckingApproval, setIsCheckingApproval] = useState(true);
+  const [isSessionVerified, setIsSessionVerified] = useState(false);
+  const [hasValidSession, setHasValidSession] = useState(false);
   const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
 
   useEffect(() => {
