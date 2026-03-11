@@ -1021,7 +1021,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                 ) : (
                   <Card>
                     <CardContent className="p-0">
-                       <ScrollArea className="h-[400px]">
+                       <div className="overflow-auto max-h-[400px] border rounded-md">
                         <div className="min-w-[2200px]">
                           <Table className="border">
                             <TableHeader>
@@ -1167,7 +1167,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                             </TableBody>
                           </Table>
                         </div>
-                      </ScrollArea>
+                      </div>
                     </CardContent>
                   </Card>
                 )}
