@@ -61,6 +61,12 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -194,40 +200,6 @@ const StaffSidebar = ({
 }) => {
   const { state } = useSidebar();
   const navigate = useNavigate();
-
-  // Map tabs to feature keys for permission checking
-  const mainMenuItemsRaw = [
-    { title: "Home", icon: Home, tab: "home", feature: null }, // Everyone can access home
-    { title: "Create Certificate", icon: Plus, tab: "create-certificate", feature: "create_certificate" as FeatureKey },
-    { title: "Certificate Requests", icon: FileText, tab: "certificate-requests", badge: pendingCertificatesCount && pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined, feature: "certificate_requests" as FeatureKey },
-    { title: "Incident/Blotter", icon: AlertTriangle, tab: "incidents", badge: pendingIncidentsCount && pendingIncidentsCount > 0 ? pendingIncidentsCount : undefined, feature: "incidents" as FeatureKey },
-    { title: "Ecological Profile Census", icon: FileText, tab: "ecological-profile", feature: "ecological_profile" as FeatureKey },
-    { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions", badge: pendingEcologicalCount && pendingEcologicalCount > 0 ? pendingEcologicalCount : undefined, feature: "ecological_submissions" as FeatureKey },
-    { title: "Manage Announcements", icon: Bell, tab: "announcements", feature: "announcements" as FeatureKey },
-    { title: "Manage Residents", icon: Users, tab: "residents", feature: "manage_residents" as FeatureKey },
-    { title: "Manage Households", icon: Home, tab: "households", feature: "manage_households" as FeatureKey },
-    { title: "View Reports", icon: BarChart3, tab: "view-reports", feature: "view_reports" as FeatureKey },
-    { title: "Settings", icon: Settings, tab: "settings", feature: "settings" as FeatureKey },
-  ];
-
-  const adminMenuItemsRaw = [
-    { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined, feature: "resident_approval" as FeatureKey },
-    { title: "Name Change Requests", icon: User, tab: "name-change-requests", badge: pendingNameChangeCount && pendingNameChangeCount > 0 ? pendingNameChangeCount : undefined, feature: "name_change_requests" as FeatureKey },
-    { title: "Household Link Requests", icon: Home, tab: "household-link-requests", badge: pendingHouseholdLinkCount && pendingHouseholdLinkCount > 0 ? pendingHouseholdLinkCount : undefined, feature: "household_link_requests" as FeatureKey },
-    { title: "Staff Management", icon: Shield, route: "/admin/staff", feature: "staff_management" as FeatureKey },
-    { title: "Audit Logs", icon: History, tab: "audit-logs", feature: "audit_logs" as FeatureKey },
-    { title: "Monitoring Reports", icon: BarChart3, tab: "monitoring-reports", feature: "monitoring_reports" as FeatureKey },
-  ];
-
-  // Filter menu items based on role permissions
-  const mainMenuItems = mainMenuItemsRaw.filter(item => 
-    item.feature === null || hasPermission(userRole, item.feature)
-  );
-
-  const adminMenuItems = adminMenuItemsRaw.filter(item => 
-    hasPermission(userRole, item.feature)
-  );
-
   const isCollapsed = state === "collapsed";
   const showAdminSection = canAccessAdminSection(userRole);
 
@@ -239,6 +211,99 @@ const StaffSidebar = ({
     }
   };
 
+  const renderMenuItem = (item: { title: string; icon: any; tab?: string; route?: string; badge?: number }) => (
+    <SidebarMenuItem key={item.title}>
+      <SidebarMenuButton
+        onClick={() => handleMenuClick(item)}
+        className={`hover:bg-muted/50 ${activeTab === item.tab ? "bg-muted text-primary font-medium" : ""}`}
+      >
+        <item.icon className="h-4 w-4" />
+        {!isCollapsed && (
+          <span className="flex items-center justify-between flex-1">
+            {item.title}
+            {item.badge && item.badge > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1.5 text-xs">
+                {item.badge}
+              </Badge>
+            )}
+          </span>
+        )}
+        {isCollapsed && item.badge && item.badge > 0 && (
+          <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
+            {item.badge}
+          </span>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+
+  // Services group
+  const servicesItems = [
+    hasPermission(userRole, "certificate_requests") && { title: "Certificates", icon: FileText, tab: "certificate-requests", badge: pendingCertificatesCount && pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined },
+    hasPermission(userRole, "incidents") && { title: "Incident / Blotter", icon: AlertTriangle, tab: "incidents", badge: pendingIncidentsCount && pendingIncidentsCount > 0 ? pendingIncidentsCount : undefined },
+    hasPermission(userRole, "create_certificate") && { title: "Create Certificate", icon: Plus, tab: "create-certificate" },
+  ].filter(Boolean) as any[];
+
+  // Census group
+  const censusItems = [
+    hasPermission(userRole, "ecological_profile") && { title: "Ecological Census", icon: FileText, tab: "ecological-profile" },
+    hasPermission(userRole, "ecological_submissions") && { title: "Ecological Submissions", icon: FileText, tab: "ecological-submissions", badge: pendingEcologicalCount && pendingEcologicalCount > 0 ? pendingEcologicalCount : undefined },
+  ].filter(Boolean) as any[];
+
+  // Residents group
+  const residentsItems = [
+    hasPermission(userRole, "manage_residents") && { title: "Manage Residents", icon: Users, tab: "residents" },
+    hasPermission(userRole, "manage_households") && { title: "Households", icon: Home, tab: "households" },
+  ].filter(Boolean) as any[];
+
+  // Administration group
+  const adminItems = [
+    hasPermission(userRole, "announcements") && { title: "Announcements", icon: Bell, tab: "announcements" },
+    hasPermission(userRole, "resident_approval") && { title: "Resident Approval", icon: CheckCircle, tab: "resident-approval", badge: pendingRegistrationCount && pendingRegistrationCount > 0 ? pendingRegistrationCount : undefined },
+    hasPermission(userRole, "name_change_requests") && { title: "Name Change Requests", icon: User, tab: "name-change-requests", badge: pendingNameChangeCount && pendingNameChangeCount > 0 ? pendingNameChangeCount : undefined },
+    hasPermission(userRole, "household_link_requests") && { title: "Household Link Requests", icon: Home, tab: "household-link-requests", badge: pendingHouseholdLinkCount && pendingHouseholdLinkCount > 0 ? pendingHouseholdLinkCount : undefined },
+    hasPermission(userRole, "staff_management") && { title: "Staff Management", icon: Shield, route: "/admin/staff" },
+    hasPermission(userRole, "audit_logs") && { title: "Audit Logs", icon: History, tab: "audit-logs" },
+    hasPermission(userRole, "monitoring_reports") && { title: "Monitoring Reports", icon: BarChart3, tab: "monitoring-reports" },
+    hasPermission(userRole, "settings") && { title: "Settings", icon: Settings, tab: "settings" },
+  ].filter(Boolean) as any[];
+
+  const CollapsibleGroup = ({ label, items, defaultOpen = false }: { label: string; items: any[]; defaultOpen?: boolean }) => {
+    if (items.length === 0) return null;
+    
+    if (isCollapsed) {
+      return (
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map(renderMenuItem)}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      );
+    }
+
+    return (
+      <Collapsible defaultOpen={defaultOpen} className="group/collapsible">
+        <SidebarGroup>
+          <SidebarGroupLabel asChild>
+            <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+              {label}
+              <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+            </CollapsibleTrigger>
+          </SidebarGroupLabel>
+          <CollapsibleContent>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {items.map(renderMenuItem)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </CollapsibleContent>
+        </SidebarGroup>
+      </Collapsible>
+    );
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
@@ -248,78 +313,33 @@ const StaffSidebar = ({
           </h2>
         </div>
         
+        {/* Dashboard Home */}
         <SidebarGroup>
-          <SidebarGroupLabel className={isCollapsed ? "hidden" : "block"}>
-            Navigation
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    onClick={() => handleMenuClick(item)}
-                    className={`hover:bg-muted/50 ${activeTab === item.tab ? "bg-muted text-primary font-medium" : ""}`}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {!isCollapsed && (
-                      <span className="flex items-center justify-between flex-1">
-                        {item.title}
-                        {item.badge && item.badge > 0 && (
-                          <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1.5 text-xs">
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </span>
-                    )}
-                    {isCollapsed && item.badge && item.badge > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
-                        {item.badge}
-                      </span>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {renderMenuItem({ title: "Dashboard", icon: Home, tab: "home" })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {showAdminSection && adminMenuItems.length > 0 && (
+        {/* Collapsible Groups */}
+        <CollapsibleGroup label="Services" items={servicesItems} defaultOpen />
+        <CollapsibleGroup label="Census" items={censusItems} />
+        <CollapsibleGroup label="Residents" items={residentsItems} defaultOpen />
+        <CollapsibleGroup label="Administration" items={adminItems} />
+
+        {/* Reports */}
+        {hasPermission(userRole, "view_reports") && (
           <SidebarGroup>
-            <SidebarGroupLabel className={isCollapsed ? "hidden" : "block"}>
-              Admin
-            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {adminMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      onClick={() => handleMenuClick(item)}
-                      className="hover:bg-muted/50"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && (
-                        <span className="flex items-center justify-between flex-1">
-                          {item.title}
-                          {item.badge && item.badge > 0 && (
-                            <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1.5 text-xs">
-                              {item.badge}
-                            </Badge>
-                          )}
-                        </span>
-                      )}
-                      {isCollapsed && item.badge && item.badge > 0 && (
-                        <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
-                          {item.badge}
-                        </span>
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {renderMenuItem({ title: "Reports", icon: BarChart3, tab: "view-reports" })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
+        {/* Logout */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
