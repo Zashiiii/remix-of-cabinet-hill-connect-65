@@ -330,10 +330,10 @@ const StaffSidebar = ({
         </SidebarGroup>
 
         {/* Collapsible Groups */}
-        <CollapsibleGroup label="Services" items={servicesItems} defaultOpen />
-        <CollapsibleGroup label="Census" items={censusItems} />
-        <CollapsibleGroup label="Residents" items={residentsItems} defaultOpen />
-        <CollapsibleGroup label="Administration" items={adminItems} />
+        <CollapsibleGroup label="Services" items={servicesItems} defaultOpen activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
+        <CollapsibleGroup label="Census" items={censusItems} activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
+        <CollapsibleGroup label="Residents" items={residentsItems} defaultOpen activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
+        <CollapsibleGroup label="Administration" items={adminItems} activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
 
         {/* Reports */}
         {hasPermission(userRole, "view_reports") && (
