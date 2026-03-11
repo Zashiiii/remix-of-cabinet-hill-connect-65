@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useResidentAuth } from '@/hooks/useResidentAuth';
 import { useStaffAuthContext } from '@/context/StaffAuthContext';
 import { Loader2, Clock, XCircle, ArrowLeft } from 'lucide-react';
@@ -105,7 +105,7 @@ export const ResidentProtectedRoute = ({
 }: ResidentProtectedRouteProps) => {
   const { isAuthenticated, isLoading, profile } = useResidentAuth();
   const location = useLocation();
-  const navigate = useNavigate();
+  
   const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
   const [isCheckingApproval, setIsCheckingApproval] = useState(true);
   const [isSessionVerified, setIsSessionVerified] = useState(false);
@@ -197,7 +197,7 @@ export const ResidentProtectedRoute = ({
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate('/auth', { replace: true });
+    window.location.replace('/auth');
   };
 
   // Show loading while checking auth/session/approval status
