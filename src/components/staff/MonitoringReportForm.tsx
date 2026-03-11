@@ -23,7 +23,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { getMonitoringReport, createMonitoringReport, updateMonitoringReport } from "@/utils/staffApi";
+import { getMonitoringReport, createMonitoringReport, updateMonitoringReport, syncMonitoringReportData } from "@/utils/staffApi";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import MonitoringReportPrint from "./MonitoringReportPrint";
 
