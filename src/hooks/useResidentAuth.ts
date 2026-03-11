@@ -37,12 +37,16 @@ export const useResidentAuth = () => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // If forced logout is active, block any session restoration
         if (isResidentForcedLogout()) {
-          void supabase.auth.signOut();
           setSession(null);
           setUser(null);
           setProfile(null);
           setIsLoading(false);
+          // Silently sign out without triggering another event loop
+          if (session) {
+            setTimeout(() => supabase.auth.signOut({ scope: 'local' }), 0);
+          }
           return;
         }
 
