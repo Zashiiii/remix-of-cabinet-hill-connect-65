@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useResidentAuth } from '@/hooks/useResidentAuth';
-import { useStaffAuth } from '@/hooks/useStaffAuth';
+import { useStaffAuthContext } from '@/context/StaffAuthContext';
 import { Loader2, Clock, XCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
