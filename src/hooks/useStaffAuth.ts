@@ -102,7 +102,7 @@ export const useStaffAuth = () => {
         }
 
         if (data?.authenticated && data?.user) {
-          console.log('Session valid, user:', data.user.username);
+          
           setAuthState({
             user: data.user,
             isAuthenticated: true,
