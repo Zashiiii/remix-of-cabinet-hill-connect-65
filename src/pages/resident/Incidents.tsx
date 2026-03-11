@@ -261,7 +261,7 @@ const ResidentIncidents = () => {
     }
     await logout();
     toast.success("Logged out successfully");
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   const handleTabChange = (tab: string) => {
