@@ -152,6 +152,10 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      // Clear forced logout flags BEFORE signing in so onAuthStateChange can process the session
+      clearResidentForcedLogout();
+      clearStaffForcedLogout();
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
@@ -224,8 +228,8 @@ const Auth = () => {
         
         await logResidentLogin(fullName, data.user.id);
 
-        clearResidentForcedLogout();
-        clearStaffForcedLogout();
+
+
         toast.success("Login successful!");
         navigate("/resident/dashboard", { replace: true });
       }
