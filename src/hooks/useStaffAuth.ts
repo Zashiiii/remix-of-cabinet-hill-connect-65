@@ -143,15 +143,21 @@ export const useStaffAuth = () => {
     };
 
     const handlePopState = () => revalidateSession();
+    const handlePageShow = () => revalidateSession();
+    const handleFocus = () => revalidateSession();
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') revalidateSession();
     };
 
     window.addEventListener('popstate', handlePopState);
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);

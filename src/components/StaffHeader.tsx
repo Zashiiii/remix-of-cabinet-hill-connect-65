@@ -22,7 +22,7 @@ const StaffHeader = () => {
   const handleLogout = async () => {
     await logout();
     toast.success("Logged out successfully");
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   const handleBackToDashboard = () => {

@@ -1633,7 +1633,7 @@ const StaffDashboard = () => {
   const handleLogout = async () => {
     await logout();
     toast.success("Logged out successfully");
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   const pendingCount = requests.filter(r => r.status === "pending").length;
