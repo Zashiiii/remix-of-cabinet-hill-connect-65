@@ -21,7 +21,7 @@ interface ResidentProtectedRouteProps {
   redirectTo?: string;
 }
 
-// Protected route for staff/admin pages - uses hook directly to avoid context issues
+// Protected route for staff/admin pages
 export const StaffProtectedRoute = ({ 
   children, 
   requiredRole = 'any',
@@ -29,11 +29,46 @@ export const StaffProtectedRoute = ({
   requiredFeature,
   redirectTo = '/' 
 }: StaffProtectedRouteProps) => {
-  const { isAuthenticated, isLoading, user } = useStaffAuth();
+  const { isAuthenticated, isLoading, user, validateSession, logout } = useStaffAuthContext();
   const location = useLocation();
+  const [isSessionValid, setIsSessionValid] = useState(false);
+  const [isRevalidating, setIsRevalidating] = useState(true);
 
-  // Show loading only if actually loading
-  if (isLoading) {
+  useEffect(() => {
+    let isMounted = true;
+
+    const revalidate = async () => {
+      if (isLoading) return;
+
+      if (!isAuthenticated) {
+        if (isMounted) {
+          setIsSessionValid(false);
+          setIsRevalidating(false);
+        }
+        return;
+      }
+
+      setIsRevalidating(true);
+      const valid = await validateSession();
+
+      if (!isMounted) return;
+
+      setIsSessionValid(valid);
+      setIsRevalidating(false);
+
+      if (!valid) {
+        await logout();
+      }
+    };
+
+    revalidate();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, isLoading, validateSession, logout, location.key]);
+
+  if (isLoading || isRevalidating) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -41,8 +76,7 @@ export const StaffProtectedRoute = ({
     );
   }
 
-  // Not authenticated - redirect to home
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !isSessionValid) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
