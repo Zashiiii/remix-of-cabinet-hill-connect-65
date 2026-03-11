@@ -220,8 +220,10 @@ const Auth = () => {
         
         await logResidentLogin(fullName, data.user.id);
 
+        clearResidentForcedLogout();
+        clearStaffForcedLogout();
         toast.success("Login successful!");
-        navigate("/resident/dashboard");
+        navigate("/resident/dashboard", { replace: true });
       }
     } catch (error: any) {
       toast.error("An unexpected error occurred. Please try again.");

@@ -31,13 +31,15 @@ const StaffLoginForm = ({ onOpenChange }: { onOpenChange: (open: boolean) => voi
       const result = await login(username, password);
       
       if (result.success) {
+        clearStaffForcedLogout();
+
         toast.success("Login successful", {
           description: "Welcome to the Staff Dashboard"
         });
         onOpenChange(false);
         setUsername("");
         setPassword("");
-        navigate("/staff-dashboard");
+        navigate("/staff-dashboard", { replace: true });
       } else {
         let errorMessage = result.error || "Invalid credentials";
         let toastDescription = "Please check your credentials";

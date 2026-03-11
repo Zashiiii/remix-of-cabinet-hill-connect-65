@@ -174,6 +174,7 @@ export const useResidentAuth = () => {
   };
 
   const logout = async () => {
+    markResidentForcedLogout();
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
