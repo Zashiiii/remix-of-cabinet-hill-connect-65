@@ -110,7 +110,7 @@ export const useStaffAuth = () => {
             expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
           });
         } else {
-          console.log('No valid session found');
+          
           setAuthState({
             user: null,
             isAuthenticated: false,
