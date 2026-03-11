@@ -74,6 +74,7 @@ interface HouseholdMember {
   monthly_income: string;
   is_pwd: boolean;
   is_solo_parent: boolean;
+  is_tenant: boolean;
 }
 
 interface EcologicalProfileFormProps {
