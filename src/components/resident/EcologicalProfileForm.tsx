@@ -1001,9 +1001,9 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                       Complete list of all members in household {formData.household_number || "N/A"}
                     </p>
                   </div>
-                  <Button type="button" onClick={() => { setNewMember(createEmptyMember()); setIsAddMemberOpen(true); }} size="sm">
+                  <Button type="button" onClick={addHouseholdMember} size="sm">
                     <Plus className="h-4 w-4 mr-1" />
-                    Add Member
+                    Add Row
                   </Button>
                 </div>
 
