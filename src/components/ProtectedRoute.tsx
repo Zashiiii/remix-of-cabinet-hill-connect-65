@@ -87,6 +87,11 @@ export const StaffProtectedRoute = ({
     };
   }, [isAuthenticated, isLoading, validateSession, logout, location.key]);
 
+  // Check forced logout synchronously on every render — not through state
+  if (isStaffForcedLogout()) {
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
+
   if (forcedLogout) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
@@ -258,7 +263,11 @@ export const ResidentProtectedRoute = ({
     window.location.replace('/auth');
   };
 
-  // Forced logout check — catches browser back/forward immediately
+  // Check forced logout synchronously on every render — not through state
+  if (isResidentForcedLogout()) {
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
+
   if (forcedLogout) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
