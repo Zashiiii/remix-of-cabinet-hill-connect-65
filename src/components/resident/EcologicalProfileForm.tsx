@@ -38,7 +38,7 @@ import { useResidentAuth } from "@/hooks/useResidentAuth";
 // Form field options
 const HOUSE_OWNERSHIP = ["Owned", "Rented", "Caretaker", "Others"];
 const LOT_OWNERSHIP = ["Owned", "Rented", "Caretaker", "Others"];
-const DWELLING_TYPES = ["Permanent concrete", "Semi Permanent", "Temporary", "Others"];
+const DWELLING_TYPES = ["Permanent concrete", "Semi Permanent", "Temporary", "Boarding House", "Others"];
 const LIGHTING_SOURCES = ["Electricity", "Kerosene", "Solar", "Others"];
 const WATER_SOURCES = ["Spring", "Deepwell (private)", "Deepwell (public)"];
 const WATER_STORAGE = ["Tank", "Elevated Tank", "Jars", "Drums/Cans", "Plastic Containers", "Others"];
