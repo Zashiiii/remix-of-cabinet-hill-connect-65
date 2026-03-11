@@ -59,7 +59,7 @@ const ResidentApproval = () => {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      navigate("/");
+      navigate("/", { replace: true });
     }
   }, [authLoading, isAuthenticated, navigate]);
 

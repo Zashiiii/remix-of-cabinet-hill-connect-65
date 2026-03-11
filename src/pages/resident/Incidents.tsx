@@ -146,7 +146,7 @@ const ResidentIncidents = () => {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      navigate("/auth");
+      navigate("/auth", { replace: true });
     }
   }, [authLoading, isAuthenticated, navigate]);
 
