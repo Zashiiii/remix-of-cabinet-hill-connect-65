@@ -35,7 +35,6 @@ export const useResidentAuth = () => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Defer profile fetch
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id);
@@ -59,7 +58,30 @@ export const useResidentAuth = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Re-validate on browser back/forward and tab re-focus
+    const revalidateSession = () => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (!session?.user) {
+          setProfile(null);
+        }
+      });
+    };
+
+    const handlePopState = () => revalidateSession();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') revalidateSession();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const fetchProfile = async (userId: string) => {
