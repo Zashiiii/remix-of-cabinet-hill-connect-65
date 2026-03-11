@@ -176,6 +176,12 @@ export const toggleCertificateType = async (id: string) => {
   return callStaffApi('toggle-certificate-type', { id });
 };
 
+// Sync monitoring report data from residents/households
+export const syncMonitoringReportData = async () => {
+  const result = await callStaffApi('sync-monitoring-report-data');
+  return result.data || null;
+};
+
 // Monitoring report operations (admin only)
 export const getMonitoringReports = async () => {
   const result = await callStaffApi('get-monitoring-reports');

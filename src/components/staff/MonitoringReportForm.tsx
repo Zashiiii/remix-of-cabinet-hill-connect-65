@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
-  ArrowLeft, Save, Send, Loader2, Printer, CalendarIcon,
+  ArrowLeft, Save, Send, Loader2, Printer, CalendarIcon, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { getMonitoringReport, createMonitoringReport, updateMonitoringReport } from "@/utils/staffApi";
+import { getMonitoringReport, createMonitoringReport, updateMonitoringReport, syncMonitoringReportData } from "@/utils/staffApi";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import MonitoringReportPrint from "./MonitoringReportPrint";
 
@@ -81,19 +81,23 @@ interface MonitoringReportFormProps {
   onBack: () => void;
 }
 
+const HARDCODED_LOCATION = {
+  region: "CAR (Cordillera Administrative Region)",
+  province: "Benguet",
+  cityMunicipality: "Baguio City",
+  barangay: "Salud Mitra",
+};
+
 const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: MonitoringReportFormProps) => {
   const { user } = useStaffAuthContext();
   const [isLoading, setIsLoading] = useState(!!reportId);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Basic info
-  const [region, setRegion] = useState("");
-  const [province, setProvince] = useState("");
-  const [cityMunicipality, setCityMunicipality] = useState("");
-  const [barangay, setBarangay] = useState("");
+  // Basic info (location is hardcoded)
   const [totalInhabitants, setTotalInhabitants] = useState(0);
   const [totalRegisteredVoters, setTotalRegisteredVoters] = useState(0);
   const [totalHouseholds, setTotalHouseholds] = useState(0);
@@ -126,10 +130,7 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
         const d = await getMonitoringReport(reportId);
         if (!d) return;
 
-        setRegion(d.region || "");
-        setProvince(d.province || "");
-        setCityMunicipality(d.city_municipality || "");
-        setBarangay(d.barangay || "");
+        // Location is hardcoded, skip loading from DB
         setTotalInhabitants(d.total_inhabitants || 0);
         setTotalRegisteredVoters(d.total_registered_voters || 0);
         setTotalHouseholds(d.total_households || 0);
@@ -211,6 +212,53 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
     });
   };
 
+  const handleSync = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const data = await syncMonitoringReportData();
+      if (!data) {
+        toast.error("Failed to sync data");
+        return;
+      }
+      setTotalInhabitants(data.total_inhabitants || 0);
+      setTotalHouseholds(data.total_households || 0);
+      setAverageHouseholdSize(data.average_household_size || 0);
+
+      if (data.age_bracket_data && Array.isArray(data.age_bracket_data)) {
+        const parsed = AGE_BRACKETS.map((bracket) => {
+          const found = data.age_bracket_data.find((ab: any) => ab.bracket === bracket);
+          return found || { bracket, male: 0, female: 0 };
+        });
+        setAgeBrackets(parsed);
+      }
+
+      if (data.sector_data && typeof data.sector_data === "object") {
+        const sd = data.sector_data as Record<string, any>;
+        setSectors((prev) =>
+          prev.map((s) => ({
+            ...s,
+            male: sd[s.key]?.male ?? s.male,
+            female: sd[s.key]?.female ?? s.female,
+          }))
+        );
+      }
+
+      toast.success("Data synced from database");
+    } catch (error: any) {
+      console.error("Error syncing data:", error);
+      toast.error(error.message || "Failed to sync data");
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  // Auto-sync on new report load
+  useEffect(() => {
+    if (!reportId && !readOnly) {
+      handleSync();
+    }
+  }, [reportId, readOnly, handleSync]);
+
   const buildPayload = (status: string) => {
     const sectorData: Record<string, { male: number; female: number }> = {};
     sectors.forEach((s) => {
@@ -218,10 +266,10 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
     });
 
     return {
-      region,
-      province,
-      city_municipality: cityMunicipality,
-      barangay,
+      region: HARDCODED_LOCATION.region,
+      province: HARDCODED_LOCATION.province,
+      city_municipality: HARDCODED_LOCATION.cityMunicipality,
+      barangay: HARDCODED_LOCATION.barangay,
       total_inhabitants: totalInhabitants,
       total_registered_voters: totalRegisteredVoters,
       total_households: totalHouseholds,
@@ -398,22 +446,22 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Region</Label>
-                <Input value={region} onChange={(e) => setRegion(e.target.value)} disabled={readOnly} />
-              </div>
-              <div className="space-y-2">
-                <Label>Province</Label>
-                <Input value={province} onChange={(e) => setProvince(e.target.value)} disabled={readOnly} />
-              </div>
-              <div className="space-y-2">
-                <Label>City/Municipality</Label>
-                <Input value={cityMunicipality} onChange={(e) => setCityMunicipality(e.target.value)} disabled={readOnly} />
-              </div>
-              <div className="space-y-2">
-                <Label>Barangay</Label>
-                <Input value={barangay} onChange={(e) => setBarangay(e.target.value)} disabled={readOnly} />
-              </div>
+              {!readOnly && (
+                <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className="w-full sm:w-auto"
+                  >
+                    {isSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Sync from Database
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-populate age brackets, inhabitants, and household counts from resident records.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Total Barangay Inhabitants</Label>
                 <Input type="number" value={totalInhabitants} onChange={(e) => setTotalInhabitants(Number(e.target.value))} disabled={readOnly} />
@@ -653,10 +701,10 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
       <div className="hidden">
         <MonitoringReportPrint
           ref={printRef}
-          region={region}
-          province={province}
-          cityMunicipality={cityMunicipality}
-          barangay={barangay}
+          region={HARDCODED_LOCATION.region}
+          province={HARDCODED_LOCATION.province}
+          cityMunicipality={HARDCODED_LOCATION.cityMunicipality}
+          barangay={HARDCODED_LOCATION.barangay}
           totalInhabitants={totalInhabitants}
           totalRegisteredVoters={totalRegisteredVoters}
           totalHouseholds={totalHouseholds}
