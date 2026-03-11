@@ -30,6 +30,8 @@ const callStaffAuthFunction = async (body: Record<string, unknown>): Promise<{ d
         'Content-Type': 'application/json',
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`,
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
       },
       credentials: 'include', // Important: sends httpOnly cookies
       body: JSON.stringify(body),

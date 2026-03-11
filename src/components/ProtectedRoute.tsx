@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useResidentAuth } from '@/hooks/useResidentAuth';
-import { useStaffAuth } from '@/hooks/useStaffAuth';
+import { useStaffAuthContext } from '@/context/StaffAuthContext';
 import { Loader2, Clock, XCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +21,7 @@ interface ResidentProtectedRouteProps {
   redirectTo?: string;
 }
 
-// Protected route for staff/admin pages - uses hook directly to avoid context issues
+// Protected route for staff/admin pages
 export const StaffProtectedRoute = ({ 
   children, 
   requiredRole = 'any',
@@ -29,11 +29,46 @@ export const StaffProtectedRoute = ({
   requiredFeature,
   redirectTo = '/' 
 }: StaffProtectedRouteProps) => {
-  const { isAuthenticated, isLoading, user } = useStaffAuth();
+  const { isAuthenticated, isLoading, user, validateSession, logout } = useStaffAuthContext();
   const location = useLocation();
+  const [isSessionValid, setIsSessionValid] = useState(false);
+  const [isRevalidating, setIsRevalidating] = useState(true);
 
-  // Show loading only if actually loading
-  if (isLoading) {
+  useEffect(() => {
+    let isMounted = true;
+
+    const revalidate = async () => {
+      if (isLoading) return;
+
+      if (!isAuthenticated) {
+        if (isMounted) {
+          setIsSessionValid(false);
+          setIsRevalidating(false);
+        }
+        return;
+      }
+
+      setIsRevalidating(true);
+      const valid = await validateSession();
+
+      if (!isMounted) return;
+
+      setIsSessionValid(valid);
+      setIsRevalidating(false);
+
+      if (!valid) {
+        await logout();
+      }
+    };
+
+    revalidate();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, isLoading, validateSession, logout, location.key]);
+
+  if (isLoading || isRevalidating) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -41,8 +76,7 @@ export const StaffProtectedRoute = ({
     );
   }
 
-  // Not authenticated - redirect to home
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !isSessionValid) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
@@ -74,16 +108,47 @@ export const ResidentProtectedRoute = ({
   const navigate = useNavigate();
   const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
   const [isCheckingApproval, setIsCheckingApproval] = useState(true);
+  const [isSessionVerified, setIsSessionVerified] = useState(false);
+  const [hasValidSession, setHasValidSession] = useState(false);
   const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
 
   useEffect(() => {
-    // Skip if still loading auth state
-    if (isLoading) {
+    let isMounted = true;
+
+    const verifySession = async () => {
+      if (isLoading) return;
+
+      if (!isAuthenticated) {
+        if (isMounted) {
+          setHasValidSession(false);
+          setIsSessionVerified(true);
+        }
+        return;
+      }
+
+      setIsSessionVerified(false);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!isMounted) return;
+      setHasValidSession(!!session?.user);
+      setIsSessionVerified(true);
+    };
+
+    verifySession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, isLoading, location.key]);
+
+  useEffect(() => {
+    // Skip if still loading auth state or validating session
+    if (isLoading || !isSessionVerified) {
       return;
     }
 
-    // If not authenticated, stop checking
-    if (!isAuthenticated) {
+    // If not authenticated or session invalid, stop checking
+    if (!isAuthenticated || !hasValidSession) {
       setIsCheckingApproval(false);
       return;
     }
@@ -128,15 +193,15 @@ export const ResidentProtectedRoute = ({
     };
 
     checkApprovalStatus();
-  }, [isAuthenticated, isLoading, profile?.approvalStatus, hasCheckedOnce]);
+  }, [isAuthenticated, isLoading, isSessionVerified, hasValidSession, profile?.approvalStatus, hasCheckedOnce]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate('/auth');
+    navigate('/auth', { replace: true });
   };
 
-  // Show loading while checking Supabase auth or approval status
-  if (isLoading || isCheckingApproval) {
+  // Show loading while checking auth/session/approval status
+  if (isLoading || !isSessionVerified || isCheckingApproval) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -144,8 +209,8 @@ export const ResidentProtectedRoute = ({
     );
   }
 
-  // Not authenticated - redirect to auth page
-  if (!isAuthenticated) {
+  // Not authenticated or stale session - redirect to auth page
+  if (!isAuthenticated || !hasValidSession) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
