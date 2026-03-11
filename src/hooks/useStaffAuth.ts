@@ -277,6 +277,10 @@ export const useStaffAuth = () => {
 
   const validateSession = useCallback(async (): Promise<boolean> => {
     try {
+      if (isStaffForcedLogout()) {
+        return false;
+      }
+
       console.log('Validating session with server...');
       // Session token is in httpOnly cookie - no need to send it
       const { data, error } = await callStaffAuthFunction({ 
