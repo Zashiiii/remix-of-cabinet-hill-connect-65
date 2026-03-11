@@ -13,7 +13,7 @@ const EcologicalProfile = () => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <main className="flex-1 p-4 md:p-8 overflow-auto">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-full mx-auto">
             <div className="flex items-center gap-4 mb-6">
               <Button variant="ghost" size="icon" onClick={() => navigate("/resident/dashboard")}>
                 <ArrowLeft className="h-5 w-5" />
