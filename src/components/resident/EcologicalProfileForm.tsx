@@ -1011,7 +1011,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                   <div className="text-center py-8 border-2 border-dashed rounded-lg">
                     <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
                     <p className="text-muted-foreground mb-3">No household members added yet</p>
-                    <Button type="button" onClick={() => { setNewMember(createEmptyMember()); setIsAddMemberOpen(true); }} variant="outline">
+                    <Button type="button" onClick={addHouseholdMember} variant="outline">
                       <UserPlus className="h-4 w-4 mr-2" />
                       Add First Member
                     </Button>
