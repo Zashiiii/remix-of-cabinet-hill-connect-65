@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { hasPermission, FeatureKey } from '@/utils/rolePermissions';
+import { isStaffForcedLogout, isResidentForcedLogout } from '@/utils/authNavigationGuard';
 
 interface StaffProtectedRouteProps {
   children: ReactNode;
@@ -33,6 +34,23 @@ export const StaffProtectedRoute = ({
   const location = useLocation();
   const [isSessionValid, setIsSessionValid] = useState(false);
   const [isRevalidating, setIsRevalidating] = useState(true);
+  const [forcedLogout, setForcedLogout] = useState(() => isStaffForcedLogout());
+
+  // Re-check forced logout flag on every navigation change
+  useEffect(() => {
+    setForcedLogout(isStaffForcedLogout());
+  }, [location.key]);
+
+  // Also listen for popstate to catch browser back/forward
+  useEffect(() => {
+    const checkForcedLogout = () => {
+      if (isStaffForcedLogout()) {
+        setForcedLogout(true);
+      }
+    };
+    window.addEventListener('popstate', checkForcedLogout);
+    return () => window.removeEventListener('popstate', checkForcedLogout);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -40,8 +58,9 @@ export const StaffProtectedRoute = ({
     const revalidate = async () => {
       if (isLoading) return;
 
-      if (!isAuthenticated) {
+      if (!isAuthenticated || isStaffForcedLogout()) {
         if (isMounted) {
+          setForcedLogout(isStaffForcedLogout());
           setIsSessionValid(false);
           setIsRevalidating(false);
         }
@@ -67,6 +86,10 @@ export const StaffProtectedRoute = ({
       isMounted = false;
     };
   }, [isAuthenticated, isLoading, validateSession, logout, location.key]);
+
+  if (forcedLogout) {
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
 
   if (isLoading || isRevalidating) {
     return (
@@ -111,6 +134,22 @@ export const ResidentProtectedRoute = ({
   const [isSessionVerified, setIsSessionVerified] = useState(false);
   const [hasValidSession, setHasValidSession] = useState(false);
   const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
+  const [forcedLogout, setForcedLogout] = useState(() => isResidentForcedLogout());
+
+  // Re-check forced logout flag on navigation changes
+  useEffect(() => {
+    setForcedLogout(isResidentForcedLogout());
+  }, [location.key]);
+
+  useEffect(() => {
+    const checkForcedLogout = () => {
+      if (isResidentForcedLogout()) {
+        setForcedLogout(true);
+      }
+    };
+    window.addEventListener('popstate', checkForcedLogout);
+    return () => window.removeEventListener('popstate', checkForcedLogout);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -199,6 +238,11 @@ export const ResidentProtectedRoute = ({
     await supabase.auth.signOut();
     window.location.replace('/auth');
   };
+
+  // Forced logout check — catches browser back/forward immediately
+  if (forcedLogout) {
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
 
   // Show loading while checking auth/session/approval status
   if (isLoading || !isSessionVerified || isCheckingApproval) {
