@@ -1860,6 +1860,138 @@ serve(async (req) => {
       );
     }
 
+    // ========== SYNC MONITORING REPORT DATA ==========
+    if (action === 'sync-monitoring-report-data') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session || session.role !== 'admin') {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch all approved, non-deleted residents
+      const { data: residents, error: resError } = await supabase
+        .from('residents')
+        .select('birth_date, gender, civil_status, employment_status')
+        .eq('approval_status', 'approved')
+        .is('deleted_at', null);
+
+      if (resError) {
+        console.error('Error fetching residents for sync:', resError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch resident data' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch household count
+      const { count: householdCount, error: hhError } = await supabase
+        .from('households')
+        .select('id', { count: 'exact', head: true });
+
+      if (hhError) {
+        console.error('Error fetching household count:', hhError);
+      }
+
+      const totalInhabitants = residents?.length || 0;
+      const totalHouseholds = householdCount || 0;
+      const averageHouseholdSize = totalHouseholds > 0 ? Math.round((totalInhabitants / totalHouseholds) * 100) / 100 : 0;
+
+      // Age bracket definitions with min/max ages
+      const ageBracketDefs = [
+        { bracket: "Under 5 years old", min: 0, max: 4 },
+        { bracket: "5–9 years old", min: 5, max: 9 },
+        { bracket: "10–14 years old", min: 10, max: 14 },
+        { bracket: "15–19 years old", min: 15, max: 19 },
+        { bracket: "20–24 years old", min: 20, max: 24 },
+        { bracket: "25–29 years old", min: 25, max: 29 },
+        { bracket: "30–34 years old", min: 30, max: 34 },
+        { bracket: "35–39 years old", min: 35, max: 39 },
+        { bracket: "40–44 years old", min: 40, max: 44 },
+        { bracket: "45–49 years old", min: 45, max: 49 },
+        { bracket: "50–54 years old", min: 50, max: 54 },
+        { bracket: "55–59 years old", min: 55, max: 59 },
+        { bracket: "60–64 years old", min: 60, max: 64 },
+        { bracket: "65–69 years old", min: 65, max: 69 },
+        { bracket: "70–74 years old", min: 70, max: 74 },
+        { bracket: "75–79 years old", min: 75, max: 79 },
+        { bracket: "80 years old and over", min: 80, max: 999 },
+      ];
+
+      const now = new Date();
+      const ageBrackets = ageBracketDefs.map(def => {
+        let male = 0;
+        let female = 0;
+        (residents || []).forEach((r: any) => {
+          if (!r.birth_date) return;
+          const birth = new Date(r.birth_date);
+          let age = now.getFullYear() - birth.getFullYear();
+          const monthDiff = now.getMonth() - birth.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age--;
+          if (age >= def.min && age <= def.max) {
+            const gender = (r.gender || '').toLowerCase();
+            if (gender === 'male') male++;
+            else if (gender === 'female') female++;
+          }
+        });
+        return { bracket: def.bracket, male, female };
+      });
+
+      // Sector data
+      const sectorData: Record<string, { male: number; female: number }> = {};
+      const sectorCounters: Record<string, { male: number; female: number }> = {
+        labor_force: { male: 0, female: 0 },
+        unemployed: { male: 0, female: 0 },
+        single: { male: 0, female: 0 },
+        married: { male: 0, female: 0 },
+      };
+
+      (residents || []).forEach((r: any) => {
+        const gender = (r.gender || '').toLowerCase();
+        const gKey = gender === 'male' ? 'male' : gender === 'female' ? 'female' : null;
+        if (!gKey) return;
+
+        const empStatus = (r.employment_status || '').toLowerCase();
+        if (empStatus === 'employed' || empStatus === 'self-employed' || empStatus === 'self employed') {
+          sectorCounters.labor_force[gKey]++;
+        }
+        if (empStatus === 'unemployed') {
+          sectorCounters.unemployed[gKey]++;
+        }
+
+        const civilStatus = (r.civil_status || '').toLowerCase();
+        // Calculate age for 18+ check
+        if (r.birth_date) {
+          const birth = new Date(r.birth_date);
+          let age = now.getFullYear() - birth.getFullYear();
+          const monthDiff = now.getMonth() - birth.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age--;
+          if (age >= 18) {
+            if (civilStatus === 'single') sectorCounters.single[gKey]++;
+            if (civilStatus === 'married') sectorCounters.married[gKey]++;
+          }
+        }
+      });
+
+      Object.assign(sectorData, sectorCounters);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            total_inhabitants: totalInhabitants,
+            total_households: totalHouseholds,
+            average_household_size: averageHouseholdSize,
+            age_bracket_data: ageBrackets,
+            sector_data: sectorData,
+          }
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== MONITORING REPORTS (admin only) ==========
 
     if (action === 'get-monitoring-reports') {
