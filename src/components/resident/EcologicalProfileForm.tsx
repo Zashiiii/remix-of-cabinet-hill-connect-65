@@ -658,6 +658,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
     monthly_income: "",
     is_pwd: false,
     is_solo_parent: false,
+    is_tenant: false,
   });
 
   const calculateAgeFromBirthDate = (birthDate: string): number | null => {
