@@ -197,7 +197,7 @@ export const ResidentProtectedRoute = ({
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate('/auth');
+    navigate('/auth', { replace: true });
   };
 
   // Show loading while checking Supabase auth or approval status
