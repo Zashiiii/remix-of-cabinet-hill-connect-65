@@ -1046,13 +1046,13 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                                   <TableCell className="p-1">
                                     <Input
                                       value={member.full_name}
-                                      onChange={(e) => updateHouseholdMember(member.id, "full_name", e.target.value)}
+                                      onChange={(e) => updateHouseholdMember(member.id, { full_name: e.target.value })}
                                       placeholder="Last, First"
                                       className="h-8 text-xs"
                                     />
                                   </TableCell>
                                   <TableCell className="p-1">
-                                    <Select value={member.relationship_to_head} onValueChange={(v) => updateHouseholdMember(member.id, "relationship_to_head", v)}>
+                                    <Select value={member.relationship_to_head} onValueChange={(v) => updateHouseholdMember(member.id, { relationship_to_head: v })}>
                                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                                       <SelectContent>{RELATIONSHIPS.map(r => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}</SelectContent>
                                     </Select>
@@ -1071,51 +1071,50 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                                           const m = today.getMonth() - birth.getMonth();
                                           if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
                                         }
-                                        updateHouseholdMember(member.id, "birth_date", bd);
-                                        updateHouseholdMember(member.id, "age", age);
+                                        updateHouseholdMember(member.id, { birth_date: bd, age });
                                       }}
                                       className="h-8 text-xs"
                                     />
                                   </TableCell>
                                   <TableCell className="text-center text-xs">{member.age ?? "-"}</TableCell>
                                   <TableCell className="p-1">
-                                    <Select value={member.gender} onValueChange={(v) => updateHouseholdMember(member.id, "gender", v)}>
+                                    <Select value={member.gender} onValueChange={(v) => updateHouseholdMember(member.id, { gender: v })}>
                                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sex" /></SelectTrigger>
                                       <SelectContent>{GENDERS.map(g => <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
                                   <TableCell className="p-1">
-                                    <Select value={member.civil_status} onValueChange={(v) => updateHouseholdMember(member.id, "civil_status", v)}>
+                                    <Select value={member.civil_status} onValueChange={(v) => updateHouseholdMember(member.id, { civil_status: v })}>
                                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
                                       <SelectContent>{CIVIL_STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
                                   <TableCell className="p-1">
-                                    <Select value={member.religion} onValueChange={(v) => updateHouseholdMember(member.id, "religion", v)}>
+                                    <Select value={member.religion} onValueChange={(v) => updateHouseholdMember(member.id, { religion: v })}>
                                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Religion" /></SelectTrigger>
                                       <SelectContent>{RELIGIONS.map(r => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
                                   <TableCell className="p-1">
-                                    <Select value={member.schooling_status} onValueChange={(v) => updateHouseholdMember(member.id, "schooling_status", v)}>
+                                    <Select value={member.schooling_status} onValueChange={(v) => updateHouseholdMember(member.id, { schooling_status: v })}>
                                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Schooling" /></SelectTrigger>
                                       <SelectContent>{SCHOOLING_STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
                                   <TableCell className="p-1">
-                                    <Select value={member.education_level} onValueChange={(v) => updateHouseholdMember(member.id, "education_level", v)}>
+                                    <Select value={member.education_level} onValueChange={(v) => updateHouseholdMember(member.id, { education_level: v })}>
                                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Education" /></SelectTrigger>
                                       <SelectContent>{EDUCATION_LEVELS.map(e => <SelectItem key={e} value={e} className="text-xs">{e}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
                                   <TableCell className="p-1">
-                                    <Select value={member.employment_status} onValueChange={(v) => updateHouseholdMember(member.id, "employment_status", v)}>
+                                    <Select value={member.employment_status} onValueChange={(v) => updateHouseholdMember(member.id, { employment_status: v })}>
                                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Employment" /></SelectTrigger>
                                       <SelectContent>{EMPLOYMENT_STATUSES.map(e => <SelectItem key={e} value={e} className="text-xs">{e}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
                                   <TableCell className="p-1">
-                                    <Select value={member.monthly_income} onValueChange={(v) => updateHouseholdMember(member.id, "monthly_income", v)}>
+                                    <Select value={member.monthly_income} onValueChange={(v) => updateHouseholdMember(member.id, { monthly_income: v })}>
                                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Income" /></SelectTrigger>
                                       <SelectContent>{INCOME_RANGES.map(i => <SelectItem key={i} value={i} className="text-xs">{i}</SelectItem>)}</SelectContent>
                                     </Select>
