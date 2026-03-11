@@ -67,11 +67,13 @@ export const useResidentAuth = () => {
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (isResidentForcedLogout()) {
-        void supabase.auth.signOut();
         setSession(null);
         setUser(null);
         setProfile(null);
         setIsLoading(false);
+        if (session) {
+          supabase.auth.signOut({ scope: 'local' });
+        }
         return;
       }
 
