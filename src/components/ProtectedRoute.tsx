@@ -34,13 +34,19 @@ export const StaffProtectedRoute = ({
   const [isSessionValid, setIsSessionValid] = useState(false);
   const [isRevalidating, setIsRevalidating] = useState(true);
 
+  // Immediate synchronous check on every render — catches browser back/forward
+  if (isStaffForcedLogout()) {
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
+
   useEffect(() => {
     let isMounted = true;
 
     const revalidate = async () => {
       if (isLoading) return;
 
-      if (!isAuthenticated) {
+      // Double-check forced logout flag
+      if (!isAuthenticated || isStaffForcedLogout()) {
         if (isMounted) {
           setIsSessionValid(false);
           setIsRevalidating(false);
