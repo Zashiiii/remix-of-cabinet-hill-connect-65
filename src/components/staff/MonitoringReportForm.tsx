@@ -399,22 +399,22 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Region</Label>
-                <Input value={region} onChange={(e) => setRegion(e.target.value)} disabled={readOnly} />
-              </div>
-              <div className="space-y-2">
-                <Label>Province</Label>
-                <Input value={province} onChange={(e) => setProvince(e.target.value)} disabled={readOnly} />
-              </div>
-              <div className="space-y-2">
-                <Label>City/Municipality</Label>
-                <Input value={cityMunicipality} onChange={(e) => setCityMunicipality(e.target.value)} disabled={readOnly} />
-              </div>
-              <div className="space-y-2">
-                <Label>Barangay</Label>
-                <Input value={barangay} onChange={(e) => setBarangay(e.target.value)} disabled={readOnly} />
-              </div>
+              {!readOnly && (
+                <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className="w-full sm:w-auto"
+                  >
+                    {isSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Sync from Database
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-populate age brackets, inhabitants, and household counts from resident records.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Total Barangay Inhabitants</Label>
                 <Input type="number" value={totalInhabitants} onChange={(e) => setTotalInhabitants(Number(e.target.value))} disabled={readOnly} />
