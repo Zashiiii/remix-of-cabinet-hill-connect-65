@@ -94,6 +94,7 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -243,6 +244,7 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
         );
       }
 
+      setLastSyncedAt(new Date());
       toast.success("Data synced from database");
     } catch (error: any) {
       console.error("Error syncing data:", error);
@@ -448,18 +450,32 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {!readOnly && (
                 <div className="space-y-2 md:col-span-2 lg:col-span-3">
-                  <Button
-                    variant="outline"
-                    onClick={handleSync}
-                    disabled={isSyncing}
-                    className="w-full sm:w-auto"
-                  >
-                    {isSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                    Sync from Database
-                  </Button>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Button
+                      variant="outline"
+                      onClick={handleSync}
+                      disabled={isSyncing}
+                      className="w-full sm:w-auto"
+                    >
+                      {isSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                      Sync from Database
+                    </Button>
+                    {lastSyncedAt && (
+                      <span className="text-xs text-muted-foreground">
+                        Last synced: {format(lastSyncedAt, "MMM d, yyyy h:mm a")}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Auto-populate age brackets, inhabitants, and household counts from resident records.
                   </p>
+                </div>
+              )}
+              {readOnly && lastSyncedAt && (
+                <div className="md:col-span-2 lg:col-span-3">
+                  <span className="text-xs text-muted-foreground">
+                    Last synced: {format(lastSyncedAt, "MMM d, yyyy h:mm a")}
+                  </span>
                 </div>
               )}
               <div className="space-y-2">
@@ -469,6 +485,7 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
               <div className="space-y-2">
                 <Label>Total Registered Voters</Label>
                 <Input type="number" value={totalRegisteredVoters} onChange={(e) => setTotalRegisteredVoters(Number(e.target.value))} disabled={readOnly} />
+                <p className="text-xs text-muted-foreground italic">Manual entry — not available in resident records</p>
               </div>
               <div className="space-y-2">
                 <Label>Total Households</Label>
@@ -477,6 +494,7 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
               <div className="space-y-2">
                 <Label>Total Families</Label>
                 <Input type="number" value={totalFamilies} onChange={(e) => setTotalFamilies(Number(e.target.value))} disabled={readOnly} />
+                <p className="text-xs text-muted-foreground italic">Manual entry — not available in resident records</p>
               </div>
               <div className="space-y-2">
                 <Label>Average Household Size</Label>
