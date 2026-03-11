@@ -1021,31 +1021,35 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                 ) : (
                   <Card>
                     <CardContent className="p-0">
-                      <ScrollArea className="h-[400px]">
-                        <div className="min-w-[1400px]">
-                          <Table>
+                       <ScrollArea className="h-[400px]">
+                        <div className="min-w-[2200px]">
+                          <Table className="border">
                             <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-10">#</TableHead>
-                                <TableHead className="min-w-[160px]">Name</TableHead>
-                                <TableHead className="min-w-[120px]">Relation</TableHead>
-                                <TableHead className="min-w-[130px]">Birth Date</TableHead>
-                                <TableHead className="w-16">Age</TableHead>
-                                <TableHead className="min-w-[90px]">Sex</TableHead>
-                                <TableHead className="min-w-[110px]">Civil Status</TableHead>
-                                <TableHead className="min-w-[130px]">Religion</TableHead>
-                                <TableHead className="min-w-[120px]">Schooling</TableHead>
-                                <TableHead className="min-w-[140px]">Education</TableHead>
-                                <TableHead className="min-w-[130px]">Employment</TableHead>
-                                <TableHead className="min-w-[120px]">Income (Cash)</TableHead>
+                              <TableRow className="border-b">
+                                <TableHead className="w-10 border-r">#</TableHead>
+                                <TableHead className="min-w-[160px] border-r">Name</TableHead>
+                                <TableHead className="min-w-[140px] border-r">Relation</TableHead>
+                                <TableHead className="min-w-[140px] border-r">Birth Date</TableHead>
+                                <TableHead className="w-16 border-r">Age</TableHead>
+                                <TableHead className="min-w-[100px] border-r">Sex</TableHead>
+                                <TableHead className="min-w-[120px] border-r">Civil Status</TableHead>
+                                <TableHead className="min-w-[140px] border-r">Religion</TableHead>
+                                <TableHead className="min-w-[130px] border-r">Schooling</TableHead>
+                                <TableHead className="min-w-[160px] border-r">Education</TableHead>
+                                <TableHead className="min-w-[150px] border-r">Employment</TableHead>
+                                <TableHead className="min-w-[160px] border-r">Occupation</TableHead>
+                                <TableHead className="min-w-[140px] border-r">Income (Cash)</TableHead>
+                                <TableHead className="w-16 border-r text-center">PWD</TableHead>
+                                <TableHead className="w-20 border-r text-center">Solo Parent</TableHead>
+                                <TableHead className="w-16 border-r text-center">Tenant</TableHead>
                                 <TableHead className="w-12">Del</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {(formData.household_members as HouseholdMember[]).map((member, index) => (
-                                <TableRow key={member.id}>
-                                  <TableCell className="font-medium text-center">{index + 1}</TableCell>
-                                  <TableCell className="p-1">
+                                <TableRow key={member.id} className="border-b">
+                                  <TableCell className="font-medium text-center border-r">{index + 1}</TableCell>
+                                  <TableCell className="p-1 border-r">
                                     <Input
                                       value={member.full_name}
                                       onChange={(e) => updateHouseholdMember(member.id, { full_name: e.target.value })}
@@ -1053,13 +1057,13 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                                       className="h-8 text-xs"
                                     />
                                   </TableCell>
-                                  <TableCell className="p-1">
+                                  <TableCell className="p-1 border-r">
                                     <Select value={member.relationship_to_head} onValueChange={(v) => updateHouseholdMember(member.id, { relationship_to_head: v })}>
-                                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                      <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Select" /></SelectTrigger>
                                       <SelectContent>{RELATIONSHIPS.map(r => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
-                                  <TableCell className="p-1">
+                                  <TableCell className="p-1 border-r">
                                     <Input
                                       type="date"
                                       value={member.birth_date}
@@ -1078,48 +1082,74 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                                       className="h-8 text-xs"
                                     />
                                   </TableCell>
-                                  <TableCell className="text-center text-xs">{member.age ?? "-"}</TableCell>
-                                  <TableCell className="p-1">
+                                  <TableCell className="text-center text-xs border-r">{member.age ?? "-"}</TableCell>
+                                  <TableCell className="p-1 border-r">
                                     <Select value={member.gender} onValueChange={(v) => updateHouseholdMember(member.id, { gender: v })}>
-                                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sex" /></SelectTrigger>
+                                      <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Sex" /></SelectTrigger>
                                       <SelectContent>{GENDERS.map(g => <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
-                                  <TableCell className="p-1">
+                                  <TableCell className="p-1 border-r">
                                     <Select value={member.civil_status} onValueChange={(v) => updateHouseholdMember(member.id, { civil_status: v })}>
-                                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+                                      <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Status" /></SelectTrigger>
                                       <SelectContent>{CIVIL_STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
-                                  <TableCell className="p-1">
+                                  <TableCell className="p-1 border-r">
                                     <Select value={member.religion} onValueChange={(v) => updateHouseholdMember(member.id, { religion: v })}>
-                                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Religion" /></SelectTrigger>
+                                      <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Religion" /></SelectTrigger>
                                       <SelectContent>{RELIGIONS.map(r => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
-                                  <TableCell className="p-1">
+                                  <TableCell className="p-1 border-r">
                                     <Select value={member.schooling_status} onValueChange={(v) => updateHouseholdMember(member.id, { schooling_status: v })}>
-                                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Schooling" /></SelectTrigger>
+                                      <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Schooling" /></SelectTrigger>
                                       <SelectContent>{SCHOOLING_STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
-                                  <TableCell className="p-1">
+                                  <TableCell className="p-1 border-r">
                                     <Select value={member.education_level} onValueChange={(v) => updateHouseholdMember(member.id, { education_level: v })}>
-                                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Education" /></SelectTrigger>
+                                      <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Education" /></SelectTrigger>
                                       <SelectContent>{EDUCATION_LEVELS.map(e => <SelectItem key={e} value={e} className="text-xs">{e}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
-                                  <TableCell className="p-1">
+                                  <TableCell className="p-1 border-r">
                                     <Select value={member.employment_status} onValueChange={(v) => updateHouseholdMember(member.id, { employment_status: v })}>
-                                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Employment" /></SelectTrigger>
+                                      <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Select..." /></SelectTrigger>
                                       <SelectContent>{EMPLOYMENT_STATUSES.map(e => <SelectItem key={e} value={e} className="text-xs">{e}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </TableCell>
-                                  <TableCell className="p-1">
+                                  <TableCell className="p-1 border-r">
+                                    <Input
+                                      value={member.occupation || ""}
+                                      onChange={(e) => updateHouseholdMember(member.id, { occupation: e.target.value })}
+                                      placeholder="e.g., Farmer, Teacher"
+                                      className="h-8 text-xs"
+                                    />
+                                  </TableCell>
+                                  <TableCell className="p-1 border-r">
                                     <Select value={member.monthly_income} onValueChange={(v) => updateHouseholdMember(member.id, { monthly_income: v })}>
-                                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Income" /></SelectTrigger>
+                                      <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Income" /></SelectTrigger>
                                       <SelectContent>{INCOME_RANGES.map(i => <SelectItem key={i} value={i} className="text-xs">{i}</SelectItem>)}</SelectContent>
                                     </Select>
+                                  </TableCell>
+                                  <TableCell className="p-1 border-r text-center">
+                                    <Checkbox
+                                      checked={member.is_pwd || false}
+                                      onCheckedChange={(checked) => updateHouseholdMember(member.id, { is_pwd: !!checked })}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="p-1 border-r text-center">
+                                    <Checkbox
+                                      checked={member.is_solo_parent || false}
+                                      onCheckedChange={(checked) => updateHouseholdMember(member.id, { is_solo_parent: !!checked })}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="p-1 border-r text-center">
+                                    <Checkbox
+                                      checked={member.is_tenant || false}
+                                      onCheckedChange={(checked) => updateHouseholdMember(member.id, { is_tenant: !!checked })}
+                                    />
                                   </TableCell>
                                   <TableCell className="p-1">
                                     <Button
