@@ -135,6 +135,16 @@ export const useStaffAuth = () => {
   useEffect(() => {
     const revalidateSession = async () => {
       try {
+        if (isStaffForcedLogout()) {
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            expiresAt: null,
+          });
+          return;
+        }
+
         const { data, error } = await callStaffAuthFunction({ 
           action: 'get-session'
         });
