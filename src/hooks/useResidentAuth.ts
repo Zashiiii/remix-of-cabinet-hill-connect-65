@@ -185,10 +185,20 @@ export const useResidentAuth = () => {
 
   const logout = async () => {
     markResidentForcedLogout();
-    await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setProfile(null);
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Ignore signout errors — forced logout flag handles protection
+    }
+    // Clear any Supabase session keys from localStorage as extra safety
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('sb-') && key.includes('-auth-token')) {
+        localStorage.removeItem(key);
+      }
+    });
   };
 
   return {
