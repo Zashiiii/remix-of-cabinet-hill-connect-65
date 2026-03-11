@@ -59,6 +59,29 @@ const AppContent = () => {
     }
   };
 
+  // Auto-logout on new visit (tab close + reopen, new tab, navigate away and back)
+  // sessionStorage persists on refresh but clears on tab close — perfect for this
+  useEffect(() => {
+    const SESSION_MARKER = "bris_active_session";
+    const isReturningVisit = sessionStorage.getItem(SESSION_MARKER);
+
+    if (!isReturningVisit) {
+      // New visit (new tab, reopened after closing, navigated away and back)
+      // Clear all auth tokens to force re-login
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') && key.includes('-auth-token')) {
+          localStorage.removeItem(key);
+        }
+      });
+      // Mark forced logout for both resident and staff
+      localStorage.setItem("bris_resident_forced_logout", String(Date.now()));
+      localStorage.setItem("bris_staff_forced_logout", String(Date.now()));
+    }
+
+    // Mark this tab as having an active session (survives refresh, dies on tab close)
+    sessionStorage.setItem(SESSION_MARKER, "true");
+  }, []);
+
   useEffect(() => {
     const handlePageShow = (event: Event) => {
       // Force reload when restored from browser back/forward cache (bfcache)
@@ -72,7 +95,6 @@ const AppContent = () => {
       const residentForced = localStorage.getItem("bris_resident_forced_logout") !== null;
       const staffForced = localStorage.getItem("bris_staff_forced_logout") !== null;
       if (residentForced || staffForced) {
-        // Force a full reload to clear React state and re-run ProtectedRoute checks
         window.location.reload();
       }
     };
