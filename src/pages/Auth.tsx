@@ -85,17 +85,14 @@ const Auth = () => {
   const [statusError, setStatusError] = useState<string | null>(null);
 
   // Check if user is already logged in and approved
-  // Only auto-redirect on SIGNED_IN event (explicit login), not on page load with stale session
   useEffect(() => {
-    const checkApprovalAndRedirect = async (userId: string, email: string, shouldRedirect: boolean) => {
-      // Check if resident is approved before redirecting
+    const checkApprovalAndRedirect = async (userId: string, email: string) => {
       const { data: resident } = await supabase
         .from("residents")
         .select("approval_status")
         .eq("user_id", userId)
         .maybeSingle();
 
-      // If no resident found, try by email
       if (!resident) {
         const { data: residentByEmail } = await supabase
           .from("residents")
@@ -103,37 +100,45 @@ const Auth = () => {
           .eq("email", email)
           .maybeSingle();
 
-        if (residentByEmail?.approval_status === "approved" && shouldRedirect) {
-          navigate("/resident/dashboard");
+        if (residentByEmail?.approval_status === "approved") {
+          navigate("/resident/dashboard", { replace: true });
         } else if (residentByEmail?.approval_status === "pending") {
-          // Sign out if account is pending approval
           await supabase.auth.signOut();
           toast.info("Your account is pending approval. Please wait for admin approval before logging in.");
         }
         return;
       }
 
-      if (resident.approval_status === "approved" && shouldRedirect) {
-        navigate("/resident/dashboard");
+      if (resident.approval_status === "approved") {
+        navigate("/resident/dashboard", { replace: true });
       } else if (resident.approval_status === "pending") {
-        // Sign out if account is pending approval
         await supabase.auth.signOut();
         toast.info("Your account is pending approval. Please wait for admin approval before logging in.");
       }
     };
 
+    // Check existing session on mount — if already logged in, redirect away
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await checkApprovalAndRedirect(session.user.id, session.user.email || "");
+      }
+    };
+
+    // Only check if not in forced logout state
+    const residentForced = localStorage.getItem("bris_resident_forced_logout") !== null;
+    if (!residentForced) {
+      checkExistingSession();
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Only auto-redirect on explicit SIGNED_IN event (user just logged in)
-      // Don't redirect on INITIAL_SESSION or TOKEN_REFRESHED (page load with existing session)
       if (session?.user && event === "SIGNED_IN") {
         setTimeout(() => {
-          checkApprovalAndRedirect(session.user.id, session.user.email || "", true);
+          checkApprovalAndRedirect(session.user.id, session.user.email || "");
         }, 0);
       }
     });
 
-    // Don't auto-redirect on page load - let user see the login page
-    // They will be redirected after explicit login
     return () => subscription.unsubscribe();
   }, [navigate]);
 
