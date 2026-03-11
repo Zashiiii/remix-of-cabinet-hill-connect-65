@@ -113,13 +113,42 @@ export const ResidentProtectedRoute = ({
   const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
 
   useEffect(() => {
-    // Skip if still loading auth state
-    if (isLoading) {
+    let isMounted = true;
+
+    const verifySession = async () => {
+      if (isLoading) return;
+
+      if (!isAuthenticated) {
+        if (isMounted) {
+          setHasValidSession(false);
+          setIsSessionVerified(true);
+        }
+        return;
+      }
+
+      setIsSessionVerified(false);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!isMounted) return;
+      setHasValidSession(!!session?.user);
+      setIsSessionVerified(true);
+    };
+
+    verifySession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, isLoading, location.key]);
+
+  useEffect(() => {
+    // Skip if still loading auth state or validating session
+    if (isLoading || !isSessionVerified) {
       return;
     }
 
-    // If not authenticated, stop checking
-    if (!isAuthenticated) {
+    // If not authenticated or session invalid, stop checking
+    if (!isAuthenticated || !hasValidSession) {
       setIsCheckingApproval(false);
       return;
     }
@@ -164,7 +193,7 @@ export const ResidentProtectedRoute = ({
     };
 
     checkApprovalStatus();
-  }, [isAuthenticated, isLoading, profile?.approvalStatus, hasCheckedOnce]);
+  }, [isAuthenticated, isLoading, isSessionVerified, hasValidSession, profile?.approvalStatus, hasCheckedOnce]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
