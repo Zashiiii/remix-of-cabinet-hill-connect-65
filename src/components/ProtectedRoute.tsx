@@ -239,6 +239,11 @@ export const ResidentProtectedRoute = ({
     window.location.replace('/auth');
   };
 
+  // Forced logout check — catches browser back/forward immediately
+  if (forcedLogout) {
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
+
   // Show loading while checking auth/session/approval status
   if (isLoading || !isSessionVerified || isCheckingApproval) {
     return (
