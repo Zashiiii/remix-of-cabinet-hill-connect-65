@@ -1019,6 +1019,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                     </Button>
                   </div>
                 ) : (
+                  <>
                   <Card>
                     <CardContent className="p-0">
                        <div className="overflow-auto max-h-[400px] border rounded-md">
