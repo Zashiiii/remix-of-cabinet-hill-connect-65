@@ -28,6 +28,15 @@ interface ResidentProfile {
 }
 
 export const useResidentAuth = () => {
+  // SYNCHRONOUSLY clear tokens before Supabase can restore them
+  if (isResidentForcedLogout()) {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('sb-') && key.includes('-auth-token')) {
+        localStorage.removeItem(key);
+      }
+    });
+  }
+
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<ResidentProfile | null>(null);
