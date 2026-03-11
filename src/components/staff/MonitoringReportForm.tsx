@@ -244,6 +244,7 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
         );
       }
 
+      setLastSyncedAt(new Date());
       toast.success("Data synced from database");
     } catch (error: any) {
       console.error("Error syncing data:", error);
