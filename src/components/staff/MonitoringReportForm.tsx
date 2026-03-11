@@ -212,6 +212,53 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
     });
   };
 
+  const handleSync = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const data = await syncMonitoringReportData();
+      if (!data) {
+        toast.error("Failed to sync data");
+        return;
+      }
+      setTotalInhabitants(data.total_inhabitants || 0);
+      setTotalHouseholds(data.total_households || 0);
+      setAverageHouseholdSize(data.average_household_size || 0);
+
+      if (data.age_bracket_data && Array.isArray(data.age_bracket_data)) {
+        const parsed = AGE_BRACKETS.map((bracket) => {
+          const found = data.age_bracket_data.find((ab: any) => ab.bracket === bracket);
+          return found || { bracket, male: 0, female: 0 };
+        });
+        setAgeBrackets(parsed);
+      }
+
+      if (data.sector_data && typeof data.sector_data === "object") {
+        const sd = data.sector_data as Record<string, any>;
+        setSectors((prev) =>
+          prev.map((s) => ({
+            ...s,
+            male: sd[s.key]?.male ?? s.male,
+            female: sd[s.key]?.female ?? s.female,
+          }))
+        );
+      }
+
+      toast.success("Data synced from database");
+    } catch (error: any) {
+      console.error("Error syncing data:", error);
+      toast.error(error.message || "Failed to sync data");
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  // Auto-sync on new report load
+  useEffect(() => {
+    if (!reportId && !readOnly) {
+      handleSync();
+    }
+  }, [reportId, readOnly, handleSync]);
+
   const buildPayload = (status: string) => {
     const sectorData: Record<string, { male: number; female: number }> = {};
     sectors.forEach((s) => {
