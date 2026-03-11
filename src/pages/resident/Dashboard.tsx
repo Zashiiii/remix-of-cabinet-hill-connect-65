@@ -696,7 +696,7 @@ const ResidentDashboard = () => {
                 open={showSuccessModal}
                 onOpenChange={setShowSuccessModal}
                 controlNumber={submittedControlNumber}
-                onReset={() => setActiveTab("dashboard")}
+                onReset={() => setActiveTab("request")}
               />
             </>
           )}
