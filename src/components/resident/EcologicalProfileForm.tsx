@@ -1613,7 +1613,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                   </CardContent>
                 </Card>
               </TabsContent>
-            </ScrollArea>
+            </div>
           </Tabs>
 
           <div className="flex justify-between mt-6 pt-4 border-t">
