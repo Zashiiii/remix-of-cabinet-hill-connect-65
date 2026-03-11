@@ -37,10 +37,6 @@ export const useResidentAuth = () => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (event === "SIGNED_IN") {
-          clearResidentForcedLogout();
-        }
-
         if (isResidentForcedLogout()) {
           void supabase.auth.signOut();
           setSession(null);
