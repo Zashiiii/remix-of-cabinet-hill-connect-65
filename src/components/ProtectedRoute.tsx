@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useResidentAuth } from '@/hooks/useResidentAuth';
 import { useStaffAuthContext } from '@/context/StaffAuthContext';
 import { Loader2, Clock, XCircle, ArrowLeft } from 'lucide-react';
