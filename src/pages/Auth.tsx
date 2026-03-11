@@ -17,6 +17,10 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import DataPrivacyModal from "@/components/DataPrivacyModal";
 import { logResidentLogin, logResidentRegistration } from "@/utils/auditLog";
+import {
+  clearResidentForcedLogout,
+  clearStaffForcedLogout,
+} from "@/utils/authNavigationGuard";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),

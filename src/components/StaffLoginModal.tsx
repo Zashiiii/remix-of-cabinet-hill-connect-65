@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { clearStaffForcedLogout } from "@/utils/authNavigationGuard";
+import { Loader2 } from "lucide-react";
 
 interface StaffLoginModalProps {
   open: boolean;
