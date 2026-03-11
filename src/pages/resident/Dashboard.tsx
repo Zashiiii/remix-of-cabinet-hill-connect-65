@@ -169,7 +169,7 @@ const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
           loading="lazy"
         />
       )}
-      <p className={`text-sm text-muted-foreground mt-1 ${!expanded && isLong ? "line-clamp-3" : ""}`}>
+      <p className={`text-sm text-muted-foreground mt-1 break-all overflow-hidden ${!expanded && isLong ? "line-clamp-3" : ""}`}>
         {announcement.content}
       </p>
       {isLong && (
