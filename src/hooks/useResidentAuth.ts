@@ -37,12 +37,16 @@ export const useResidentAuth = () => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // If forced logout is active, block any session restoration
         if (isResidentForcedLogout()) {
-          void supabase.auth.signOut();
           setSession(null);
           setUser(null);
           setProfile(null);
           setIsLoading(false);
+          // Silently sign out without triggering another event loop
+          if (session) {
+            setTimeout(() => supabase.auth.signOut({ scope: 'local' }), 0);
+          }
           return;
         }
 
@@ -63,11 +67,13 @@ export const useResidentAuth = () => {
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (isResidentForcedLogout()) {
-        void supabase.auth.signOut();
         setSession(null);
         setUser(null);
         setProfile(null);
         setIsLoading(false);
+        if (session) {
+          supabase.auth.signOut({ scope: 'local' });
+        }
         return;
       }
 
@@ -83,12 +89,20 @@ export const useResidentAuth = () => {
 
     // Re-validate on browser back/forward and tab re-focus
     const revalidateSession = () => {
+      if (isResidentForcedLogout()) {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        supabase.auth.signOut({ scope: 'local' });
+        return;
+      }
+
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (isResidentForcedLogout()) {
-          void supabase.auth.signOut();
           setSession(null);
           setUser(null);
           setProfile(null);
+          supabase.auth.signOut({ scope: 'local' });
           return;
         }
 
@@ -171,10 +185,20 @@ export const useResidentAuth = () => {
 
   const logout = async () => {
     markResidentForcedLogout();
-    await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setProfile(null);
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Ignore signout errors — forced logout flag handles protection
+    }
+    // Clear any Supabase session keys from localStorage as extra safety
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('sb-') && key.includes('-auth-token')) {
+        localStorage.removeItem(key);
+      }
+    });
   };
 
   return {
