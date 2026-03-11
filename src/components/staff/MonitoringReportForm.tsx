@@ -485,6 +485,7 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
               <div className="space-y-2">
                 <Label>Total Registered Voters</Label>
                 <Input type="number" value={totalRegisteredVoters} onChange={(e) => setTotalRegisteredVoters(Number(e.target.value))} disabled={readOnly} />
+                <p className="text-xs text-muted-foreground italic">Manual entry — not available in resident records</p>
               </div>
               <div className="space-y-2">
                 <Label>Total Households</Label>
@@ -493,6 +494,7 @@ const MonitoringReportForm = ({ reportId, readOnly = false, onBack }: Monitoring
               <div className="space-y-2">
                 <Label>Total Families</Label>
                 <Input type="number" value={totalFamilies} onChange={(e) => setTotalFamilies(Number(e.target.value))} disabled={readOnly} />
+                <p className="text-xs text-muted-foreground italic">Manual entry — not available in resident records</p>
               </div>
               <div className="space-y-2">
                 <Label>Average Household Size</Label>
