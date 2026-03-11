@@ -200,8 +200,8 @@ export const ResidentProtectedRoute = ({
     navigate('/auth', { replace: true });
   };
 
-  // Show loading while checking Supabase auth or approval status
-  if (isLoading || isCheckingApproval) {
+  // Show loading while checking auth/session/approval status
+  if (isLoading || !isSessionVerified || isCheckingApproval) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -209,8 +209,8 @@ export const ResidentProtectedRoute = ({
     );
   }
 
-  // Not authenticated - redirect to auth page
-  if (!isAuthenticated) {
+  // Not authenticated or stale session - redirect to auth page
+  if (!isAuthenticated || !hasValidSession) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
