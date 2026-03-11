@@ -1170,6 +1170,12 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                       </div>
                     </CardContent>
                   </Card>
+                  <div className="flex justify-center mt-3">
+                    <Button type="button" onClick={addHouseholdMember} variant="outline" size="sm">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add Member
+                    </Button>
+                  </div>
                 )}
 
                 {/* Legend */}
