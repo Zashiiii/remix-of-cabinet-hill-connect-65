@@ -25,7 +25,7 @@ const EcologicalProfile = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="p-4 md:p-6 max-w-5xl mx-auto">
+      <div className="p-2 md:p-4 w-full">
         <div className="mb-6">
           <Button variant="ghost" size="sm" onClick={() => navigate("/resident/dashboard")}>
             <ArrowLeft className="h-4 w-4 mr-1" />
