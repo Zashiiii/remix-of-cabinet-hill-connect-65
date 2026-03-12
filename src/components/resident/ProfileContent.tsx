@@ -409,10 +409,12 @@ const ProfileContent = () => {
       {showNameChangeForm && residentId && (
         <NameChangeRequestForm
           residentId={residentId}
-          currentFirstName={formData.firstName}
-          currentMiddleName={formData.middleName}
-          currentLastName={formData.lastName}
-          currentSuffix={formData.suffix}
+          currentName={{
+            firstName: formData.firstName,
+            middleName: formData.middleName,
+            lastName: formData.lastName,
+            suffix: formData.suffix,
+          }}
           open={showNameChangeForm}
           onOpenChange={setShowNameChangeForm}
           onSuccess={() => { setShowNameChangeForm(false); loadProfile(); }}
