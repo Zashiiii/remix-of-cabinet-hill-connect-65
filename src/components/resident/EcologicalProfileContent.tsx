@@ -8,7 +8,7 @@ interface EcologicalProfileContentProps {
 
 const EcologicalProfileContent = ({ onSuccess }: EcologicalProfileContentProps) => {
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="w-full mx-auto">
       <div className="mb-4">
         <h2 className="text-2xl font-bold text-foreground">Ecological Profile Census</h2>
         <p className="text-muted-foreground">Submit your household's ecological profile data</p>
