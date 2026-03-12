@@ -47,9 +47,8 @@ import { logResidentLogout } from "@/utils/auditLog";
 import ProfileContent from "@/components/resident/ProfileContent";
 import MessagesContent from "@/components/resident/MessagesContent";
 import IncidentsContent from "@/components/resident/IncidentsContent";
-
+import EcologicalProfileContent from "@/components/resident/EcologicalProfileContent";
 import SettingsContent from "@/components/resident/SettingsContent";
-
 interface Request {
   id: string;
   controlNumber: string;
@@ -359,8 +358,6 @@ const ResidentDashboard = () => {
 
     touchStartRef.current = null;
   }, [isMobile, isPulling, pullDistance, isRefreshing, activeTab]);
-
-
     const handleLogout = async () => {
     if (user && profile) {
       const fullName = profile.firstName && profile.lastName 
@@ -377,11 +374,7 @@ const ResidentDashboard = () => {
     setTabBounceKey(prev => prev + 1);
     // Clear swipe animation after it plays
     setTimeout(() => setSwipeDirection(null), 250);
-    if (tab === "ecological-profile") {
-      navigate("/resident/ecological-profile");
-    } else {
-      setActiveTab(tab);
-    }
+    setActiveTab(tab);
   };
 
   const handleRequestSuccess = (controlNumber: string) => {
@@ -850,6 +843,19 @@ const ResidentDashboard = () => {
                 </Button>
               </div>
               <SettingsContent />
+            </>
+          )}
+
+          {activeTab === "ecological-profile" && (
+            <>
+              <div className="flex items-center gap-4 mb-6">
+                <SidebarTrigger />
+                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Dashboard
+                </Button>
+              </div>
+              <EcologicalProfileContent onSuccess={() => setActiveTab("dashboard")} />
             </>
           )}
         </main>
