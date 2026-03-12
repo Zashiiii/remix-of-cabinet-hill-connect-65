@@ -47,9 +47,8 @@ import { logResidentLogout } from "@/utils/auditLog";
 import ProfileContent from "@/components/resident/ProfileContent";
 import MessagesContent from "@/components/resident/MessagesContent";
 import IncidentsContent from "@/components/resident/IncidentsContent";
-
+import EcologicalProfileContent from "@/components/resident/EcologicalProfileContent";
 import SettingsContent from "@/components/resident/SettingsContent";
-
 interface Request {
   id: string;
   controlNumber: string;
