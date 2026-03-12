@@ -1005,7 +1005,7 @@ const EcologicalProfileForm = ({ onSuccess, onCancel }: EcologicalProfileFormPro
                   </div>
                   <Button type="button" onClick={addHouseholdMember} size="sm">
                     <Plus className="h-4 w-4 mr-1" />
-                    Add Row
+                    Add Member
                   </Button>
                 </div>
 
