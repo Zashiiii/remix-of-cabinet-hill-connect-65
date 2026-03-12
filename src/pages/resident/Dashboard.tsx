@@ -44,6 +44,11 @@ import ResidentCertificateRequestForm from "@/components/resident/ResidentCertif
 import SuccessModal from "@/components/SuccessModal";
 import ChatWidget from "@/components/ChatWidget";
 import { logResidentLogout } from "@/utils/auditLog";
+import ProfileContent from "@/components/resident/ProfileContent";
+import MessagesContent from "@/components/resident/MessagesContent";
+import IncidentsContent from "@/components/resident/IncidentsContent";
+import EcologicalProfileContent from "@/components/resident/EcologicalProfileContent";
+import SettingsContent from "@/components/resident/SettingsContent";
 
 interface Request {
   id: string;
@@ -372,20 +377,7 @@ const ResidentDashboard = () => {
     setTabBounceKey(prev => prev + 1);
     // Clear swipe animation after it plays
     setTimeout(() => setSwipeDirection(null), 250);
-    
-    if (tab === "profile") {
-      navigate("/resident/profile");
-    } else if (tab === "settings") {
-      navigate("/resident/settings");
-    } else if (tab === "incidents") {
-      navigate("/resident/incidents");
-    } else if (tab === "messages") {
-      navigate("/resident/messages");
-    } else if (tab === "ecological-profile") {
-      navigate("/resident/ecological-profile");
-    } else {
-      setActiveTab(tab);
-    }
+    setActiveTab(tab);
   };
 
   const handleRequestSuccess = (controlNumber: string) => {
@@ -585,7 +577,7 @@ const ResidentDashboard = () => {
                           variant="link"
                           size="sm"
                           className="px-0"
-                          onClick={() => navigate("/resident/ecological-profile")}
+                          onClick={() => setActiveTab("ecological-profile")}
                         >
                           {ecoStatus === "none" ? "Submit Profile →" : "Update Profile →"}
                         </Button>
@@ -615,7 +607,7 @@ const ResidentDashboard = () => {
 
                 <Card 
                   className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-accent"
-                  onClick={() => navigate("/resident/incidents")}
+                  onClick={() => setActiveTab("incidents")}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
                     <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
@@ -802,6 +794,71 @@ const ResidentDashboard = () => {
                   )}
                 </CardContent>
               </Card>
+            </>
+          )}
+
+          {activeTab === "profile" && (
+            <>
+              <div className="flex items-center gap-4 mb-6">
+                <SidebarTrigger />
+                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Dashboard
+                </Button>
+              </div>
+              <ProfileContent />
+            </>
+          )}
+
+          {activeTab === "messages" && (
+            <>
+              <div className="flex items-center gap-4 mb-6">
+                <SidebarTrigger />
+                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Dashboard
+                </Button>
+              </div>
+              <MessagesContent />
+            </>
+          )}
+
+          {activeTab === "incidents" && (
+            <>
+              <div className="flex items-center gap-4 mb-6">
+                <SidebarTrigger />
+                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Dashboard
+                </Button>
+              </div>
+              <IncidentsContent />
+            </>
+          )}
+
+          {activeTab === "ecological-profile" && (
+            <>
+              <div className="flex items-center gap-4 mb-6">
+                <SidebarTrigger />
+                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Dashboard
+                </Button>
+              </div>
+              <EcologicalProfileContent onSuccess={() => setActiveTab("dashboard")} />
+            </>
+          )}
+
+          {activeTab === "settings" && (
+            <>
+              <div className="flex items-center gap-4 mb-6">
+                <SidebarTrigger />
+                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Dashboard
+                </Button>
+              </div>
+              <SettingsContent />
             </>
           )}
         </main>
