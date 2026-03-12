@@ -36,7 +36,7 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
           : "border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
       }`}
     >
-      <CardContent className="p-6">
+      <CardContent className="p-6 overflow-hidden">
         <div className="flex flex-col sm:flex-row gap-4">
           {announcement.imageUrl && (
             <img
@@ -47,20 +47,20 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
           )}
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
-              <div className="min-w-0">
-                <h3 className="font-bold text-lg text-foreground break-words">
+              <div className="min-w-0 overflow-hidden">
+                <h3 className="font-bold text-lg text-foreground break-words overflow-hidden text-ellipsis">
                   {announcement.title}
                 </h3>
-                <p className="text-sm text-muted-foreground italic break-words">
+                <p className="text-sm text-muted-foreground italic break-words overflow-hidden text-ellipsis">
                   {announcement.titleTl}
                 </p>
               </div>
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
+              <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">
                 {announcement.date}
               </span>
             </div>
-            <p className="text-foreground break-words whitespace-pre-line">{displayText}</p>
-            <p className="text-sm text-muted-foreground italic mt-2 break-words whitespace-pre-line">
+            <p className="text-foreground break-words whitespace-pre-line overflow-hidden">{displayText}</p>
+            <p className="text-sm text-muted-foreground italic mt-2 break-words whitespace-pre-line overflow-hidden">
               {displayTextTl}
             </p>
             {needsTruncation && (
