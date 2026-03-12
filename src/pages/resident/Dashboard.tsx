@@ -374,7 +374,11 @@ const ResidentDashboard = () => {
     setTabBounceKey(prev => prev + 1);
     // Clear swipe animation after it plays
     setTimeout(() => setSwipeDirection(null), 250);
-    setActiveTab(tab);
+    if (tab === "ecological-profile") {
+      navigate("/resident/ecological-profile");
+    } else {
+      setActiveTab(tab);
+    }
   };
 
   const handleRequestSuccess = (controlNumber: string) => {
