@@ -607,7 +607,7 @@ const ResidentDashboard = () => {
 
                 <Card 
                   className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-accent"
-                  onClick={() => navigate("/resident/incidents")}
+                  onClick={() => setActiveTab("incidents")}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
                     <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
