@@ -577,7 +577,7 @@ const ResidentDashboard = () => {
                           variant="link"
                           size="sm"
                           className="px-0"
-                          onClick={() => navigate("/resident/ecological-profile")}
+                          onClick={() => setActiveTab("ecological-profile")}
                         >
                           {ecoStatus === "none" ? "Submit Profile →" : "Update Profile →"}
                         </Button>
