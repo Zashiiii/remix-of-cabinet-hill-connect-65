@@ -358,8 +358,6 @@ const ResidentDashboard = () => {
 
     touchStartRef.current = null;
   }, [isMobile, isPulling, pullDistance, isRefreshing, activeTab]);
-import EcologicalProfileContent from "@/components/resident/EcologicalProfileContent";
-
     const handleLogout = async () => {
     if (user && profile) {
       const fullName = profile.firstName && profile.lastName 
