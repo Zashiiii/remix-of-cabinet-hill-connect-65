@@ -377,11 +377,7 @@ import EcologicalProfileContent from "@/components/resident/EcologicalProfileCon
     setTabBounceKey(prev => prev + 1);
     // Clear swipe animation after it plays
     setTimeout(() => setSwipeDirection(null), 250);
-    if (tab === "ecological-profile") {
-      navigate("/resident/ecological-profile");
-    } else {
-      setActiveTab(tab);
-    }
+    setActiveTab(tab);
   };
 
   const handleRequestSuccess = (controlNumber: string) => {
