@@ -2664,14 +2664,14 @@ const StaffDashboard = () => {
                         <TableBody>
                           {announcements.map((announcement) => (
                             <TableRow key={announcement.id}>
-                              <TableCell>
+                              <TableCell className="max-w-xs">
                                 <div className="flex items-center gap-3">
                                   {announcement.imageUrl && (
                                     <img src={announcement.imageUrl} alt="" className="h-10 w-10 rounded object-cover shrink-0" />
                                   )}
-                                  <div>
-                                    <p className="font-medium">{announcement.title}</p>
-                                    <p className="text-sm text-muted-foreground line-clamp-2">{announcement.description}</p>
+                                  <div className="min-w-0 overflow-hidden">
+                                    <p className="font-medium break-all overflow-hidden text-ellipsis">{announcement.title}</p>
+                                    <p className="text-sm text-muted-foreground line-clamp-2 break-all">{announcement.description}</p>
                                   </div>
                                 </div>
                               </TableCell>
