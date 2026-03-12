@@ -377,20 +377,7 @@ const ResidentDashboard = () => {
     setTabBounceKey(prev => prev + 1);
     // Clear swipe animation after it plays
     setTimeout(() => setSwipeDirection(null), 250);
-    
-    if (tab === "profile") {
-      navigate("/resident/profile");
-    } else if (tab === "settings") {
-      navigate("/resident/settings");
-    } else if (tab === "incidents") {
-      navigate("/resident/incidents");
-    } else if (tab === "messages") {
-      navigate("/resident/messages");
-    } else if (tab === "ecological-profile") {
-      navigate("/resident/ecological-profile");
-    } else {
-      setActiveTab(tab);
-    }
+    setActiveTab(tab);
   };
 
   const handleRequestSuccess = (controlNumber: string) => {
