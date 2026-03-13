@@ -158,10 +158,14 @@ const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
   const isLong = announcement.content.length > 200;
 
   return (
-    <div className="p-3 rounded-lg border bg-card">
-      <div className="flex items-start justify-between">
-        <h4 className="font-medium">{announcement.title}</h4>
-        <Badge variant={announcement.type === "important" ? "destructive" : "secondary"}>
+    <div className={`p-3 rounded-lg border overflow-hidden ${
+      announcement.type === "important"
+        ? "border-l-4 border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/20"
+        : "bg-card"
+    }`}>
+      <div className="flex items-start justify-between gap-2">
+        <h4 className="font-medium break-words overflow-hidden">{announcement.title}</h4>
+        <Badge variant={announcement.type === "important" ? "destructive" : "secondary"} className="shrink-0">
           {announcement.type}
         </Badge>
       </div>
@@ -169,11 +173,11 @@ const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
         <img
           src={announcement.imageUrl}
           alt={announcement.title}
-          className="w-full h-32 object-cover rounded-md mt-2"
+          className="w-full h-48 sm:h-56 object-cover rounded-md mt-2"
           loading="lazy"
         />
       )}
-      <p className={`text-sm text-muted-foreground mt-1 break-all overflow-hidden ${!expanded && isLong ? "line-clamp-3" : ""}`}>
+      <p className={`text-sm text-muted-foreground mt-2 break-words whitespace-pre-line overflow-hidden ${!expanded && isLong ? "line-clamp-3" : ""}`}>
         {announcement.content}
       </p>
       {isLong && (
