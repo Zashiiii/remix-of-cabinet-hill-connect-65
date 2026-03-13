@@ -651,9 +651,16 @@ const ResidentDashboard = () => {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {announcements.map((announcement) => (
+                      {(showAllAnnouncements ? announcements : announcements.slice(0, 3)).map((announcement) => (
                         <AnnouncementItem key={announcement.id} announcement={announcement} />
                       ))}
+                      {announcements.length > 3 && (
+                        <div className="text-center pt-2">
+                          <Button variant="outline" size="sm" onClick={() => setShowAllAnnouncements(!showAllAnnouncements)}>
+                            {showAllAnnouncements ? "View Less" : `View More Announcements (${announcements.length - 3} more)`}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
