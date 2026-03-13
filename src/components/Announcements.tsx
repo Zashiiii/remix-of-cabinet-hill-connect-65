@@ -21,6 +21,7 @@ const TRUNCATE_LENGTH = 200;
 
 const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
   const [expanded, setExpanded] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
   const needsTruncation = announcement.description.length > TRUNCATE_LENGTH;
   const displayText = !expanded && needsTruncation
     ? announcement.description.slice(0, TRUNCATE_LENGTH) + "..."
