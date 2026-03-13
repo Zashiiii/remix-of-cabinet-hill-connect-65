@@ -156,6 +156,7 @@ const ResidentSidebar = ({
 
 const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
   const [expanded, setExpanded] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
   const isLong = announcement.content.length > 200;
 
   return (
