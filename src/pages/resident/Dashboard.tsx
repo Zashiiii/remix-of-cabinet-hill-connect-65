@@ -196,6 +196,7 @@ const ResidentDashboard = () => {
   const [requests, setRequests] = useState<Request[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submittedControlNumber, setSubmittedControlNumber] = useState("");
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
@@ -253,14 +254,21 @@ const ResidentDashboard = () => {
       // Load announcements with image
       const announcementsData = await fetchActiveAnnouncements();
       if (announcementsData) {
-        setAnnouncements(announcementsData.slice(0, 3).map((a: any) => ({
+        const mapped = announcementsData.map((a: any) => ({
           id: a.id,
           title: a.title,
           content: a.content,
           type: a.type,
           createdAt: new Date(a.created_at).toLocaleDateString(),
           imageUrl: a.image_url || undefined,
-        })));
+        }));
+        // Sort: important first, then by date descending
+        mapped.sort((a: any, b: any) => {
+          if (a.type === "important" && b.type !== "important") return -1;
+          if (a.type !== "important" && b.type === "important") return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        setAnnouncements(mapped);
       }
 
       // Load unread message count
@@ -643,9 +651,16 @@ const ResidentDashboard = () => {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {announcements.map((announcement) => (
+                      {(showAllAnnouncements ? announcements : announcements.slice(0, 3)).map((announcement) => (
                         <AnnouncementItem key={announcement.id} announcement={announcement} />
                       ))}
+                      {announcements.length > 3 && (
+                        <div className="text-center pt-2">
+                          <Button variant="outline" size="sm" onClick={() => setShowAllAnnouncements(!showAllAnnouncements)}>
+                            {showAllAnnouncements ? "View Less" : `View More Announcements (${announcements.length - 3} more)`}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

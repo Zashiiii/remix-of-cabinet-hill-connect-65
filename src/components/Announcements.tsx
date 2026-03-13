@@ -87,6 +87,7 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
 const Announcements = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     const loadAnnouncements = async () => {
@@ -108,6 +109,12 @@ const Announcements = () => {
             }),
             imageUrl: item.image_url || undefined,
           }));
+          // Sort: important first, then by date descending
+          mapped.sort((a, b) => {
+            if (a.type === "important" && b.type !== "important") return -1;
+            if (a.type !== "important" && b.type === "important") return 1;
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+          });
           setAnnouncements(mapped);
         } else {
           setAnnouncements([]);
@@ -175,9 +182,18 @@ const Announcements = () => {
               </CardContent>
             </Card>
           ) : (
-            announcements.map((announcement, index) => (
-              <AnnouncementCard key={announcement.id || index} announcement={announcement} />
-            ))
+            <>
+              {(showAll ? announcements : announcements.slice(0, 3)).map((announcement, index) => (
+                <AnnouncementCard key={announcement.id || index} announcement={announcement} />
+              ))}
+              {announcements.length > 3 && (
+                <div className="text-center pt-2">
+                  <Button variant="outline" onClick={() => setShowAll(!showAll)}>
+                    {showAll ? "View Less" : `View More Announcements (${announcements.length - 3} more)`}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
