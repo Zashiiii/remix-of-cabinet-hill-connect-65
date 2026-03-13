@@ -41,11 +41,19 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
       <CardContent className="p-6 overflow-hidden">
         <div className="flex flex-col sm:flex-row gap-4">
           {announcement.imageUrl && (
-            <img
-              src={announcement.imageUrl}
-              alt=""
-              className="w-full sm:w-32 sm:h-32 h-48 rounded-lg object-cover shrink-0"
-            />
+            <>
+              <img
+                src={announcement.imageUrl}
+                alt=""
+                className="w-full sm:w-32 sm:h-32 h-48 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setImageOpen(true)}
+              />
+              <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+                <DialogContent className="max-w-4xl p-2">
+                  <img src={announcement.imageUrl} alt={announcement.title} className="w-full h-auto object-contain rounded" />
+                </DialogContent>
+              </Dialog>
+            </>
           )}
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
