@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useNavigate, Link } from "react-router-dom";
 import { 
   FileText, 
@@ -155,6 +156,7 @@ const ResidentSidebar = ({
 
 const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
   const [expanded, setExpanded] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
   const isLong = announcement.content.length > 200;
 
   return (
@@ -170,12 +172,20 @@ const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
         </Badge>
       </div>
       {announcement.imageUrl && (
-        <img
-          src={announcement.imageUrl}
-          alt={announcement.title}
-          className="w-full h-48 sm:h-56 object-cover rounded-md mt-2"
-          loading="lazy"
-        />
+        <>
+          <img
+            src={announcement.imageUrl}
+            alt={announcement.title}
+            className="w-full h-48 sm:h-56 object-cover rounded-md mt-2 cursor-pointer hover:opacity-90 transition-opacity"
+            loading="lazy"
+            onClick={() => setImageOpen(true)}
+          />
+          <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+            <DialogContent className="max-w-4xl p-2">
+              <img src={announcement.imageUrl} alt={announcement.title} className="w-full h-auto object-contain rounded" />
+            </DialogContent>
+          </Dialog>
+        </>
       )}
       <p className={`text-sm text-muted-foreground mt-2 break-words whitespace-pre-line overflow-hidden ${!expanded && isLong ? "line-clamp-3" : ""}`}>
         {announcement.content}

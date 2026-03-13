@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bell, Loader2, ChevronDown, ChevronUp } from "lucide-react";
@@ -20,6 +21,7 @@ const TRUNCATE_LENGTH = 200;
 
 const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
   const [expanded, setExpanded] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
   const needsTruncation = announcement.description.length > TRUNCATE_LENGTH;
   const displayText = !expanded && needsTruncation
     ? announcement.description.slice(0, TRUNCATE_LENGTH) + "..."
@@ -39,11 +41,19 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
       <CardContent className="p-6 overflow-hidden">
         <div className="flex flex-col sm:flex-row gap-4">
           {announcement.imageUrl && (
-            <img
-              src={announcement.imageUrl}
-              alt=""
-              className="w-full sm:w-32 sm:h-32 h-48 rounded-lg object-cover shrink-0"
-            />
+            <>
+              <img
+                src={announcement.imageUrl}
+                alt=""
+                className="w-full sm:w-32 sm:h-32 h-48 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setImageOpen(true)}
+              />
+              <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+                <DialogContent className="max-w-4xl p-2">
+                  <img src={announcement.imageUrl} alt={announcement.title} className="w-full h-auto object-contain rounded" />
+                </DialogContent>
+              </Dialog>
+            </>
           )}
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
