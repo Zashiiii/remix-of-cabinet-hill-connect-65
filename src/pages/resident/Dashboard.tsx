@@ -196,6 +196,7 @@ const ResidentDashboard = () => {
   const [requests, setRequests] = useState<Request[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submittedControlNumber, setSubmittedControlNumber] = useState("");
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
