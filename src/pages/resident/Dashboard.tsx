@@ -253,14 +253,21 @@ const ResidentDashboard = () => {
       // Load announcements with image
       const announcementsData = await fetchActiveAnnouncements();
       if (announcementsData) {
-        setAnnouncements(announcementsData.slice(0, 3).map((a: any) => ({
+        const mapped = announcementsData.map((a: any) => ({
           id: a.id,
           title: a.title,
           content: a.content,
           type: a.type,
           createdAt: new Date(a.created_at).toLocaleDateString(),
           imageUrl: a.image_url || undefined,
-        })));
+        }));
+        // Sort: important first, then by date descending
+        mapped.sort((a: any, b: any) => {
+          if (a.type === "important" && b.type !== "important") return -1;
+          if (a.type !== "important" && b.type === "important") return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        setAnnouncements(mapped);
       }
 
       // Load unread message count

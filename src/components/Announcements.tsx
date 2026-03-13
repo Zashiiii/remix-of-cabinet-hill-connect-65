@@ -182,9 +182,18 @@ const Announcements = () => {
               </CardContent>
             </Card>
           ) : (
-            announcements.map((announcement, index) => (
-              <AnnouncementCard key={announcement.id || index} announcement={announcement} />
-            ))
+            <>
+              {(showAll ? announcements : announcements.slice(0, 3)).map((announcement, index) => (
+                <AnnouncementCard key={announcement.id || index} announcement={announcement} />
+              ))}
+              {announcements.length > 3 && (
+                <div className="text-center pt-2">
+                  <Button variant="outline" onClick={() => setShowAll(!showAll)}>
+                    {showAll ? "View Less" : `View More Announcements (${announcements.length - 3} more)`}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
