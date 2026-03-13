@@ -109,6 +109,12 @@ const Announcements = () => {
             }),
             imageUrl: item.image_url || undefined,
           }));
+          // Sort: important first, then by date descending
+          mapped.sort((a, b) => {
+            if (a.type === "important" && b.type !== "important") return -1;
+            if (a.type !== "important" && b.type === "important") return 1;
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+          });
           setAnnouncements(mapped);
         } else {
           setAnnouncements([]);
