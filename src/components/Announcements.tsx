@@ -87,6 +87,7 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
 const Announcements = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     const loadAnnouncements = async () => {
