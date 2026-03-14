@@ -158,7 +158,7 @@ const ResidentSidebar = ({
 const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
   const [expanded, setExpanded] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
-  const isLong = announcement.content.length > 200;
+  const isLong = announcement.content.length > 150;
 
   return (
     <div className={`p-3 rounded-lg border overflow-hidden ${
@@ -166,38 +166,44 @@ const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
         ? "border-l-4 border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/20"
         : "bg-card"
     }`}>
-      <div className="flex items-start justify-between gap-2">
-        <h4 className="font-medium break-words overflow-hidden">{announcement.title}</h4>
-        <Badge variant={announcement.type === "important" ? "destructive" : "secondary"} className="shrink-0">
-          {announcement.type}
-        </Badge>
+      <div className="flex gap-3">
+        {announcement.imageUrl && (
+          <>
+            <img
+              src={announcement.imageUrl}
+              alt={announcement.title}
+              className="w-20 h-20 object-cover rounded-md shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+              loading="lazy"
+              onClick={() => setImageOpen(true)}
+            />
+            <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+              <DialogContent className="max-w-4xl p-2">
+                <DialogTitle className="sr-only">{announcement.title}</DialogTitle>
+                <img src={announcement.imageUrl} alt={announcement.title} className="w-full h-auto object-contain rounded" />
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="font-medium text-sm truncate">{announcement.title}</h4>
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge variant={announcement.type === "important" ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0">
+                {announcement.type}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap">{announcement.createdAt}</span>
+            </div>
+          </div>
+          <p className={`text-xs text-muted-foreground mt-1 break-words whitespace-pre-line overflow-hidden ${!expanded && isLong ? "line-clamp-2" : ""}`}>
+            {announcement.content}
+          </p>
+          {isLong && (
+            <Button variant="link" size="sm" className="px-0 h-auto text-[11px] mt-0.5" onClick={() => setExpanded(!expanded)}>
+              {expanded ? "Show Less" : "View More"}
+            </Button>
+          )}
+        </div>
       </div>
-      {announcement.imageUrl && (
-        <>
-          <img
-            src={announcement.imageUrl}
-            alt={announcement.title}
-            className="w-full h-48 sm:h-56 object-cover rounded-md mt-2 cursor-pointer hover:opacity-90 transition-opacity"
-            loading="lazy"
-            onClick={() => setImageOpen(true)}
-          />
-          <Dialog open={imageOpen} onOpenChange={setImageOpen}>
-            <DialogContent className="max-w-4xl p-2">
-              <DialogTitle className="sr-only">{announcement.title}</DialogTitle>
-              <img src={announcement.imageUrl} alt={announcement.title} className="w-full h-auto object-contain rounded" />
-            </DialogContent>
-          </Dialog>
-        </>
-      )}
-      <p className={`text-sm text-muted-foreground mt-2 break-words whitespace-pre-line overflow-hidden ${!expanded && isLong ? "line-clamp-3" : ""}`}>
-        {announcement.content}
-      </p>
-      {isLong && (
-        <Button variant="link" size="sm" className="px-0 h-auto text-xs" onClick={() => setExpanded(!expanded)}>
-          {expanded ? "Show Less" : "View More"}
-        </Button>
-      )}
-      <p className="text-xs text-muted-foreground mt-1">{announcement.createdAt}</p>
     </div>
   );
 };
