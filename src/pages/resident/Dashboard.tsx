@@ -811,12 +811,10 @@ const ResidentDashboard = () => {
                     <div className="text-center py-12">
                       <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
                       <h3 className="font-medium text-lg mb-2">No Requests Yet</h3>
-                      <p className="text-muted-foreground mb-4">
-                        You haven't submitted any certificate requests.
+                      <p className="text-muted-foreground">
+                        You haven't submitted any certificate requests. Click "New Request" above to get started.
                       </p>
-                      <Button onClick={() => setActiveTab("request")}>
-                        Request a Certificate
-                      </Button>
+                    </div>
                     </div>
                   ) : (
                     <div className="space-y-4">
