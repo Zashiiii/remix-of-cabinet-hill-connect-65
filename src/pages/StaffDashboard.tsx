@@ -37,6 +37,7 @@ import {
   X,
   ImageIcon,
   Languages,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -139,6 +140,7 @@ import HouseholdLinkRequestsTab from "@/components/staff/HouseholdLinkRequestsTa
 import CertificateRequestForm from "@/components/CertificateRequestForm";
 import CertificateRequestCard from "@/components/staff/CertificateRequestCard";
 import MonitoringReportsTab from "@/components/staff/MonitoringReportsTab";
+import StaffMessagesTab from "@/components/staff/StaffMessagesTab";
 import { hasPermission, canAccessAdminSection, FeatureKey } from "@/utils/rolePermissions";
 
 interface PendingRequest {
@@ -335,6 +337,17 @@ const StaffSidebar = ({
         <CollapsibleGroup label="Census" items={censusItems} activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
         <CollapsibleGroup label="Residents" items={residentsItems} defaultOpen activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
         <CollapsibleGroup label="Administration" items={adminItems} activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
+
+        {/* Messages */}
+        {hasPermission(userRole, "messages") && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {renderMenuItem({ title: "Messages", icon: MessageSquare, tab: "messages" })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Reports */}
         {hasPermission(userRole, "view_reports") && (
@@ -2790,6 +2803,8 @@ const StaffDashboard = () => {
             {activeTab === "household-link-requests" && <HouseholdLinkRequestsTab staffName={user?.fullName || "Staff Admin"} />}
 
             {activeTab === "monitoring-reports" && <MonitoringReportsTab />}
+
+            {activeTab === "messages" && <StaffMessagesTab />}
           </main>
         </div>
       </div>

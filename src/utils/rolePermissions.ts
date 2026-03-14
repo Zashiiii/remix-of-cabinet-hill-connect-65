@@ -23,7 +23,8 @@ export type FeatureKey =
   | 'ecological_profile'
   | 'create_certificate'
   | 'settings'
-  | 'monitoring_reports';
+  | 'monitoring_reports'
+  | 'messages';
 
 // Define which roles can access each feature
 const ROLE_PERMISSIONS: Record<FeatureKey, StaffRole[]> = {
@@ -48,6 +49,7 @@ const ROLE_PERMISSIONS: Record<FeatureKey, StaffRole[]> = {
   create_certificate: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
   incidents: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
   settings: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
+  messages: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
 };
 
 // Role display names for UI
