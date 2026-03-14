@@ -391,7 +391,7 @@ const ResidentDashboard = () => {
     }
     await logout();
     toast.success("Logged out successfully");
-    window.location.replace("/");
+    secureLogoutRedirect("/");
   };
 
   const handleTabChange = (tab: string) => {

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,13 +6,9 @@ import EcologicalProfileContent from "@/components/resident/EcologicalProfileCon
 
 const EcologicalProfile = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading: authLoading } = useResidentAuth();
+  const { isLoading: authLoading } = useResidentAuth();
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate("/auth", { replace: true });
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is handled by ResidentProtectedRoute wrapper
 
   if (authLoading) {
     return (
