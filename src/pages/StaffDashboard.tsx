@@ -233,6 +233,7 @@ const StaffSidebar = ({
   pendingHouseholdLinkCount,
   pendingIncidentsCount,
   pendingCertificatesCount,
+  unreadMessagesCount,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
@@ -244,6 +245,7 @@ const StaffSidebar = ({
   pendingHouseholdLinkCount?: number;
   pendingIncidentsCount?: number;
   pendingCertificatesCount?: number;
+  unreadMessagesCount?: number;
 }) => {
   const { state } = useSidebar();
   const navigate = useNavigate();
