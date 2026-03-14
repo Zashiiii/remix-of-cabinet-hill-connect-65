@@ -145,11 +145,7 @@ const ResidentIncidents = () => {
   const [residentId, setResidentId] = useState<string | null>(null);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate("/auth", { replace: true });
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is handled by ResidentProtectedRoute wrapper
 
   useEffect(() => {
     if (isAuthenticated && user) {
