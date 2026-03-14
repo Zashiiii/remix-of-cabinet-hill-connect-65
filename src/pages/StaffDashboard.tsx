@@ -3143,6 +3143,22 @@ const StaffDashboard = () => {
                 placeholder="Enter announcement title"
               />
             </div>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAutoTranslate}
+                disabled={isTranslating || (!announcementForm.title && !announcementForm.description)}
+              >
+                {isTranslating ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Languages className="h-4 w-4 mr-2" />
+                )}
+                {isTranslating ? "Translating..." : "Auto-translate to Tagalog"}
+              </Button>
+            </div>
             <div>
               <Label htmlFor="titleTl">Title (Tagalog)</Label>
               <Input
