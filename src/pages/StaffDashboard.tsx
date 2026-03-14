@@ -1473,6 +1473,7 @@ const StaffDashboard = () => {
   const [deleteAnnouncementDialogOpen, setDeleteAnnouncementDialogOpen] = useState(false);
   const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
   const [isDeletingAnnouncement, setIsDeletingAnnouncement] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [announcementForm, setAnnouncementForm] = useState({
     title: "",
     titleTl: "",
