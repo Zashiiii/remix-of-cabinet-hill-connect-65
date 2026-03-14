@@ -1557,6 +1557,32 @@ const StaffDashboard = () => {
     }
   }, [isAuthenticated, loadAnnouncements]);
 
+  const handleAutoTranslate = async () => {
+    if (!announcementForm.title && !announcementForm.description) {
+      toast.error("Please enter the English title or description first");
+      return;
+    }
+    setIsTranslating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('translate-to-tagalog', {
+        body: { title: announcementForm.title, content: announcementForm.description },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setAnnouncementForm(prev => ({
+        ...prev,
+        titleTl: data.title_tl || prev.titleTl,
+        descriptionTl: data.content_tl || prev.descriptionTl,
+      }));
+      toast.success("Translation completed! You can review and edit before saving.");
+    } catch (err: any) {
+      console.error("Translation error:", err);
+      toast.error(err.message || "Failed to translate. Please try again.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const handleCreateAnnouncement = async () => {
     if (!announcementForm.title || !announcementForm.description) {
       toast.error("Please fill in all required fields");
