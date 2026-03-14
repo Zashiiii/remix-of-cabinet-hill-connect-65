@@ -815,7 +815,6 @@ const ResidentDashboard = () => {
                         You haven't submitted any certificate requests. Click "New Request" above to get started.
                       </p>
                     </div>
-                    </div>
                   ) : (
                     <div className="space-y-4">
                       {requests.map((request) => {
