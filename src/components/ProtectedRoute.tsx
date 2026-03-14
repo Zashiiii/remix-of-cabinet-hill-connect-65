@@ -266,6 +266,7 @@ export const ResidentProtectedRoute = ({
 
   // Check forced logout synchronously on every render — not through state
   if (isResidentForcedLogout()) {
+    window.history.replaceState(null, '', redirectTo);
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 

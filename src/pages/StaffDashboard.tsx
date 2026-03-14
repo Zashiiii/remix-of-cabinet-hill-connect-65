@@ -1763,7 +1763,9 @@ const StaffDashboard = () => {
   const handleLogout = async () => {
     await logout();
     toast.success("Logged out successfully");
-    window.location.replace("/");
+    // Import is at top of file
+    const { secureLogoutRedirect } = await import("@/utils/authNavigationGuard");
+    secureLogoutRedirect("/");
   };
 
   const pendingCount = requests.filter(r => r.status === "pending").length;
