@@ -275,6 +275,7 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
             )}
           />
         )}
+        <CertificateRequirementsGuide certificateType={selectedCertificateType} />
 
         {/* Request Details Section */}
         <div className="pt-4 border-t border-border">

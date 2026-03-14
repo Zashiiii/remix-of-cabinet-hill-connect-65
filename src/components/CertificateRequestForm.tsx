@@ -358,6 +358,8 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
           />
         )}
 
+        <CertificateRequirementsGuide certificateType={selectedCertificateType} />
+
         {/* Request Details Section */}
         <div className="pt-4 border-t border-border">
           <h3 className="text-lg font-semibold mb-4">
