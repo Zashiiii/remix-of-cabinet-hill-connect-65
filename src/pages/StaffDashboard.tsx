@@ -694,6 +694,29 @@ const StaffDashboard = () => {
         }
       };
       loadCertificatesCount();
+
+      // Load unread messages count
+      const loadUnreadMessagesCount = async () => {
+        if (!user?.id) return;
+        try {
+          const { data, error } = await supabase.rpc("get_staff_unread_message_count", {
+            p_staff_id: user.id,
+          });
+          if (!error && data !== null) {
+            setUnreadMessagesCount((prev) => {
+              if (data > prevUnreadCountRef.current && prevUnreadCountRef.current >= 0) {
+                // New message arrived - play notification sound
+                playNotificationSound();
+              }
+              prevUnreadCountRef.current = data;
+              return data;
+            });
+          }
+        } catch (err) {
+          console.error("Error loading unread messages count:", err);
+        }
+      };
+      loadUnreadMessagesCount();
       
       // Real-time subscription for certificate requests
       const requestsChannel = supabase
@@ -761,12 +784,25 @@ const StaffDashboard = () => {
         })
         .subscribe();
 
+      // Real-time subscription for messages (sound notification + badge)
+      const messagesChannel = supabase
+        .channel('staff-messages-notification')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        }, () => {
+          loadUnreadMessagesCount();
+        })
+        .subscribe();
+
       return () => {
         supabase.removeChannel(requestsChannel);
         supabase.removeChannel(ecologicalChannel);
         supabase.removeChannel(nameChangeChannel);
         supabase.removeChannel(incidentsChannel);
         supabase.removeChannel(householdLinkChannel);
+        supabase.removeChannel(messagesChannel);
       };
     }
   }, [isAuthenticated, loadRequests]);
