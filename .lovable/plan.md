@@ -1,16 +1,26 @@
 
 
-## No Changes Needed
+## Plan: Redirect to My Requests After Certificate Submission
 
-The announcement card layout in the Resident Portal **already implements all 7 requested changes** from the previous approved plan:
+### Current Flow
+After submitting a certificate request, a `SuccessModal` dialog appears with the control number. The user must manually navigate away.
 
-1. **View More / View Less** — preserved via `isLong` check and toggle button (lines 200-203)
-2. **Short preview (~2-3 lines)** — `line-clamp-2` with 150-char threshold (lines 161, 197)
-3. **Cards stay compact** — horizontal flex layout with tight padding `p-3` (line 164)
-4. **Neat image display** — small `w-20 h-20` thumbnail inline, click to expand in dialog (lines 171-185)
-5. **Clear title, date, category** — header row with title, badge, and date (lines 188-196)
-6. **Clean spacing** — `gap-3` between thumbnail and text, `mt-1` on content, `mt-0.5` on button
-7. **Full content via toggle** — expand/collapse removes `line-clamp-2` on click
+### New Flow
+1. Remove the `SuccessModal` from the request tab
+2. On successful submission, auto-switch to the "requests" tab
+3. Show a persistent success banner at the top of My Requests with the control number, a copy button, and a "what happens next" note
+4. Highlight the newly submitted request card with a green left border + "New" badge (matched by control number)
+5. Add a "Track Status" button on the highlighted card
 
-These changes were applied in the previous message. To see them in action, log into the Resident Portal and navigate to the dashboard.
+### Changes
+
+**`src/pages/resident/Dashboard.tsx`**
+- `handleRequestSuccess`: Instead of opening `SuccessModal`, set `submittedControlNumber` and switch to `setActiveTab("requests")`
+- Remove `SuccessModal` import and usage from the request tab
+- Add a success banner at the top of the "requests" tab content (above the Card) when `submittedControlNumber` is set — shows control number with copy button, brief next-steps text, and a dismiss button
+- On each request card, compare `request.controlNumber === submittedControlNumber` — if match, add `border-l-4 border-green-500 bg-green-50/50` styling and a small "New" badge
+- Add a "Track Status" button on the highlighted card that navigates to `/track-request`
+- Clear `submittedControlNumber` when user dismisses the banner or navigates away from requests tab
+
+**No other files need changes.** The `ResidentCertificateRequestForm` already calls `onSuccess(controlNumber)` which we just redirect differently. The `SuccessModal` component stays in the codebase (used by the public `RequestCertificate` page).
 
