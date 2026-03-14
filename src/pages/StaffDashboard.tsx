@@ -725,8 +725,8 @@ const StaffDashboard = () => {
           });
           if (!error && data !== null) {
             setUnreadMessagesCount((prev) => {
-              if (data > prevUnreadCountRef.current && prevUnreadCountRef.current >= 0) {
-                // New message arrived - play notification sound
+              // Only play sound if not initial load and count increased
+              if (prevUnreadCountRef.current >= 0 && data > prevUnreadCountRef.current) {
                 playNotificationSound();
               }
               prevUnreadCountRef.current = data;
