@@ -45,7 +45,7 @@ import { useResidentAuth } from "@/hooks/useResidentAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveAnnouncements } from "@/utils/api";
 import ResidentCertificateRequestForm from "@/components/resident/ResidentCertificateRequestForm";
-import SuccessModal from "@/components/SuccessModal";
+
 import ChatWidget from "@/components/ChatWidget";
 import { logResidentLogout } from "@/utils/auditLog";
 import { secureLogoutRedirect } from "@/utils/authNavigationGuard";
