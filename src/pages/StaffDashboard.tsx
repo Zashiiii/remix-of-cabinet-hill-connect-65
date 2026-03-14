@@ -3390,7 +3390,7 @@ const StaffDashboard = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      <StaffChatWidget />
+      {activeTab !== "messages" && <StaffChatWidget />}
     </SidebarProvider>
   );
 };
