@@ -383,6 +383,9 @@ const StaffSidebar = ({
   );
 };
 
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+// ... (rest of imports already at top)
+
 const StaffDashboard = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading: authLoading, logout } = useStaffAuthContext();
@@ -395,6 +398,8 @@ const StaffDashboard = () => {
   const [pendingHouseholdLinkCount, setPendingHouseholdLinkCount] = useState(0);
   const [pendingIncidentsCount, setPendingIncidentsCount] = useState(0);
   const [pendingCertificatesCount, setPendingCertificatesCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const prevUnreadCountRef = useRef(0);
 
   // Auth is now handled by ProtectedRoute wrapper
 
