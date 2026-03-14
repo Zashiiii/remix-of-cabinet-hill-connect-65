@@ -36,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import IncidentRequestForm from "@/components/resident/IncidentRequestForm";
 import { Home, User, FileText, Settings, LogOut, MessageSquare } from "lucide-react";
 import { logResidentLogout } from "@/utils/auditLog";
+import { secureLogoutRedirect } from "@/utils/authNavigationGuard";
 
 interface Incident {
   id: string;

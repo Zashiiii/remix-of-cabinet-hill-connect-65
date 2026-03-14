@@ -45,6 +45,7 @@ import ResidentCertificateRequestForm from "@/components/resident/ResidentCertif
 import SuccessModal from "@/components/SuccessModal";
 import ChatWidget from "@/components/ChatWidget";
 import { logResidentLogout } from "@/utils/auditLog";
+import { secureLogoutRedirect } from "@/utils/authNavigationGuard";
 import ProfileContent from "@/components/resident/ProfileContent";
 import MessagesContent from "@/components/resident/MessagesContent";
 import IncidentsContent from "@/components/resident/IncidentsContent";
