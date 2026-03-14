@@ -2803,6 +2803,8 @@ const StaffDashboard = () => {
             {activeTab === "household-link-requests" && <HouseholdLinkRequestsTab staffName={user?.fullName || "Staff Admin"} />}
 
             {activeTab === "monitoring-reports" && <MonitoringReportsTab />}
+
+            {activeTab === "messages" && <StaffMessagesTab />}
           </main>
         </div>
       </div>
