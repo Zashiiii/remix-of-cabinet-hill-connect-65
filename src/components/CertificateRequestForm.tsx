@@ -36,6 +36,7 @@ import { submitCertificateRequest } from "@/utils/api";
 import { toast } from "sonner";
 import { logResidentCertificateRequest } from "@/utils/auditLog";
 import { supabase } from "@/integrations/supabase/client";
+import CertificateRequirementsGuide from "@/components/CertificateRequirementsGuide";
 
 interface ResidentResult {
   id: string;
@@ -356,6 +357,8 @@ const CertificateRequestForm = ({ onSuccess }: CertificateRequestFormProps) => {
             )}
           />
         )}
+
+        <CertificateRequirementsGuide certificateType={selectedCertificateType} />
 
         {/* Request Details Section */}
         <div className="pt-4 border-t border-border">
