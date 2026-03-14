@@ -383,8 +383,6 @@ const StaffSidebar = ({
   );
 };
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-// ... (rest of imports already at top)
 
 const StaffDashboard = () => {
   const navigate = useNavigate();
