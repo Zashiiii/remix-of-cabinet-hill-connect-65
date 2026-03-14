@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Home,
@@ -233,6 +233,7 @@ const StaffSidebar = ({
   pendingHouseholdLinkCount,
   pendingIncidentsCount,
   pendingCertificatesCount,
+  unreadMessagesCount,
 }: { 
   activeTab: string; 
   setActiveTab: (tab: string) => void;
@@ -244,6 +245,7 @@ const StaffSidebar = ({
   pendingHouseholdLinkCount?: number;
   pendingIncidentsCount?: number;
   pendingCertificatesCount?: number;
+  unreadMessagesCount?: number;
 }) => {
   const { state } = useSidebar();
   const navigate = useNavigate();
@@ -343,7 +345,7 @@ const StaffSidebar = ({
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {renderMenuItem({ title: "Messages", icon: MessageSquare, tab: "messages" })}
+                {renderMenuItem({ title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessagesCount && unreadMessagesCount > 0 ? unreadMessagesCount : undefined })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -381,6 +383,7 @@ const StaffSidebar = ({
   );
 };
 
+
 const StaffDashboard = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading: authLoading, logout } = useStaffAuthContext();
@@ -393,8 +396,31 @@ const StaffDashboard = () => {
   const [pendingHouseholdLinkCount, setPendingHouseholdLinkCount] = useState(0);
   const [pendingIncidentsCount, setPendingIncidentsCount] = useState(0);
   const [pendingCertificatesCount, setPendingCertificatesCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const prevUnreadCountRef = useRef(-1); // -1 means initial load, don't play sound
 
   // Auth is now handled by ProtectedRoute wrapper
+
+  // Notification sound using Web Audio API
+  const playNotificationSound = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.value = 0.3;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+      setTimeout(() => ctx.close(), 500);
+    } catch (e) {
+      // Silent fail if audio not available
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -689,6 +715,29 @@ const StaffDashboard = () => {
         }
       };
       loadCertificatesCount();
+
+      // Load unread messages count
+      const loadUnreadMessagesCount = async () => {
+        if (!user?.id) return;
+        try {
+          const { data, error } = await supabase.rpc("get_staff_unread_message_count", {
+            p_staff_id: user.id,
+          });
+          if (!error && data !== null) {
+            setUnreadMessagesCount((prev) => {
+              // Only play sound if not initial load and count increased
+              if (prevUnreadCountRef.current >= 0 && data > prevUnreadCountRef.current) {
+                playNotificationSound();
+              }
+              prevUnreadCountRef.current = data;
+              return data;
+            });
+          }
+        } catch (err) {
+          console.error("Error loading unread messages count:", err);
+        }
+      };
+      loadUnreadMessagesCount();
       
       // Real-time subscription for certificate requests
       const requestsChannel = supabase
@@ -756,12 +805,25 @@ const StaffDashboard = () => {
         })
         .subscribe();
 
+      // Real-time subscription for messages (sound notification + badge)
+      const messagesChannel = supabase
+        .channel('staff-messages-notification')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        }, () => {
+          loadUnreadMessagesCount();
+        })
+        .subscribe();
+
       return () => {
         supabase.removeChannel(requestsChannel);
         supabase.removeChannel(ecologicalChannel);
         supabase.removeChannel(nameChangeChannel);
         supabase.removeChannel(incidentsChannel);
         supabase.removeChannel(householdLinkChannel);
+        supabase.removeChannel(messagesChannel);
       };
     }
   }, [isAuthenticated, loadRequests]);
@@ -1726,7 +1788,7 @@ const StaffDashboard = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} pendingNameChangeCount={pendingNameChangeCount} pendingHouseholdLinkCount={pendingHouseholdLinkCount} pendingIncidentsCount={pendingIncidentsCount} pendingCertificatesCount={pendingCertificatesCount} />
+        <StaffSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={user?.role} pendingRegistrationCount={pendingRegistrationCount} pendingEcologicalCount={pendingEcologicalCount} pendingNameChangeCount={pendingNameChangeCount} pendingHouseholdLinkCount={pendingHouseholdLinkCount} pendingIncidentsCount={pendingIncidentsCount} pendingCertificatesCount={pendingCertificatesCount} unreadMessagesCount={unreadMessagesCount} />
         
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}
