@@ -416,13 +416,18 @@ const ResidentDashboard = () => {
 
   const handleRequestSuccess = (controlNumber: string) => {
     setSubmittedControlNumber(controlNumber);
-    setShowSuccessModal(true);
+    setActiveTab("requests");
     loadData(); // Refresh the requests list
+    toast.success("Certificate request submitted successfully!");
   };
 
-  const handleSuccessModalClose = () => {
-    setShowSuccessModal(false);
-    setActiveTab("dashboard");
+  const handleDismissSuccessBanner = () => {
+    setSubmittedControlNumber("");
+  };
+
+  const handleCopyControlNumber = () => {
+    navigator.clipboard.writeText(submittedControlNumber);
+    toast.success("Control number copied to clipboard!");
   };
 
   const getStatusBadge = (status: string) => {
