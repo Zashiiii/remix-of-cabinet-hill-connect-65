@@ -734,12 +734,6 @@ const ResidentDashboard = () => {
                 </CardContent>
               </Card>
 
-              <SuccessModal
-                open={showSuccessModal}
-                onOpenChange={setShowSuccessModal}
-                controlNumber={submittedControlNumber}
-                onReset={() => setActiveTab("request")}
-              />
             </>
           )}
 
