@@ -139,6 +139,7 @@ import HouseholdLinkRequestsTab from "@/components/staff/HouseholdLinkRequestsTa
 import CertificateRequestForm from "@/components/CertificateRequestForm";
 import CertificateRequestCard from "@/components/staff/CertificateRequestCard";
 import MonitoringReportsTab from "@/components/staff/MonitoringReportsTab";
+import StaffMessagesTab from "@/components/staff/StaffMessagesTab";
 import { hasPermission, canAccessAdminSection, FeatureKey } from "@/utils/rolePermissions";
 
 interface PendingRequest {
