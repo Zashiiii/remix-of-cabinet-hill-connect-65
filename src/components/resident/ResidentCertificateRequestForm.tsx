@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { logResidentCertificateRequest } from "@/utils/auditLog";
+import CertificateRequirementsGuide from "@/components/CertificateRequirementsGuide";
 
 const formSchema = z.object({
   certificateType: z.string().min(1, "Please select a certificate type"),

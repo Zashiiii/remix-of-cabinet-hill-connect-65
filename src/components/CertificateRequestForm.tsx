@@ -36,6 +36,7 @@ import { submitCertificateRequest } from "@/utils/api";
 import { toast } from "sonner";
 import { logResidentCertificateRequest } from "@/utils/auditLog";
 import { supabase } from "@/integrations/supabase/client";
+import CertificateRequirementsGuide from "@/components/CertificateRequirementsGuide";
 
 interface ResidentResult {
   id: string;
