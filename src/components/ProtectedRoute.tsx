@@ -89,6 +89,7 @@ export const StaffProtectedRoute = ({
 
   // Check forced logout synchronously on every render — not through state
   if (isStaffForcedLogout()) {
+    window.history.replaceState(null, '', redirectTo);
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
