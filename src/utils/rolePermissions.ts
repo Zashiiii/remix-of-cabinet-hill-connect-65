@@ -49,6 +49,7 @@ const ROLE_PERMISSIONS: Record<FeatureKey, StaffRole[]> = {
   create_certificate: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
   incidents: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
   settings: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
+  messages: ['admin', 'barangay_captain', 'barangay_official', 'secretary', 'sk_chairman'],
 };
 
 // Role display names for UI
