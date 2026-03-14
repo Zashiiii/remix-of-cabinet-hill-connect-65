@@ -261,7 +261,7 @@ export const ResidentProtectedRoute = ({
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    window.location.replace('/auth');
+    secureLogoutRedirect('/auth');
   };
 
   // Check forced logout synchronously on every render — not through state
