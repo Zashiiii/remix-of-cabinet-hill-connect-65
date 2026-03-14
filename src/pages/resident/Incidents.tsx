@@ -36,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import IncidentRequestForm from "@/components/resident/IncidentRequestForm";
 import { Home, User, FileText, Settings, LogOut, MessageSquare } from "lucide-react";
 import { logResidentLogout } from "@/utils/auditLog";
+import { secureLogoutRedirect } from "@/utils/authNavigationGuard";
 
 interface Incident {
   id: string;
@@ -144,11 +145,7 @@ const ResidentIncidents = () => {
   const [residentId, setResidentId] = useState<string | null>(null);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate("/auth", { replace: true });
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+  // Auth is handled by ResidentProtectedRoute wrapper
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -261,7 +258,7 @@ const ResidentIncidents = () => {
     }
     await logout();
     toast.success("Logged out successfully");
-    window.location.replace("/");
+    secureLogoutRedirect("/");
   };
 
   const handleTabChange = (tab: string) => {

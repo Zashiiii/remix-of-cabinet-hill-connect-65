@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { hasPermission, FeatureKey } from '@/utils/rolePermissions';
-import { isStaffForcedLogout, isResidentForcedLogout } from '@/utils/authNavigationGuard';
+import { isStaffForcedLogout, isResidentForcedLogout, secureLogoutRedirect } from '@/utils/authNavigationGuard';
 
 interface StaffProtectedRouteProps {
   children: ReactNode;
@@ -89,6 +89,7 @@ export const StaffProtectedRoute = ({
 
   // Check forced logout synchronously on every render — not through state
   if (isStaffForcedLogout()) {
+    window.history.replaceState(null, '', redirectTo);
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
@@ -260,11 +261,12 @@ export const ResidentProtectedRoute = ({
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    window.location.replace('/auth');
+    secureLogoutRedirect('/auth');
   };
 
   // Check forced logout synchronously on every render — not through state
   if (isResidentForcedLogout()) {
+    window.history.replaceState(null, '', redirectTo);
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 

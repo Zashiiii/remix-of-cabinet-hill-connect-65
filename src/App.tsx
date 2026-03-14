@@ -90,12 +90,19 @@ const AppContent = () => {
       }
     };
 
-    // Also check forced logout on popstate (browser back/forward within SPA)
+    // Check forced logout AND protected path on popstate (browser back/forward within SPA)
+    const protectedPrefixes = ['/resident/', '/staff-dashboard', '/staff/', '/admin/'];
     const handlePopState = () => {
       const residentForced = localStorage.getItem("bris_resident_forced_logout") !== null;
       const staffForced = localStorage.getItem("bris_staff_forced_logout") !== null;
-      if (residentForced || staffForced) {
-        window.location.reload();
+      const currentPath = window.location.pathname;
+      const isProtectedPath = protectedPrefixes.some(prefix => currentPath.startsWith(prefix));
+      
+      if (isProtectedPath && (residentForced || staffForced)) {
+        // Overwrite history and redirect immediately
+        window.history.replaceState(null, '', '/');
+        window.location.replace('/');
+        return;
       }
     };
 
