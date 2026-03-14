@@ -36,6 +36,7 @@ import {
   Filter,
   X,
   ImageIcon,
+  Languages,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1473,6 +1474,7 @@ const StaffDashboard = () => {
   const [deleteAnnouncementDialogOpen, setDeleteAnnouncementDialogOpen] = useState(false);
   const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
   const [isDeletingAnnouncement, setIsDeletingAnnouncement] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [announcementForm, setAnnouncementForm] = useState({
     title: "",
     titleTl: "",
@@ -1554,6 +1556,32 @@ const StaffDashboard = () => {
       };
     }
   }, [isAuthenticated, loadAnnouncements]);
+
+  const handleAutoTranslate = async () => {
+    if (!announcementForm.title && !announcementForm.description) {
+      toast.error("Please enter the English title or description first");
+      return;
+    }
+    setIsTranslating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('translate-to-tagalog', {
+        body: { title: announcementForm.title, content: announcementForm.description },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setAnnouncementForm(prev => ({
+        ...prev,
+        titleTl: data.title_tl || prev.titleTl,
+        descriptionTl: data.content_tl || prev.descriptionTl,
+      }));
+      toast.success("Translation completed! You can review and edit before saving.");
+    } catch (err: any) {
+      console.error("Translation error:", err);
+      toast.error(err.message || "Failed to translate. Please try again.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   const handleCreateAnnouncement = async () => {
     if (!announcementForm.title || !announcementForm.description) {
@@ -3114,6 +3142,22 @@ const StaffDashboard = () => {
                 onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
                 placeholder="Enter announcement title"
               />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAutoTranslate}
+                disabled={isTranslating || (!announcementForm.title && !announcementForm.description)}
+              >
+                {isTranslating ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Languages className="h-4 w-4 mr-2" />
+                )}
+                {isTranslating ? "Translating..." : "Auto-translate to Tagalog"}
+              </Button>
             </div>
             <div>
               <Label htmlFor="titleTl">Title (Tagalog)</Label>
