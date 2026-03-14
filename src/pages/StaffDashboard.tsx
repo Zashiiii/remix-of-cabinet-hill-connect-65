@@ -338,6 +338,17 @@ const StaffSidebar = ({
         <CollapsibleGroup label="Residents" items={residentsItems} defaultOpen activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
         <CollapsibleGroup label="Administration" items={adminItems} activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
 
+        {/* Messages */}
+        {hasPermission(userRole, "messages") && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {renderMenuItem({ title: "Messages", icon: MessageSquare, tab: "messages" })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {/* Reports */}
         {hasPermission(userRole, "view_reports") && (
           <SidebarGroup>
