@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bell, Loader2, ChevronDown, ChevronUp } from "lucide-react";
@@ -50,6 +50,7 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
               />
               <Dialog open={imageOpen} onOpenChange={setImageOpen}>
                 <DialogContent className="max-w-4xl p-2">
+                  <DialogTitle className="sr-only">{announcement.title}</DialogTitle>
                   <img src={announcement.imageUrl} alt={announcement.title} className="w-full h-auto object-contain rounded" />
                 </DialogContent>
               </Dialog>
