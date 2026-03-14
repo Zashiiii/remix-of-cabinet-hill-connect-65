@@ -345,7 +345,7 @@ const StaffSidebar = ({
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {renderMenuItem({ title: "Messages", icon: MessageSquare, tab: "messages" })}
+                {renderMenuItem({ title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessagesCount && unreadMessagesCount > 0 ? unreadMessagesCount : undefined })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
