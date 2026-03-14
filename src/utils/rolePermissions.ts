@@ -23,7 +23,8 @@ export type FeatureKey =
   | 'ecological_profile'
   | 'create_certificate'
   | 'settings'
-  | 'monitoring_reports';
+  | 'monitoring_reports'
+  | 'messages';
 
 // Define which roles can access each feature
 const ROLE_PERMISSIONS: Record<FeatureKey, StaffRole[]> = {
