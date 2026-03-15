@@ -315,8 +315,10 @@ const StaffSidebar = ({
     hasPermission(userRole, "staff_management") && { title: "Staff Management", icon: Shield, route: "/admin/staff" },
     hasPermission(userRole, "audit_logs") && { title: "Audit Logs", icon: History, tab: "audit-logs" },
     hasPermission(userRole, "monitoring_reports") && { title: "Monitoring Reports", icon: BarChart3, tab: "monitoring-reports" },
+    hasPermission(userRole, "messages") && { title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessagesCount && unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
+    hasPermission(userRole, "view_reports") && { title: "Reports", icon: BarChart3, tab: "view-reports" },
     hasPermission(userRole, "settings") && { title: "Settings", icon: Settings, tab: "settings" },
-  ].filter(Boolean) as any[], [userRole, pendingRegistrationCount, pendingNameChangeCount, pendingHouseholdLinkCount]);
+  ].filter(Boolean) as any[], [userRole, pendingRegistrationCount, pendingNameChangeCount, pendingHouseholdLinkCount, unreadMessagesCount]);
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
