@@ -419,19 +419,6 @@ const ResidentDashboard = () => {
     toast.success("Certificate request submitted successfully!");
   };
 
-  const handleViewRequestsAfterSubmit = () => {
-    setSubmittedControlNumber("");
-    navigate("/resident/requests");
-  };
-
-  const handleDismissSuccessBanner = () => {
-    setSubmittedControlNumber("");
-  };
-
-  const handleCopyControlNumber = () => {
-    navigator.clipboard.writeText(submittedControlNumber);
-    toast.success("Control number copied to clipboard!");
-  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
