@@ -39,6 +39,7 @@ interface CertificateRequestCardProps {
   onApprove: (request: CertificateRequest) => void;
   onReject: (request: CertificateRequest) => void;
   onVerify: (request: CertificateRequest) => void;
+  onUpdateStatus?: (request: CertificateRequest) => void;
 }
 
 const getStatusBadge = (status: RequestStatus) => {
