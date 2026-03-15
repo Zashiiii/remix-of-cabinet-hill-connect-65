@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { 
   FileText, 
   Bell, 
@@ -213,9 +213,10 @@ const MOBILE_TAB_ORDER = ["dashboard", "requests", "messages", "incidents", "pro
 
 const ResidentDashboard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const { user, profile, isAuthenticated, isLoading: authLoading, logout } = useResidentAuth();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "dashboard");
   const [requests, setRequests] = useState<Request[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
