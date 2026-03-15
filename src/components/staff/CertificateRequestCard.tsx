@@ -76,9 +76,12 @@ export function CertificateRequestCard({
   onVerify,
 }: CertificateRequestCardProps) {
   const isApproved = request.status === "approved";
-  const isPendingOrVerifying = request.status === "pending" || request.status === "verifying" || request.status === "processing";
+  const isReadyForPickup = request.status === "ready for pickup";
+  const isPendingOrVerifying = request.status === "pending" || request.status === "verifying" || request.status === "processing" || request.status === "under review" || request.status === "incomplete requirements";
   const isPending = request.status === "pending";
   const isRejected = request.status === "rejected";
+  const isReleased = request.status === "released";
+  const canUpdateStatus = !isReleased;
 
   return (
     <div className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
