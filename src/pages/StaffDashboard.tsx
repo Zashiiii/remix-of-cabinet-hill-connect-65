@@ -467,6 +467,12 @@ const StaffDashboard = () => {
   const [requestToReject, setRequestToReject] = useState<PendingRequest | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Update Status Dialog state
+  const [showUpdateStatusDialog, setShowUpdateStatusDialog] = useState(false);
+  const [updateStatusRequest, setUpdateStatusRequest] = useState<PendingRequest | null>(null);
+  const [updateStatusValue, setUpdateStatusValue] = useState("");
+  const [updateStatusRemarks, setUpdateStatusRemarks] = useState("");
+
   // Bulk selection state
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState(false);
