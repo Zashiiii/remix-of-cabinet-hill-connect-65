@@ -123,7 +123,6 @@ export const BarangayStatsProvider = ({ children }: { children: ReactNode }) => 
       });
 
       // Calculate incident summary
-      const incidentsData = incidentsResult.data || [];
       const byType: { [key: string]: number } = {};
       let resolved = 0;
       let pending = 0;
