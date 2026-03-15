@@ -75,8 +75,12 @@ const ResidentRequests = () => {
   const getStatusBadge = (status: string) => {
     const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode; label: string }> = {
       pending: { variant: "secondary", icon: <Clock className="h-3 w-3 mr-1" />, label: "Pending" },
+      "under review": { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Under Review" },
       verifying: { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Verifying" },
+      "incomplete requirements": { variant: "secondary", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Incomplete Requirements" },
       approved: { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Approved" },
+      "ready for pickup": { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Ready for Pickup" },
+      released: { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Released" },
       rejected: { variant: "destructive", icon: <XCircle className="h-3 w-3 mr-1" />, label: "Rejected" },
     };
 
