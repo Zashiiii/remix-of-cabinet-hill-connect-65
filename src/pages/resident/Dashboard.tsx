@@ -544,7 +544,7 @@ const ResidentDashboard = () => {
                         {latestRequest.status === "rejected" && latestRequest.rejectionReason && (
                           <p className="text-sm text-destructive">Reason: {latestRequest.rejectionReason}</p>
                         )}
-                        <Button variant="link" size="sm" className="px-0" onClick={() => setActiveTab("requests")}>
+                        <Button variant="link" size="sm" className="px-0" onClick={() => navigate("/resident/requests")}>
                           View all requests →
                         </Button>
                       </div>
