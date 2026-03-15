@@ -6,7 +6,8 @@ import {
   CheckCircle, 
   XCircle, 
   Clock, 
-  AlertCircle
+  AlertCircle,
+  Pencil,
 } from "lucide-react";
 
 type RequestStatus = "pending" | "processing" | "approved" | "rejected" | "verifying" | "released" | "under review" | "incomplete requirements" | "ready for pickup";
