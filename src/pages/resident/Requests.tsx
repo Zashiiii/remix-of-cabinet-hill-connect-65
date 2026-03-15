@@ -185,7 +185,7 @@ const ResidentRequests = () => {
                           <h3 className="font-semibold text-sm sm:text-base truncate">
                             {request.certificateType}
                           </h3>
-                          <StatusBadge status={request.status} />
+                          <StatusBadge status={request.status as any} />
                           {request.priority === "urgent" && (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
                               <AlertTriangle className="h-3 w-3" />
