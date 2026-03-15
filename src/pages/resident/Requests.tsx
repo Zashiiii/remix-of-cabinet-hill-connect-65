@@ -237,7 +237,7 @@ const ResidentRequests = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  <StatusBadge status={selectedRequest.status} />
+                  <StatusBadge status={selectedRequest.status as any} />
                 </div>
                 <Separator />
 
