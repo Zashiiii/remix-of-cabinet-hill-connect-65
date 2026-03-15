@@ -1158,6 +1158,52 @@ const StaffDashboard = () => {
     }
   };
 
+  // Open Update Status Dialog
+  const handleOpenUpdateStatusDialog = (request: PendingRequest) => {
+    setUpdateStatusRequest(request);
+    setUpdateStatusValue(request.status.charAt(0).toUpperCase() + request.status.slice(1));
+    setUpdateStatusRemarks("");
+    setShowUpdateStatusDialog(true);
+  };
+
+  // Confirm Update Status
+  const handleConfirmUpdateStatus = async () => {
+    if (!updateStatusRequest || !updateStatusValue) {
+      toast.error("Please select a status");
+      return;
+    }
+
+    setIsProcessing(true);
+    const staffName = user?.fullName || "Staff Admin";
+
+    try {
+      const dbId = updateStatusRequest.dbId;
+      if (!dbId) throw new Error("Request ID not found");
+
+      await updateCertificateRequestStatus(
+        dbId,
+        updateStatusValue,
+        staffName,
+        updateStatusRemarks.trim() || undefined
+      );
+
+      toast.success(`Status updated to "${updateStatusValue}"`, {
+        description: `Certificate for ${updateStatusRequest.residentName} has been updated.`
+      });
+
+      setShowUpdateStatusDialog(false);
+      setUpdateStatusRequest(null);
+      setUpdateStatusValue("");
+      setUpdateStatusRemarks("");
+      loadRequests();
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      toast.error(`Failed to update status: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Download certificate for approved request
   const handleDownloadCertificate = async (request: PendingRequest) => {
     try {
