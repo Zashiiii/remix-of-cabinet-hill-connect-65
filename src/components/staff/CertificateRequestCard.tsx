@@ -8,6 +8,10 @@ import {
   Clock, 
   AlertCircle,
   Pencil,
+  CalendarDays,
+  AlertTriangle,
+  MessageSquare,
+  Phone,
 } from "lucide-react";
 
 type RequestStatus = "pending" | "processing" | "approved" | "rejected" | "verifying" | "released" | "under review" | "incomplete requirements" | "ready for pickup";
@@ -28,6 +32,7 @@ interface CertificateRequest {
   priority?: string;
   rejectionReason?: string;
   preferredPickupDate?: string;
+  notes?: string;
 }
 
 interface CertificateRequestCardProps {
@@ -49,7 +54,7 @@ const getStatusBadge = (status: RequestStatus) => {
     "under review": { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Under Review" },
     verifying: { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Verifying" },
     processing: { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Processing" },
-    "incomplete requirements": { variant: "secondary", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Incomplete Requirements" },
+    "incomplete requirements": { variant: "secondary", icon: <AlertTriangle className="h-3 w-3 mr-1" />, label: "Incomplete" },
     approved: { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Approved" },
     "ready for pickup": { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Ready for Pickup" },
     rejected: { variant: "destructive", icon: <XCircle className="h-3 w-3 mr-1" />, label: "Rejected" },
@@ -59,7 +64,7 @@ const getStatusBadge = (status: RequestStatus) => {
   const { variant, icon, label } = config[status] || config.pending;
 
   return (
-    <Badge variant={variant} className="capitalize">
+    <Badge variant={variant} className="capitalize text-xs">
       {icon}
       {label}
     </Badge>
@@ -72,168 +77,127 @@ export function CertificateRequestCard({
   isProcessing,
   onSelect,
   onView,
-  onDownload,
   onApprove,
   onReject,
-  onVerify,
   onUpdateStatus,
 }: CertificateRequestCardProps) {
-  const isApproved = request.status === "approved";
-  const isReadyForPickup = request.status === "ready for pickup";
-  const isPendingOrVerifying = request.status === "pending" || request.status === "verifying" || request.status === "processing" || request.status === "under review" || request.status === "incomplete requirements";
-  const isPending = request.status === "pending";
-  const isRejected = request.status === "rejected";
+  const isPendingOrVerifying = ["pending", "verifying", "processing", "under review", "incomplete requirements"].includes(request.status);
   const isReleased = request.status === "released";
-  const canUpdateStatus = !isReleased;
+  const isSelectable = !isReleased;
+
+  const remarks = request.notes || request.rejectionReason;
+
+  const getRemarksStyle = () => {
+    const s = request.status;
+    if (s === "rejected") return "bg-destructive/10 border-destructive/20 text-destructive";
+    if (s === "incomplete requirements") return "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300";
+    return "bg-muted/50 border-border text-muted-foreground";
+  };
 
   return (
     <div className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          {/* Header: Certificate Type + Status */}
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <h3 className="font-semibold">
+      <div className="flex items-start gap-3">
+        {/* Checkbox */}
+        {isSelectable && (
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onSelect(request.id)}
+            aria-label={`Select ${request.residentName}`}
+            className="mt-1"
+          />
+        )}
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 space-y-2">
+          {/* Row 1: Type + Status + Priority */}
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold text-sm truncate">
               {request.certificateType}
               {request.certificateType === "Others" && request.customCertificateName && (
                 <span className="text-muted-foreground font-normal"> — {request.customCertificateName}</span>
               )}
             </h3>
             {getStatusBadge(request.status)}
+            {request.priority?.toLowerCase() === "urgent" && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full">
+                <AlertTriangle className="h-3 w-3" />
+                Urgent
+              </span>
+            )}
           </div>
 
-          {/* Details as simple text lines */}
-          <p className="text-sm text-muted-foreground">
-            Control No: {request.id}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Submitted: {request.dateSubmitted}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Resident: {request.residentName}
-            {request.contactNumber && ` | ${request.contactNumber}`}
-          </p>
-          {request.email && (
-            <p className="text-sm text-muted-foreground">
-              Email: {request.email}
-            </p>
-          )}
-          {request.purpose && (
-            <p className="text-sm text-muted-foreground mt-1">
-              Purpose: {request.purpose}
-            </p>
-          )}
-          {request.processedBy && (
-            <p className="text-sm text-muted-foreground">
-              Processed by: {request.processedBy}
-            </p>
-          )}
+          {/* Row 2: Key meta */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span className="font-mono">{request.id}</span>
+            <span className="font-medium text-foreground">{request.residentName}</span>
+            {request.contactNumber && (
+              <span className="flex items-center gap-1">
+                <Phone className="h-3 w-3" />
+                {request.contactNumber}
+              </span>
+            )}
+            <span>{request.dateSubmitted}</span>
+            {request.preferredPickupDate && (
+              <span className="flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" />
+                Pickup: {request.preferredPickupDate}
+              </span>
+            )}
+          </div>
 
-          {/* Rejection Reason Box */}
-          {isRejected && request.rejectionReason && (
-            <div className="mt-2 p-2 rounded bg-destructive/10 border border-destructive/20">
-              <p className="text-sm text-destructive font-medium">
-                Rejection Reason:
-              </p>
-              <p className="text-sm text-destructive">
-                {request.rejectionReason}
-              </p>
-            </div>
-          )}
-
-          {/* Incomplete Requirements Box */}
-          {request.status === "incomplete requirements" && request.rejectionReason && (
-            <div className="mt-2 p-2 rounded bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700">
-              <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
-                Missing / Incomplete:
-              </p>
-              <p className="text-sm text-amber-700 dark:text-amber-400">
-                {request.rejectionReason}
-              </p>
-            </div>
-          )}
-
-          {/* Admin Notes */}
-          {request.processedBy && request.rejectionReason && request.status !== "rejected" && request.status !== "incomplete requirements" && (
-            <div className="mt-2 p-2 rounded bg-muted/50 border border-border">
-              <p className="text-sm text-muted-foreground font-medium">Remarks:</p>
-              <p className="text-sm text-muted-foreground">{request.rejectionReason}</p>
-            </div>
-          )}
-
-          {/* Ready for Pickup Box */}
-          {(isApproved || request.status === "ready for pickup") && (
-            <div className="mt-2 p-2 rounded bg-accent/10 border border-accent/20">
-              <p className="text-sm text-accent font-medium">
-                {request.status === "ready for pickup" ? "Ready for Pickup" : "Approved"}
-              </p>
-              {request.preferredPickupDate && (
-                <p className="text-sm text-muted-foreground">
-                  Pickup Date: {request.preferredPickupDate}
-                </p>
-              )}
+          {/* Row 3: Remarks if any */}
+          {remarks && (
+            <div className={`flex items-start gap-2 p-2 rounded-md border text-xs ${getRemarksStyle()}`}>
+              <MessageSquare className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <p className="line-clamp-2">{remarks}</p>
             </div>
           )}
         </div>
 
-        {/* Actions - Right side */}
-        <div className="flex flex-col gap-2 items-end">
-          {/* Checkbox for bulk selection (approved and pending/verifying) */}
-          {(isApproved || isPendingOrVerifying || request.status === "ready for pickup") && (
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={() => onSelect(request.id)}
-              aria-label={`Select ${request.residentName}`}
-            />
-          )}
+        {/* Actions */}
+        <div className="flex flex-col gap-1.5 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => onView(request)} className="text-xs h-8">
+            <Eye className="h-3.5 w-3.5 mr-1" />
+            View
+          </Button>
 
-          <div className="flex flex-wrap gap-2 justify-end">
+          {!isReleased && onUpdateStatus && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onView(request)}
+              onClick={() => onUpdateStatus(request)}
+              className="text-xs h-8 text-primary border-primary/30 hover:bg-primary/10"
+              disabled={isProcessing}
             >
-              <Eye className="h-4 w-4 mr-1" />
-              Details
+              <Pencil className="h-3.5 w-3.5 mr-1" />
+              Update
             </Button>
+          )}
 
-            {!isReleased && onUpdateStatus && (
+          {isPendingOrVerifying && (
+            <>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onUpdateStatus(request)}
-                className="text-primary border-primary/30 hover:bg-primary/10"
+                onClick={() => onApprove(request)}
+                className="text-xs h-8 text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900/30"
                 disabled={isProcessing}
               >
-                <Pencil className="h-4 w-4 mr-1" />
-                Update Status
+                <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                Approve
               </Button>
-            )}
-
-            {isPendingOrVerifying && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onApprove(request)}
-                  className="text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900/30"
-                  disabled={isProcessing}
-                >
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  Approve
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onReject(request)}
-                  className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/30"
-                  disabled={isProcessing}
-                >
-                  <XCircle className="h-4 w-4 mr-1" />
-                  Reject
-                </Button>
-              </>
-            )}
-          </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onReject(request)}
+                className="text-xs h-8 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/30"
+                disabled={isProcessing}
+              >
+                <XCircle className="h-3.5 w-3.5 mr-1" />
+                Reject
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>
