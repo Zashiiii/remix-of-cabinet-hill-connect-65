@@ -56,7 +56,12 @@ const statusConfig = {
 };
 
 const StatusBadge = ({ status }: StatusBadgeProps) => {
-  const config = statusConfig[status];
+  const normalizedStatus = status?.toLowerCase().replace(/ /g, '_') as RequestStatus;
+  const config = statusConfig[normalizedStatus] || {
+    label: status || "Unknown",
+    color: "bg-gray-100 text-gray-800 border-gray-200",
+    icon: "⚪",
+  };
 
   return (
     <Badge variant="outline" className={`${config.color} border font-medium px-3 py-1`}>
