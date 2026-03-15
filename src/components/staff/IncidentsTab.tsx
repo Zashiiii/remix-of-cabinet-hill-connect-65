@@ -27,6 +27,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getAllIncidentsForStaff,
+  createIncidentForStaff,
+  approveIncidentForStaff,
+  rejectIncidentForStaff,
+  updateIncidentStatusForStaff,
+} from "@/utils/staffApi";
 import TableSkeleton from "./TableSkeleton";
 
 const INCIDENT_TYPES = [
