@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getCertificateDataForDownload } from "@/utils/staffApi";
 import JSZip from "jszip";
 
 interface CertificateData {
