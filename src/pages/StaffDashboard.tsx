@@ -3178,6 +3178,60 @@ const StaffDashboard = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Update Status Dialog */}
+      <Dialog open={showUpdateStatusDialog} onOpenChange={setShowUpdateStatusDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Request Status</DialogTitle>
+            <DialogDescription>
+              Change the status and add remarks for this certificate request.
+            </DialogDescription>
+          </DialogHeader>
+          {updateStatusRequest && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm"><strong>Control No:</strong> {updateStatusRequest.id}</p>
+                <p className="text-sm"><strong>Resident:</strong> {updateStatusRequest.residentName}</p>
+                <p className="text-sm"><strong>Certificate:</strong> {updateStatusRequest.certificateType}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>New Status</Label>
+                <Select value={updateStatusValue} onValueChange={setUpdateStatusValue}>
+                  <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Under Review">Under Review</SelectItem>
+                    <SelectItem value="Incomplete Requirements">Incomplete Requirements</SelectItem>
+                    <SelectItem value="Approved">Approved</SelectItem>
+                    <SelectItem value="Ready for Pickup">Ready for Pickup</SelectItem>
+                    <SelectItem value="Released">Released</SelectItem>
+                    <SelectItem value="Rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Remarks / Notes (visible to resident)</Label>
+                <Textarea
+                  value={updateStatusRemarks}
+                  onChange={(e) => setUpdateStatusRemarks(e.target.value)}
+                  placeholder="e.g., Missing valid ID. Please bring it to the barangay hall."
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use this for missing requirements, pickup instructions, rejection reasons, or special notes.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUpdateStatusDialog(false)} disabled={isProcessing}>Cancel</Button>
+            <Button onClick={handleConfirmUpdateStatus} disabled={isProcessing || !updateStatusValue}>
+              {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Updating...</> : "Update Status"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Rejection Reason Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent className="max-w-md">
