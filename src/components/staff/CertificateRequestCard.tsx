@@ -9,7 +9,7 @@ import {
   AlertCircle
 } from "lucide-react";
 
-type RequestStatus = "pending" | "processing" | "approved" | "rejected" | "verifying" | "released";
+type RequestStatus = "pending" | "processing" | "approved" | "rejected" | "verifying" | "released" | "under review" | "incomplete requirements" | "ready for pickup";
 
 interface CertificateRequest {
   id: string;
