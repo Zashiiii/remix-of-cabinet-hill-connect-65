@@ -251,14 +251,7 @@ const IncidentsTab = () => {
 
   const handleUpdateStatus = async (incident: Incident, newStatus: string) => {
     try {
-      const { error } = await supabase.rpc("staff_update_incident_status", {
-        p_incident_id: incident.id,
-        p_status: newStatus,
-        p_handled_by: user?.fullName || "Staff",
-      });
-
-      if (error) throw error;
-
+      await updateIncidentStatusForStaff(incident.id, newStatus, user?.fullName || "Staff");
       toast.success(`Incident marked as ${newStatus}`);
       loadIncidents();
     } catch (error: any) {
