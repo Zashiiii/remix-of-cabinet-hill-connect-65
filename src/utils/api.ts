@@ -47,7 +47,7 @@ export interface RequestStatus {
   certificateType: string;
   residentName: string;
   dateRequested: Date;
-  status: "pending" | "for_review" | "verifying" | "approved" | "ready_for_pickup" | "released" | "rejected";
+  status: "pending" | "under_review" | "incomplete_requirements" | "for_review" | "verifying" | "approved" | "ready_for_pickup" | "released" | "rejected";
   purpose: string;
   remarks?: string;
 }
