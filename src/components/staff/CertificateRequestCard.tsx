@@ -178,7 +178,7 @@ export function CertificateRequestCard({
         {/* Actions - Right side */}
         <div className="flex flex-col gap-2 items-end">
           {/* Checkbox for bulk selection (approved and pending/verifying) */}
-          {(isApproved || isPendingOrVerifying) && (
+          {(isApproved || isPendingOrVerifying || request.status === "ready for pickup") && (
             <Checkbox
               checked={isSelected}
               onCheckedChange={() => onSelect(request.id)}
@@ -195,6 +195,19 @@ export function CertificateRequestCard({
               <Eye className="h-4 w-4 mr-1" />
               Details
             </Button>
+
+            {!isReleased && onUpdateStatus && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onUpdateStatus(request)}
+                className="text-primary border-primary/30 hover:bg-primary/10"
+                disabled={isProcessing}
+              >
+                <Pencil className="h-4 w-4 mr-1" />
+                Update Status
+              </Button>
+            )}
 
             {isPendingOrVerifying && (
               <>
@@ -218,18 +231,6 @@ export function CertificateRequestCard({
                   <XCircle className="h-4 w-4 mr-1" />
                   Reject
                 </Button>
-                {isPending && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onVerify(request)}
-                    className="text-purple-600 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-900/30"
-                    disabled={isProcessing}
-                  >
-                    <Clock className="h-4 w-4 mr-1" />
-                    Verify
-                  </Button>
-                )}
               </>
             )}
           </div>
