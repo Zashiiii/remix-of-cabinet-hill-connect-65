@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Copy } from "lucide-react";
+import { CheckCircle2, Copy, FileText, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -16,9 +16,13 @@ interface SuccessModalProps {
   onOpenChange: (open: boolean) => void;
   controlNumber: string;
   onReset?: () => void;
+  /** If true, show "View My Requests" (resident flow) instead of "Track Request" (public flow) */
+  isResidentFlow?: boolean;
+  /** Callback to navigate to requests tab in resident dashboard */
+  onViewRequests?: () => void;
 }
 
-const SuccessModal = ({ open, onOpenChange, controlNumber, onReset }: SuccessModalProps) => {
+const SuccessModal = ({ open, onOpenChange, controlNumber, onReset, isResidentFlow, onViewRequests }: SuccessModalProps) => {
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
 
@@ -29,9 +33,13 @@ const SuccessModal = ({ open, onOpenChange, controlNumber, onReset }: SuccessMod
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleTrackRequest = () => {
+  const handlePrimaryAction = () => {
     onOpenChange(false);
-    navigate(`/track-request`);
+    if (isResidentFlow && onViewRequests) {
+      onViewRequests();
+    } else {
+      navigate(`/track-request`);
+    }
   };
 
   const handleNewRequest = () => {
@@ -57,7 +65,7 @@ const SuccessModal = ({ open, onOpenChange, controlNumber, onReset }: SuccessMod
             <div className="bg-muted p-4 rounded-lg">
               <p className="text-sm text-muted-foreground mb-2">Your control number:</p>
               <div className="flex items-center justify-center gap-2">
-                <p className="text-lg font-bold text-foreground">{controlNumber}</p>
+                <p className="text-lg font-bold text-foreground font-mono">{controlNumber}</p>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -82,10 +90,20 @@ const SuccessModal = ({ open, onOpenChange, controlNumber, onReset }: SuccessMod
         
         <div className="flex flex-col gap-2 mt-4">
           <Button
-            onClick={handleTrackRequest}
-            className="w-full bg-primary hover:bg-primary/90"
+            onClick={handlePrimaryAction}
+            className="w-full bg-primary hover:bg-primary/90 gap-2"
           >
-            Track This Request
+            {isResidentFlow ? (
+              <>
+                <FileText className="h-4 w-4" />
+                View My Requests
+              </>
+            ) : (
+              <>
+                <ExternalLink className="h-4 w-4" />
+                Track This Request
+              </>
+            )}
           </Button>
           <Button
             onClick={handleNewRequest}
