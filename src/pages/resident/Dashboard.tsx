@@ -19,9 +19,6 @@ import {
   Leaf,
   CalendarDays,
   RefreshCw,
-  Copy,
-  X,
-  ExternalLink,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
