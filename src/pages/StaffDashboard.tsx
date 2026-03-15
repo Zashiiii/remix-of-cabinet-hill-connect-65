@@ -343,28 +343,6 @@ const StaffSidebar = ({
         <CollapsibleGroup label="Residents" items={residentsItems} defaultOpen activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
         <CollapsibleGroup label="Administration" items={adminItems} activeTab={activeTab} isCollapsed={isCollapsed} onMenuClick={handleMenuClick} renderMenuItem={renderMenuItem} />
 
-        {/* Messages */}
-        {hasPermission(userRole, "messages") && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {renderMenuItem({ title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessagesCount && unreadMessagesCount > 0 ? unreadMessagesCount : undefined })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Reports */}
-        {hasPermission(userRole, "view_reports") && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {renderMenuItem({ title: "Reports", icon: BarChart3, tab: "view-reports" })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
         {/* Logout */}
         <SidebarGroup>
           <SidebarGroupContent>
