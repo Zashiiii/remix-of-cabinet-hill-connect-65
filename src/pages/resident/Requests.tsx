@@ -161,7 +161,7 @@ const ResidentRequests = () => {
               <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
                 You haven't submitted any certificate requests. Start by requesting your first certificate.
               </p>
-              <Button onClick={() => navigate("/request-certificate")} className="gap-2">
+              <Button onClick={() => navigate("/resident/dashboard?tab=certificates")} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Request a Certificate
               </Button>
