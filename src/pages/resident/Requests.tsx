@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useResidentAuth } from "@/hooks/useResidentAuth";
 import { supabase } from "@/integrations/supabase/client";
-import StatusBadge, { type RequestStatus } from "@/components/StatusBadge";
+import StatusBadge from "@/components/StatusBadge";
 import { format } from "date-fns";
 
 interface Request {
