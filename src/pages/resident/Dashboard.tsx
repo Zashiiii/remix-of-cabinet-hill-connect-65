@@ -94,7 +94,7 @@ const ResidentSidebar = ({
     { title: "Dashboard", icon: Home, tab: "dashboard" },
     { title: "My Profile", icon: User, tab: "profile" },
     { title: "Request Certificate", icon: FileText, tab: "request" },
-    { title: "My Requests", icon: Clock, tab: "requests" },
+    { title: "My Requests", icon: Clock, tab: "requests", href: "/resident/requests" },
     { title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessageCount > 0 ? unreadMessageCount : undefined },
     { title: "Incident Reports", icon: AlertCircle, tab: "incidents" },
     { title: "Ecological Profile", icon: Leaf, tab: "ecological-profile" },
