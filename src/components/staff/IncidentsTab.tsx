@@ -230,13 +230,11 @@ const IncidentsTab = () => {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase.rpc("staff_reject_incident", {
-        p_incident_id: selectedIncident.id,
-        p_reviewed_by: user?.fullName || "Staff",
-        p_rejection_reason: rejectionReason,
-      });
-
-      if (error) throw error;
+      await rejectIncidentForStaff(
+        selectedIncident.id,
+        user?.fullName || "Staff",
+        rejectionReason
+      );
 
       toast.success("Incident report rejected");
       setShowRejectDialog(false);
