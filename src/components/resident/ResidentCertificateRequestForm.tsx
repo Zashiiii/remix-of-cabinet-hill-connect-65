@@ -182,6 +182,8 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
     }
   };
 
+  const isBlocked = !householdNumber;
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -211,219 +213,230 @@ const ResidentCertificateRequestForm = ({ profile, onSuccess }: ResidentCertific
           </div>
         </div>
 
-        {!householdNumber && (
-          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm space-y-2">
-            <p>⚠️ You need to be assigned to a household before requesting certificates. Please contact the Barangay office or complete your Ecological Profile.</p>
+        {isBlocked && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center space-y-4">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-semibold text-destructive">Cannot Submit Certificate Request</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                You must be assigned to a household before you can request certificates. Please complete your Ecological Profile first so the barangay can verify your residency.
+              </p>
+            </div>
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
+              size="lg"
+              className="gap-2"
               onClick={() => navigate("/resident/ecological-profile")}
             >
-              <ExternalLink className="h-3.5 w-3.5" />
+              <ExternalLink className="h-4 w-4" />
               Complete Ecological Profile
             </Button>
           </div>
         )}
 
-        {/* Certificate Type */}
-        <FormField
-          control={form.control}
-          name="certificateType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Certificate Type / Uri ng Sertipiko *</FormLabel>
-              <Select onValueChange={(value) => {
-                field.onChange(value);
-                if (value !== "Others") {
-                  form.setValue("customCertificateName", "");
-                }
-              }} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Select certificate type" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="bg-popover z-50">
-                  {certificateTypeOptions.map((type) => (
-                    <SelectItem key={type.id} value={type.name}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="Others">Others (Specify)</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Custom Certificate Name - shown when "Others" is selected */}
-        {selectedCertificateType === "Others" && (
-          <FormField
-            control={form.control}
-            name="customCertificateName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Specify Certificate Type *</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter the certificate type you need" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-        <CertificateRequirementsGuide certificateType={selectedCertificateType} />
-
-        {/* Request Details Section */}
-        <div className="pt-4 border-t border-border">
-          <h3 className="text-lg font-semibold mb-4">
-            Request Details / Detalye ng Kahilingan
-          </h3>
-          
-          <div className="space-y-4">
+        {/* Form fields - visually muted when blocked */}
+        <div className={cn(isBlocked && "opacity-50 pointer-events-none select-none")}>
+          {/* Certificate Type */}
+          <div className="space-y-6">
             <FormField
               control={form.control}
-              name="purpose"
+              name="certificateType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Purpose / Layunin *</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Please describe the purpose of your certificate request..."
-                      className="min-h-[100px]"
-                      {...field} 
-                    />
-                  </FormControl>
+                  <FormLabel>Certificate Type / Uri ng Sertipiko *</FormLabel>
+                  <Select onValueChange={(value) => {
+                    field.onChange(value);
+                    if (value !== "Others") {
+                      form.setValue("customCertificateName", "");
+                    }
+                  }} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="Select certificate type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="bg-popover z-50">
+                      {certificateTypeOptions.map((type) => (
+                        <SelectItem key={type.id} value={type.name}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="Others">Others (Specify)</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="priority"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Priority / Priyoridad</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex flex-col space-y-2"
-                    >
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="normal" />
-                        </FormControl>
-                        <FormLabel className="font-normal cursor-pointer">
-                          Normal
-                        </FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="urgent" />
-                        </FormControl>
-                        <FormLabel className="font-normal cursor-pointer">
-                          Urgent
-                        </FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {selectedPriority === "urgent" && (
+            {/* Custom Certificate Name - shown when "Others" is selected */}
+            {selectedCertificateType === "Others" && (
               <FormField
                 control={form.control}
-                name="urgencyReason"
+                name="customCertificateName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Reason for Urgency / Dahilan ng Pagmamadali *</FormLabel>
+                    <FormLabel>Specify Certificate Type *</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Please explain why this request is urgent..."
-                        className="min-h-[80px]"
-                        {...field}
-                      />
+                      <Input placeholder="Enter the certificate type you need" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             )}
+            <CertificateRequirementsGuide certificateType={selectedCertificateType} />
 
-            <FormField
-              control={form.control}
-              name="preferredPickupDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Preferred Pickup Date / Gustong Petsa ng Pagkuha *</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
+            {/* Request Details Section */}
+            <div className="pt-4 border-t border-border">
+              <h3 className="text-lg font-semibold mb-4">
+                Request Details / Detalye ng Kahilingan
+              </h3>
+              
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="purpose"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Purpose / Layunin *</FormLabel>
                       <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full pl-3 text-left font-normal bg-background",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
+                        <Textarea 
+                          placeholder="Please describe the purpose of your certificate request..."
+                          className="min-h-[100px]"
+                          {...field} 
+                        />
                       </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) => {
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          const dayOfWeek = date.getDay();
-                          // Disable past dates and weekends (0 = Sunday, 6 = Saturday)
-                          return date < today || dayOfWeek === 0 || dayOfWeek === 6;
-                        }}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormDescription>
-                    Select when you would like to pick up your certificate
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Priority / Priyoridad</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex flex-col space-y-2"
+                        >
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="normal" />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">
+                              Normal
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="urgent" />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">
+                              Urgent
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {selectedPriority === "urgent" && (
+                  <FormField
+                    control={form.control}
+                    name="urgencyReason"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reason for Urgency / Dahilan ng Pagmamadali *</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Please explain why this request is urgent..."
+                            className="min-h-[80px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="preferredPickupDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Preferred Pickup Date / Gustong Petsa ng Pagkuha *</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal bg-background",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => {
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              const dayOfWeek = date.getDay();
+                              return date < today || dayOfWeek === 0 || dayOfWeek === 6;
+                            }}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>
+                        Select when you would like to pick up your certificate
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              size="lg" 
+              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+              disabled={isSubmitting || isBlocked}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting / Isinusumite...
+                </>
+              ) : (
+                "Submit Request / Magsumite ng Kahilingan"
               )}
-            />
+            </Button>
           </div>
         </div>
-
-        <Button 
-          type="submit" 
-          size="lg" 
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-          disabled={isSubmitting || !householdNumber}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Submitting / Isinusumite...
-            </>
-          ) : (
-            "Submit Request / Magsumite ng Kahilingan"
-          )}
-        </Button>
       </form>
     </Form>
   );
