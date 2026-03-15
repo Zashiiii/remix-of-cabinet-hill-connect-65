@@ -150,7 +150,7 @@ interface PendingRequest {
   certificateType: string;
   customCertificateName?: string;
   dateSubmitted: string;
-  status: "pending" | "processing" | "approved" | "rejected" | "verifying" | "released";
+  status: "pending" | "processing" | "approved" | "rejected" | "verifying" | "released" | "under review" | "incomplete requirements" | "ready for pickup";
   verificationStatus?: "verified" | "not-verified" | "checking";
   residentId?: string;
   processedBy?: string;
@@ -466,6 +466,12 @@ const StaffDashboard = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [requestToReject, setRequestToReject] = useState<PendingRequest | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Update Status Dialog state
+  const [showUpdateStatusDialog, setShowUpdateStatusDialog] = useState(false);
+  const [updateStatusRequest, setUpdateStatusRequest] = useState<PendingRequest | null>(null);
+  const [updateStatusValue, setUpdateStatusValue] = useState("");
+  const [updateStatusRemarks, setUpdateStatusRemarks] = useState("");
 
   // Bulk selection state
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
@@ -1149,6 +1155,52 @@ const StaffDashboard = () => {
       } finally {
         setIsProcessing(false);
       }
+    }
+  };
+
+  // Open Update Status Dialog
+  const handleOpenUpdateStatusDialog = (request: PendingRequest) => {
+    setUpdateStatusRequest(request);
+    setUpdateStatusValue(request.status.charAt(0).toUpperCase() + request.status.slice(1));
+    setUpdateStatusRemarks("");
+    setShowUpdateStatusDialog(true);
+  };
+
+  // Confirm Update Status
+  const handleConfirmUpdateStatus = async () => {
+    if (!updateStatusRequest || !updateStatusValue) {
+      toast.error("Please select a status");
+      return;
+    }
+
+    setIsProcessing(true);
+    const staffName = user?.fullName || "Staff Admin";
+
+    try {
+      const dbId = updateStatusRequest.dbId;
+      if (!dbId) throw new Error("Request ID not found");
+
+      await updateCertificateRequestStatus(
+        dbId,
+        updateStatusValue,
+        staffName,
+        updateStatusRemarks.trim() || undefined
+      );
+
+      toast.success(`Status updated to "${updateStatusValue}"`, {
+        description: `Certificate for ${updateStatusRequest.residentName} has been updated.`
+      });
+
+      setShowUpdateStatusDialog(false);
+      setUpdateStatusRequest(null);
+      setUpdateStatusValue("");
+      setUpdateStatusRemarks("");
+      loadRequests();
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      toast.error(`Failed to update status: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -2218,8 +2270,11 @@ const StaffDashboard = () => {
                     <SelectContent>
                       <SelectItem value="All">All Requests</SelectItem>
                       <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Under Review">Under Review</SelectItem>
+                      <SelectItem value="Incomplete Requirements">Incomplete Requirements</SelectItem>
                       <SelectItem value="Verifying">Verifying</SelectItem>
                       <SelectItem value="Approved">Approved</SelectItem>
+                      <SelectItem value="Ready for Pickup">Ready for Pickup</SelectItem>
                       <SelectItem value="Released">Released</SelectItem>
                       <SelectItem value="Rejected">Rejected</SelectItem>
                     </SelectContent>
@@ -2351,6 +2406,7 @@ const StaffDashboard = () => {
                                   onApprove={(req) => handleAction("Approve", req)}
                                   onReject={(req) => handleAction("Reject", req)}
                                   onVerify={(req) => handleAction("Verifying", req)}
+                                  onUpdateStatus={handleOpenUpdateStatusDialog}
                                 />
                               ))}
                             </div>
@@ -3118,6 +3174,60 @@ const StaffDashboard = () => {
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Status Dialog */}
+      <Dialog open={showUpdateStatusDialog} onOpenChange={setShowUpdateStatusDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Request Status</DialogTitle>
+            <DialogDescription>
+              Change the status and add remarks for this certificate request.
+            </DialogDescription>
+          </DialogHeader>
+          {updateStatusRequest && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm"><strong>Control No:</strong> {updateStatusRequest.id}</p>
+                <p className="text-sm"><strong>Resident:</strong> {updateStatusRequest.residentName}</p>
+                <p className="text-sm"><strong>Certificate:</strong> {updateStatusRequest.certificateType}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>New Status</Label>
+                <Select value={updateStatusValue} onValueChange={setUpdateStatusValue}>
+                  <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Under Review">Under Review</SelectItem>
+                    <SelectItem value="Incomplete Requirements">Incomplete Requirements</SelectItem>
+                    <SelectItem value="Approved">Approved</SelectItem>
+                    <SelectItem value="Ready for Pickup">Ready for Pickup</SelectItem>
+                    <SelectItem value="Released">Released</SelectItem>
+                    <SelectItem value="Rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Remarks / Notes (visible to resident)</Label>
+                <Textarea
+                  value={updateStatusRemarks}
+                  onChange={(e) => setUpdateStatusRemarks(e.target.value)}
+                  placeholder="e.g., Missing valid ID. Please bring it to the barangay hall."
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use this for missing requirements, pickup instructions, rejection reasons, or special notes.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUpdateStatusDialog(false)} disabled={isProcessing}>Cancel</Button>
+            <Button onClick={handleConfirmUpdateStatus} disabled={isProcessing || !updateStatusValue}>
+              {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Updating...</> : "Update Status"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -75,8 +75,12 @@ const ResidentRequests = () => {
   const getStatusBadge = (status: string) => {
     const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode; label: string }> = {
       pending: { variant: "secondary", icon: <Clock className="h-3 w-3 mr-1" />, label: "Pending" },
+      "under review": { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Under Review" },
       verifying: { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Verifying" },
+      "incomplete requirements": { variant: "secondary", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Incomplete Requirements" },
       approved: { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Approved" },
+      "ready for pickup": { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Ready for Pickup" },
+      released: { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Released" },
       rejected: { variant: "destructive", icon: <XCircle className="h-3 w-3 mr-1" />, label: "Rejected" },
     };
 
@@ -168,25 +172,31 @@ const ResidentRequests = () => {
                             Purpose: {request.purpose}
                           </p>
                         )}
-                        {request.status === "rejected" && request.rejectionReason && (
+                        {request.status.toLowerCase() === "rejected" && request.rejectionReason && (
                           <div className="mt-2 p-2 rounded bg-destructive/10 border border-destructive/20">
-                            <p className="text-sm text-destructive font-medium">
-                              Rejection Reason:
-                            </p>
-                            <p className="text-sm text-destructive">
-                              {request.rejectionReason}
-                            </p>
+                            <p className="text-sm text-destructive font-medium">Rejection Reason:</p>
+                            <p className="text-sm text-destructive">{request.rejectionReason}</p>
                           </div>
                         )}
-                        {request.status === "approved" && (
+                        {request.status.toLowerCase() === "incomplete requirements" && request.rejectionReason && (
+                          <div className="mt-2 p-2 rounded bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700">
+                            <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">Missing / Incomplete:</p>
+                            <p className="text-sm text-amber-700 dark:text-amber-400">{request.rejectionReason}</p>
+                          </div>
+                        )}
+                        {request.rejectionReason && !["rejected", "incomplete requirements"].includes(request.status.toLowerCase()) && (
+                          <div className="mt-2 p-2 rounded bg-muted/50 border border-border">
+                            <p className="text-sm text-muted-foreground font-medium">Remarks:</p>
+                            <p className="text-sm text-muted-foreground">{request.rejectionReason}</p>
+                          </div>
+                        )}
+                        {(request.status.toLowerCase() === "approved" || request.status.toLowerCase() === "ready for pickup") && (
                           <div className="mt-2 p-2 rounded bg-accent/10 border border-accent/20">
                             <p className="text-sm text-accent font-medium">
-                              Ready for Pickup
+                              {request.status.toLowerCase() === "ready for pickup" ? "Ready for Pickup" : "Approved"}
                             </p>
                             {request.preferredPickupDate && (
-                              <p className="text-sm text-muted-foreground">
-                                Pickup Date: {request.preferredPickupDate}
-                              </p>
+                              <p className="text-sm text-muted-foreground">Pickup Date: {request.preferredPickupDate}</p>
                             )}
                           </div>
                         )}

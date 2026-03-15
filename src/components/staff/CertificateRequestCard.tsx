@@ -6,10 +6,11 @@ import {
   CheckCircle, 
   XCircle, 
   Clock, 
-  AlertCircle
+  AlertCircle,
+  Pencil,
 } from "lucide-react";
 
-type RequestStatus = "pending" | "processing" | "approved" | "rejected" | "verifying" | "released";
+type RequestStatus = "pending" | "processing" | "approved" | "rejected" | "verifying" | "released" | "under review" | "incomplete requirements" | "ready for pickup";
 
 interface CertificateRequest {
   id: string;
@@ -39,14 +40,18 @@ interface CertificateRequestCardProps {
   onApprove: (request: CertificateRequest) => void;
   onReject: (request: CertificateRequest) => void;
   onVerify: (request: CertificateRequest) => void;
+  onUpdateStatus?: (request: CertificateRequest) => void;
 }
 
 const getStatusBadge = (status: RequestStatus) => {
   const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode; label: string }> = {
     pending: { variant: "secondary", icon: <Clock className="h-3 w-3 mr-1" />, label: "Pending" },
+    "under review": { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Under Review" },
     verifying: { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Verifying" },
     processing: { variant: "default", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Processing" },
+    "incomplete requirements": { variant: "secondary", icon: <AlertCircle className="h-3 w-3 mr-1" />, label: "Incomplete Requirements" },
     approved: { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Approved" },
+    "ready for pickup": { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Ready for Pickup" },
     rejected: { variant: "destructive", icon: <XCircle className="h-3 w-3 mr-1" />, label: "Rejected" },
     released: { variant: "outline", icon: <CheckCircle className="h-3 w-3 mr-1" />, label: "Released" },
   };
@@ -71,11 +76,15 @@ export function CertificateRequestCard({
   onApprove,
   onReject,
   onVerify,
+  onUpdateStatus,
 }: CertificateRequestCardProps) {
   const isApproved = request.status === "approved";
-  const isPendingOrVerifying = request.status === "pending" || request.status === "verifying" || request.status === "processing";
+  const isReadyForPickup = request.status === "ready for pickup";
+  const isPendingOrVerifying = request.status === "pending" || request.status === "verifying" || request.status === "processing" || request.status === "under review" || request.status === "incomplete requirements";
   const isPending = request.status === "pending";
   const isRejected = request.status === "rejected";
+  const isReleased = request.status === "released";
+  const canUpdateStatus = !isReleased;
 
   return (
     <div className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
@@ -131,11 +140,31 @@ export function CertificateRequestCard({
             </div>
           )}
 
+          {/* Incomplete Requirements Box */}
+          {request.status === "incomplete requirements" && request.rejectionReason && (
+            <div className="mt-2 p-2 rounded bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700">
+              <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                Missing / Incomplete:
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                {request.rejectionReason}
+              </p>
+            </div>
+          )}
+
+          {/* Admin Notes */}
+          {request.processedBy && request.rejectionReason && request.status !== "rejected" && request.status !== "incomplete requirements" && (
+            <div className="mt-2 p-2 rounded bg-muted/50 border border-border">
+              <p className="text-sm text-muted-foreground font-medium">Remarks:</p>
+              <p className="text-sm text-muted-foreground">{request.rejectionReason}</p>
+            </div>
+          )}
+
           {/* Ready for Pickup Box */}
-          {isApproved && (
+          {(isApproved || request.status === "ready for pickup") && (
             <div className="mt-2 p-2 rounded bg-accent/10 border border-accent/20">
               <p className="text-sm text-accent font-medium">
-                Ready for Pickup
+                {request.status === "ready for pickup" ? "Ready for Pickup" : "Approved"}
               </p>
               {request.preferredPickupDate && (
                 <p className="text-sm text-muted-foreground">
@@ -149,7 +178,7 @@ export function CertificateRequestCard({
         {/* Actions - Right side */}
         <div className="flex flex-col gap-2 items-end">
           {/* Checkbox for bulk selection (approved and pending/verifying) */}
-          {(isApproved || isPendingOrVerifying) && (
+          {(isApproved || isPendingOrVerifying || request.status === "ready for pickup") && (
             <Checkbox
               checked={isSelected}
               onCheckedChange={() => onSelect(request.id)}
@@ -166,6 +195,19 @@ export function CertificateRequestCard({
               <Eye className="h-4 w-4 mr-1" />
               Details
             </Button>
+
+            {!isReleased && onUpdateStatus && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onUpdateStatus(request)}
+                className="text-primary border-primary/30 hover:bg-primary/10"
+                disabled={isProcessing}
+              >
+                <Pencil className="h-4 w-4 mr-1" />
+                Update Status
+              </Button>
+            )}
 
             {isPendingOrVerifying && (
               <>
@@ -189,18 +231,6 @@ export function CertificateRequestCard({
                   <XCircle className="h-4 w-4 mr-1" />
                   Reject
                 </Button>
-                {isPending && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onVerify(request)}
-                    className="text-purple-600 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-900/30"
-                    disabled={isProcessing}
-                  >
-                    <Clock className="h-4 w-4 mr-1" />
-                    Verify
-                  </Button>
-                )}
               </>
             )}
           </div>
