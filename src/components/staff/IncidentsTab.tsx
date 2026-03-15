@@ -109,31 +109,32 @@ const IncidentsTab = () => {
       const statusParam = activeTab === "approved" && statusFilter !== "all" ? statusFilter : null;
 
       const data = await getAllIncidentsForStaff(approvalFilter, statusParam);
-          id: i.id,
-          incidentNumber: i.incident_number,
-          incidentDate: new Date(i.incident_date).toLocaleDateString(),
-          incidentType: i.incident_type,
-          complainantName: i.complainant_name,
-          complainantAddress: i.complainant_address || undefined,
-          complainantContact: i.complainant_contact || undefined,
-          respondentName: i.respondent_name || undefined,
-          respondentAddress: i.respondent_address || undefined,
-          incidentLocation: i.incident_location || undefined,
-          incidentDescription: i.incident_description,
-          actionTaken: i.action_taken || undefined,
-          status: i.status || "open",
-          reportedBy: i.reported_by || undefined,
-          handledBy: i.handled_by || undefined,
-          resolutionDate: i.resolution_date ? new Date(i.resolution_date).toLocaleDateString() : undefined,
-          resolutionNotes: i.resolution_notes || undefined,
-          submittedByResidentId: i.submitted_by_resident_id || undefined,
-          approvalStatus: i.approval_status || "pending",
-          reviewedBy: i.reviewed_by || undefined,
-          reviewedAt: i.reviewed_at ? new Date(i.reviewed_at).toLocaleDateString() : undefined,
-          rejectionReason: i.rejection_reason || undefined,
-          photoEvidenceUrl: i.photo_evidence_url || undefined,
-        })));
-      }
+
+      setIncidents(data.map((i: any) => ({
+        id: i.id,
+        incidentNumber: i.incident_number,
+        incidentDate: new Date(i.incident_date).toLocaleDateString(),
+        incidentType: i.incident_type,
+        complainantName: i.complainant_name,
+        complainantAddress: i.complainant_address || undefined,
+        complainantContact: i.complainant_contact || undefined,
+        respondentName: i.respondent_name || undefined,
+        respondentAddress: i.respondent_address || undefined,
+        incidentLocation: i.incident_location || undefined,
+        incidentDescription: i.incident_description,
+        actionTaken: i.action_taken || undefined,
+        status: i.status || "open",
+        reportedBy: i.reported_by || undefined,
+        handledBy: i.handled_by || undefined,
+        resolutionDate: i.resolution_date ? new Date(i.resolution_date).toLocaleDateString() : undefined,
+        resolutionNotes: i.resolution_notes || undefined,
+        submittedByResidentId: i.submitted_by_resident_id || undefined,
+        approvalStatus: i.approval_status || "pending",
+        reviewedBy: i.reviewed_by || undefined,
+        reviewedAt: i.reviewed_at ? new Date(i.reviewed_at).toLocaleDateString() : undefined,
+        rejectionReason: i.rejection_reason || undefined,
+        photoEvidenceUrl: i.photo_evidence_url || undefined,
+      })));
     } catch (error) {
       console.error("Error loading incidents:", error);
       toast.error("Failed to load incidents");
