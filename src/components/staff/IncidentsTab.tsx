@@ -105,19 +105,10 @@ const IncidentsTab = () => {
   const loadIncidents = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Use RPC function to bypass RLS for staff session-based auth
       const approvalFilter = activeTab === "all" ? null : activeTab;
       const statusParam = activeTab === "approved" && statusFilter !== "all" ? statusFilter : null;
 
-      const { data, error } = await supabase.rpc("get_all_incidents_for_staff", {
-        p_approval_status: approvalFilter,
-        p_status: statusParam,
-      });
-
-      if (error) throw error;
-
-      if (data) {
-        setIncidents(data.map((i: any) => ({
+      const data = await getAllIncidentsForStaff(approvalFilter, statusParam);
           id: i.id,
           incidentNumber: i.incident_number,
           incidentDate: new Date(i.incident_date).toLocaleDateString(),
