@@ -126,7 +126,7 @@ const ResidentRequests = () => {
               Track and manage your certificate requests
             </p>
           </div>
-          <Button onClick={() => navigate("/request-certificate")} className="gap-2">
+          <Button onClick={() => navigate("/resident/dashboard?tab=certificates")} className="gap-2">
             <Plus className="h-4 w-4" />
             New Request
           </Button>
