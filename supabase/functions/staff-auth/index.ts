@@ -2203,6 +2203,215 @@ serve(async (req) => {
       );
     }
 
+    // ========== GET ALL INCIDENTS FOR STAFF ==========
+    if (action === 'get-all-incidents') {
+      const token = getTokenFromCookie(req);
+      const approvalStatus = body?.approvalStatus || null;
+      const statusParam = body?.status || null;
+
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      let query = supabase
+        .from('incidents')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (approvalStatus) {
+        query = query.eq('approval_status', approvalStatus);
+      }
+      if (statusParam) {
+        query = query.eq('status', statusParam);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching incidents:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch incidents' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== CREATE INCIDENT ==========
+    if (action === 'create-incident') {
+      const token = getTokenFromCookie(req);
+
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const incidentNumber = 'INC-' + new Date().toISOString().slice(0,7).replace('-','') + '-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+
+      const { data, error } = await supabase
+        .from('incidents')
+        .insert({
+          incident_number: incidentNumber,
+          incident_type: body.incidentType,
+          incident_date: body.incidentDate,
+          complainant_name: body.complainantName,
+          complainant_address: body.complainantAddress || null,
+          complainant_contact: body.complainantContact || null,
+          respondent_name: body.respondentName || null,
+          respondent_address: body.respondentAddress || null,
+          incident_location: body.incidentLocation || null,
+          incident_description: body.incidentDescription || '',
+          action_taken: body.actionTaken || null,
+          status: 'open',
+          reported_by: body.reportedBy || session.full_name,
+          approval_status: 'approved',
+          reviewed_by: session.full_name,
+          reviewed_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating incident:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create incident' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Incident created:', incidentNumber, 'by:', session.username);
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== APPROVE INCIDENT ==========
+    if (action === 'approve-incident') {
+      const token = getTokenFromCookie(req);
+
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase
+        .from('incidents')
+        .update({
+          approval_status: 'approved',
+          reviewed_by: body.reviewedBy || session.full_name,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', body.incidentId);
+
+      if (error) {
+        console.error('Error approving incident:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to approve incident' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Incident approved:', body.incidentId, 'by:', session.username);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== REJECT INCIDENT ==========
+    if (action === 'reject-incident') {
+      const token = getTokenFromCookie(req);
+
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase
+        .from('incidents')
+        .update({
+          approval_status: 'rejected',
+          reviewed_by: body.reviewedBy || session.full_name,
+          reviewed_at: new Date().toISOString(),
+          rejection_reason: body.rejectionReason,
+        })
+        .eq('id', body.incidentId);
+
+      if (error) {
+        console.error('Error rejecting incident:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to reject incident' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Incident rejected:', body.incidentId, 'by:', session.username);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== UPDATE INCIDENT STATUS ==========
+    if (action === 'update-incident-status') {
+      const token = getTokenFromCookie(req);
+
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const updateData: any = {
+        status: body.status,
+        handled_by: body.handledBy || session.full_name,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (body.status === 'resolved') {
+        updateData.resolution_date = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('incidents')
+        .update(updateData)
+        .eq('id', body.incidentId);
+
+      if (error) {
+        console.error('Error updating incident status:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update incident status' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Incident status updated:', body.incidentId, 'to:', body.status, 'by:', session.username);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== LOGIN (default) ==========
     console.log('Processing LOGIN action');
     const username = body?.username;

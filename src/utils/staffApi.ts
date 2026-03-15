@@ -208,3 +208,37 @@ export const deleteMonitoringReport = async (id: string) => {
 export const reopenMonitoringReport = async (id: string) => {
   return callStaffApi('reopen-monitoring-report', { id });
 };
+
+// Incident operations
+export const getAllIncidentsForStaff = async (approvalStatus?: string | null, status?: string | null) => {
+  const result = await callStaffApi('get-all-incidents', { approvalStatus, status });
+  return result.data || [];
+};
+
+export const createIncidentForStaff = async (incident: {
+  incidentType: string;
+  incidentDate: string;
+  complainantName: string;
+  complainantAddress?: string;
+  complainantContact?: string;
+  respondentName?: string;
+  respondentAddress?: string;
+  incidentLocation?: string;
+  incidentDescription: string;
+  actionTaken?: string;
+  reportedBy?: string;
+}) => {
+  return callStaffApi('create-incident', incident);
+};
+
+export const approveIncidentForStaff = async (incidentId: string, reviewedBy: string) => {
+  return callStaffApi('approve-incident', { incidentId, reviewedBy });
+};
+
+export const rejectIncidentForStaff = async (incidentId: string, reviewedBy: string, rejectionReason: string) => {
+  return callStaffApi('reject-incident', { incidentId, reviewedBy, rejectionReason });
+};
+
+export const updateIncidentStatusForStaff = async (incidentId: string, status: string, handledBy: string) => {
+  return callStaffApi('update-incident-status', { incidentId, status, handledBy });
+};
