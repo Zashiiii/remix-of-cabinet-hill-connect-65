@@ -706,8 +706,8 @@ const ResidentDashboard = () => {
                     <FileText className="h-6 w-6" />
                     Request Certificate
                   </CardTitle>
-                  <CardDescription>
-                    Fill out the form below to request a barangay certificate
+                   <CardDescription>
+                    Fill out the form below to request a barangay certificate. Please review the requirements guide before submitting your request.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
