@@ -86,16 +86,13 @@ export const BarangayStatsProvider = ({ children }: { children: ReactNode }) => 
         pendingCountResult,
         householdsResult,
         residentsResult,
-        incidentsResult,
+        incidentsData,
       ] = await Promise.all([
         getResidentCount(),
         getPendingRegistrationCount(),
         supabase.rpc("get_all_households_for_staff"),
         supabase.rpc("get_all_residents_for_staff"),
-        supabase.rpc("get_all_incidents_for_staff", {
-          p_approval_status: "approved",
-          p_status: null,
-        }),
+        getAllIncidentsForStaff("approved", null),
       ]);
 
       // Calculate demographics from residents data
