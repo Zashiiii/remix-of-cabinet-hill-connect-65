@@ -185,21 +185,19 @@ const IncidentsTab = () => {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase.rpc("staff_create_incident", {
-        p_incident_type: formData.incidentType,
-        p_incident_date: formData.incidentDate,
-        p_complainant_name: formData.complainantName,
-        p_complainant_address: formData.complainantAddress || null,
-        p_complainant_contact: formData.complainantContact || null,
-        p_respondent_name: formData.respondentName || null,
-        p_respondent_address: formData.respondentAddress || null,
-        p_incident_location: formData.incidentLocation || null,
-        p_incident_description: formData.incidentDescription,
-        p_action_taken: formData.actionTaken || null,
-        p_reported_by: user?.fullName || "Staff",
+      await createIncidentForStaff({
+        incidentType: formData.incidentType,
+        incidentDate: formData.incidentDate,
+        complainantName: formData.complainantName,
+        complainantAddress: formData.complainantAddress || undefined,
+        complainantContact: formData.complainantContact || undefined,
+        respondentName: formData.respondentName || undefined,
+        respondentAddress: formData.respondentAddress || undefined,
+        incidentLocation: formData.incidentLocation || undefined,
+        incidentDescription: formData.incidentDescription,
+        actionTaken: formData.actionTaken || undefined,
+        reportedBy: user?.fullName || "Staff",
       });
-
-      if (error) throw error;
 
       toast.success("Incident logged successfully");
       setShowCreateDialog(false);
