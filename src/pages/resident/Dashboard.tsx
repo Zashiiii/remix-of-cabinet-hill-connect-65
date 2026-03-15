@@ -91,8 +91,8 @@ const ResidentSidebar = ({
   const menuItems = [
     { title: "Dashboard", icon: Home, tab: "dashboard" },
     { title: "My Profile", icon: User, tab: "profile" },
-    { title: "Request Certificate", icon: FileText, tab: "request" },
     { title: "My Requests", icon: Clock, tab: "requests", href: "/resident/requests" },
+    { title: "Request Certificate", icon: FileText, tab: "request" },
     { title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessageCount > 0 ? unreadMessageCount : undefined },
     { title: "Incident Reports", icon: AlertCircle, tab: "incidents" },
     { title: "Ecological Profile", icon: Leaf, tab: "ecological-profile" },
@@ -187,7 +187,7 @@ const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="font-medium text-sm truncate">{announcement.title}</h4>
+            <h4 className="font-bold text-sm truncate">{announcement.title}</h4>
             <div className="flex items-center gap-2 shrink-0">
               <Badge variant={announcement.type === "important" ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0">
                 {announcement.type}
@@ -706,8 +706,8 @@ const ResidentDashboard = () => {
                     <FileText className="h-6 w-6" />
                     Request Certificate
                   </CardTitle>
-                  <CardDescription>
-                    Fill out the form below to request a barangay certificate
+                   <CardDescription>
+                    Fill out the form below to request a barangay certificate. Please review the requirements guide before submitting your request.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
