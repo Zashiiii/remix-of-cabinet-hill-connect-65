@@ -187,7 +187,7 @@ const AnnouncementItem = ({ announcement }: { announcement: Announcement }) => {
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="font-medium text-sm truncate">{announcement.title}</h4>
+            <h4 className="font-bold text-sm truncate">{announcement.title}</h4>
             <div className="flex items-center gap-2 shrink-0">
               <Badge variant={announcement.type === "important" ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0">
                 {announcement.type}

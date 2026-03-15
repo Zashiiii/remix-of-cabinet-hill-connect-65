@@ -145,6 +145,13 @@ export function CertificateRequestCard({
             )}
           </div>
 
+          {/* Row 3: Purpose preview */}
+          {request.purpose && (
+            <p className="text-xs text-muted-foreground line-clamp-1">
+              <span className="font-medium text-foreground/80">Purpose:</span> {request.purpose}
+            </p>
+          )}
+
           {/* Row 3: Remarks if any */}
           {remarks && (
             <div className={`flex items-start gap-2 p-2 rounded-md border text-xs ${getRemarksStyle()}`}>

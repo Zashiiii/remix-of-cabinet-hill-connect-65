@@ -48,7 +48,7 @@ const RequestCertificate = () => {
                 {isStaffAuthenticated ? "Create Certificate Request" : "Request a Barangay Certificate"}
               </h1>
               <p className="text-lg text-muted-foreground">
-                Fill out the form below. You will receive a control number to track your request.
+                Fill out the form below to request a barangay certificate. Please review the requirements guide before submitting your request.
               </p>
             </div>
 

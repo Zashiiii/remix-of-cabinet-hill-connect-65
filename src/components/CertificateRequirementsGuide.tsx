@@ -76,19 +76,23 @@ const CertificateRequirementsGuide = ({ certificateType }: CertificateRequiremen
   const { label, items } = getRequirements(certificateType);
 
   return (
-    <div className="rounded-lg border border-border bg-muted/40 p-4">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+      <div className="flex items-center gap-2">
         <ClipboardList className="h-4 w-4 text-primary" />
         <h4 className="text-sm font-semibold text-foreground">
-          Requirements Guide — {label}
+          Requirements Guide
         </h4>
+      </div>
+      <div className="text-sm text-foreground">
+        <span className="text-muted-foreground">Certificate Type:</span>{" "}
+        <span className="font-medium">{certificateType}</span>
       </div>
       <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}
       </ul>
-      <p className="text-xs text-muted-foreground/70 mt-3 italic">
+      <p className="text-xs text-muted-foreground/70 italic">
         Requirements may vary depending on certificate type.
       </p>
     </div>

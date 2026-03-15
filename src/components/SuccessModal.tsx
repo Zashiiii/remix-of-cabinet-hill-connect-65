@@ -79,10 +79,10 @@ const SuccessModal = ({ open, onOpenChange, controlNumber, onReset, isResidentFl
             
             <div className="space-y-2 text-sm">
               <p className="text-foreground">
-                Save this number to track your request
+                Your request has been submitted successfully.
               </p>
               <p className="text-muted-foreground">
-                You will receive an email notification once your certificate is processed
+                Please present this control number when claiming your certificate at the barangay office. You will also receive an email notification once your certificate is processed.
               </p>
             </div>
           </DialogDescription>
