@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { 
   FileText, 
   Bell, 
@@ -19,9 +19,6 @@ import {
   Leaf,
   CalendarDays,
   RefreshCw,
-  Copy,
-  X,
-  ExternalLink,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -45,6 +42,7 @@ import { useResidentAuth } from "@/hooks/useResidentAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveAnnouncements } from "@/utils/api";
 import ResidentCertificateRequestForm from "@/components/resident/ResidentCertificateRequestForm";
+import SuccessModal from "@/components/SuccessModal";
 
 import ChatWidget from "@/components/ChatWidget";
 import { logResidentLogout } from "@/utils/auditLog";
@@ -94,7 +92,7 @@ const ResidentSidebar = ({
     { title: "Dashboard", icon: Home, tab: "dashboard" },
     { title: "My Profile", icon: User, tab: "profile" },
     { title: "Request Certificate", icon: FileText, tab: "request" },
-    { title: "My Requests", icon: Clock, tab: "requests" },
+    { title: "My Requests", icon: Clock, tab: "requests", href: "/resident/requests" },
     { title: "Messages", icon: MessageSquare, tab: "messages", badge: unreadMessageCount > 0 ? unreadMessageCount : undefined },
     { title: "Incident Reports", icon: AlertCircle, tab: "incidents" },
     { title: "Ecological Profile", icon: Leaf, tab: "ecological-profile" },
@@ -409,6 +407,8 @@ const ResidentDashboard = () => {
     setTimeout(() => setSwipeDirection(null), 250);
     if (tab === "ecological-profile") {
       navigate("/resident/ecological-profile");
+    } else if (tab === "requests") {
+      navigate("/resident/requests");
     } else {
       setActiveTab(tab);
     }
@@ -416,19 +416,10 @@ const ResidentDashboard = () => {
 
   const handleRequestSuccess = (controlNumber: string) => {
     setSubmittedControlNumber(controlNumber);
-    setActiveTab("requests");
     loadData(); // Refresh the requests list
     toast.success("Certificate request submitted successfully!");
   };
 
-  const handleDismissSuccessBanner = () => {
-    setSubmittedControlNumber("");
-  };
-
-  const handleCopyControlNumber = () => {
-    navigator.clipboard.writeText(submittedControlNumber);
-    toast.success("Control number copied to clipboard!");
-  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -553,7 +544,7 @@ const ResidentDashboard = () => {
                         {latestRequest.status === "rejected" && latestRequest.rejectionReason && (
                           <p className="text-sm text-destructive">Reason: {latestRequest.rejectionReason}</p>
                         )}
-                        <Button variant="link" size="sm" className="px-0" onClick={() => setActiveTab("requests")}>
+                        <Button variant="link" size="sm" className="px-0" onClick={() => navigate("/resident/requests")}>
                           View all requests →
                         </Button>
                       </div>
@@ -702,9 +693,9 @@ const ResidentDashboard = () => {
             <>
               <div className="flex items-center gap-4 mb-6">
                 <SidebarTrigger />
-                <Button variant="ghost" size="sm" onClick={() => setActiveTab("requests")}>
+                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to My Requests
+                  Back to Dashboard
                 </Button>
               </div>
 
@@ -737,153 +728,18 @@ const ResidentDashboard = () => {
             </>
           )}
 
-          {activeTab === "requests" && (
-            <>
-              <div className="flex items-center gap-4 mb-6">
-                <SidebarTrigger />
-                <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Dashboard
-                </Button>
-              </div>
-
-              {/* Success Banner */}
-              {submittedControlNumber && (
-                <div className="max-w-4xl mx-auto mb-4">
-                  <div className="rounded-lg border border-green-300 bg-green-50/80 dark:bg-green-950/30 dark:border-green-800 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center shrink-0 mt-0.5">
-                          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-green-800 dark:text-green-300">Request Submitted Successfully!</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-sm text-green-700 dark:text-green-400">Control Number:</span>
-                            <span className="font-mono font-bold text-green-900 dark:text-green-200">{submittedControlNumber}</span>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleCopyControlNumber}>
-                              <Copy className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                            </Button>
-                          </div>
-                          <p className="text-sm text-green-700/80 dark:text-green-400/80 mt-2">
-                            Your request is now being processed. You will receive an email notification once it's reviewed. You can track its status below.
-                          </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-2 gap-1.5 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40"
-                            onClick={() => navigate("/track-request")}
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            Track Request Status
-                          </Button>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={handleDismissSuccessBanner}>
-                        <X className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <Card className="max-w-4xl mx-auto">
-                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-2xl flex items-center gap-2">
-                      <Clock className="h-6 w-6" />
-                      My Requests
-                    </CardTitle>
-                    <CardDescription>
-                      Track the status of your certificate requests
-                    </CardDescription>
-                  </div>
-                  <Button onClick={() => setActiveTab("request")}>
-                    New Request
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="flex justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : requests.length === 0 ? (
-                    <div className="text-center py-12">
-                      <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                      <h3 className="font-medium text-lg mb-2">No Requests Yet</h3>
-                      <p className="text-muted-foreground">
-                        You haven't submitted any certificate requests. Click "New Request" above to get started.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {requests.map((request) => {
-                        const isNew = request.controlNumber === submittedControlNumber;
-                        return (
-                          <div
-                            key={request.id}
-                            className={`p-4 rounded-lg border hover:shadow-md transition-shadow ${
-                              isNew
-                                ? "border-l-4 border-l-green-500 bg-green-50/50 dark:bg-green-950/20"
-                                : "bg-card"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                  <h3 className="font-semibold">{request.certificateType}</h3>
-                                  {isNew && (
-                                    <Badge className="bg-green-500 text-white text-[10px] px-1.5 py-0">
-                                      New
-                                    </Badge>
-                                  )}
-                                  {getStatusBadge(request.status)}
-                                  {request.priority?.toLowerCase() === "urgent" && (
-                                    <Badge variant="destructive" className="text-xs">
-                                      <AlertCircle className="h-3 w-3 mr-1" />
-                                      Urgent
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                  Control No: {request.controlNumber}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  Submitted: {request.dateSubmitted}
-                                </p>
-                                {request.status === "rejected" && request.rejectionReason && (
-                                  <div className="mt-2 p-2 rounded bg-destructive/10 border border-destructive/20">
-                                    <p className="text-sm text-destructive font-medium">
-                                      Rejection Reason:
-                                    </p>
-                                    <p className="text-sm text-destructive">
-                                      {request.rejectionReason}
-                                    </p>
-                                  </div>
-                                )}
-                                {request.status === "approved" && (
-                                  <div className="mt-2 p-2 rounded bg-accent/10 border border-accent/20">
-                                    <p className="text-sm text-accent font-medium">
-                                      Ready for Pickup
-                                    </p>
-                                    {request.preferredPickupDate && (
-                                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                        <CalendarDays className="h-3 w-3" />
-                                        Est. Pickup: {request.preferredPickupDate}
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </>
+          {activeTab === "request" && submittedControlNumber && (
+            <SuccessModal
+              open={!!submittedControlNumber}
+              onOpenChange={(open) => { if (!open) setSubmittedControlNumber(""); }}
+              controlNumber={submittedControlNumber}
+              onReset={() => setSubmittedControlNumber("")}
+              isResidentFlow
+              onViewRequests={() => {
+                setSubmittedControlNumber("");
+                navigate("/resident/requests");
+              }}
+            />
           )}
 
           {activeTab === "profile" && (
