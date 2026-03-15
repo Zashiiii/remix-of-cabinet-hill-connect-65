@@ -150,7 +150,7 @@ interface PendingRequest {
   certificateType: string;
   customCertificateName?: string;
   dateSubmitted: string;
-  status: "pending" | "processing" | "approved" | "rejected" | "verifying" | "released";
+  status: "pending" | "processing" | "approved" | "rejected" | "verifying" | "released" | "under review" | "incomplete requirements" | "ready for pickup";
   verificationStatus?: "verified" | "not-verified" | "checking";
   residentId?: string;
   processedBy?: string;
