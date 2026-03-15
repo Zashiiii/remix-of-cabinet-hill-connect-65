@@ -140,11 +140,31 @@ export function CertificateRequestCard({
             </div>
           )}
 
+          {/* Incomplete Requirements Box */}
+          {request.status === "incomplete requirements" && request.rejectionReason && (
+            <div className="mt-2 p-2 rounded bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700">
+              <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                Missing / Incomplete:
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                {request.rejectionReason}
+              </p>
+            </div>
+          )}
+
+          {/* Admin Notes */}
+          {request.processedBy && request.rejectionReason && request.status !== "rejected" && request.status !== "incomplete requirements" && (
+            <div className="mt-2 p-2 rounded bg-muted/50 border border-border">
+              <p className="text-sm text-muted-foreground font-medium">Remarks:</p>
+              <p className="text-sm text-muted-foreground">{request.rejectionReason}</p>
+            </div>
+          )}
+
           {/* Ready for Pickup Box */}
-          {isApproved && (
+          {(isApproved || request.status === "ready for pickup") && (
             <div className="mt-2 p-2 rounded bg-accent/10 border border-accent/20">
               <p className="text-sm text-accent font-medium">
-                Ready for Pickup
+                {request.status === "ready for pickup" ? "Ready for Pickup" : "Approved"}
               </p>
               {request.preferredPickupDate && (
                 <p className="text-sm text-muted-foreground">
