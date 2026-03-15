@@ -2218,8 +2218,11 @@ const StaffDashboard = () => {
                     <SelectContent>
                       <SelectItem value="All">All Requests</SelectItem>
                       <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Under Review">Under Review</SelectItem>
+                      <SelectItem value="Incomplete Requirements">Incomplete Requirements</SelectItem>
                       <SelectItem value="Verifying">Verifying</SelectItem>
                       <SelectItem value="Approved">Approved</SelectItem>
+                      <SelectItem value="Ready for Pickup">Ready for Pickup</SelectItem>
                       <SelectItem value="Released">Released</SelectItem>
                       <SelectItem value="Rejected">Rejected</SelectItem>
                     </SelectContent>
