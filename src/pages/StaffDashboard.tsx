@@ -2406,6 +2406,7 @@ const StaffDashboard = () => {
                                   onApprove={(req) => handleAction("Approve", req)}
                                   onReject={(req) => handleAction("Reject", req)}
                                   onVerify={(req) => handleAction("Verifying", req)}
+                                  onUpdateStatus={handleOpenUpdateStatusDialog}
                                 />
                               ))}
                             </div>
