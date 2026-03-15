@@ -409,6 +409,8 @@ const ResidentDashboard = () => {
     setTimeout(() => setSwipeDirection(null), 250);
     if (tab === "ecological-profile") {
       navigate("/resident/ecological-profile");
+    } else if (tab === "requests") {
+      navigate("/resident/requests");
     } else {
       setActiveTab(tab);
     }
@@ -416,9 +418,13 @@ const ResidentDashboard = () => {
 
   const handleRequestSuccess = (controlNumber: string) => {
     setSubmittedControlNumber(controlNumber);
-    setActiveTab("requests");
     loadData(); // Refresh the requests list
     toast.success("Certificate request submitted successfully!");
+  };
+
+  const handleViewRequestsAfterSubmit = () => {
+    setSubmittedControlNumber("");
+    navigate("/resident/requests");
   };
 
   const handleDismissSuccessBanner = () => {
