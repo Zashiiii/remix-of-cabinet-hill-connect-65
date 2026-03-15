@@ -158,6 +158,18 @@ export const importEcologicalSubmission = async (data: Record<string, unknown>) 
   return callStaffApi('import-ecological-submission', data);
 };
 
+// Certificate data for download (bypasses RLS)
+export const getCertificateDataForDownload = async (controlNumber: string) => {
+  const result = await callStaffApi('get-certificate-data-for-download', { controlNumber });
+  return result.data || null;
+};
+
+// Get certificate request ID by control number (bypasses RLS)
+export const getCertificateIdByControlNumber = async (controlNumber: string) => {
+  const result = await callStaffApi('get-certificate-id-by-control-number', { controlNumber });
+  return result.data || null;
+};
+
 // Certificate type management
 export const getCertificateTypes = async () => {
   const result = await callStaffApi('get-certificate-types');

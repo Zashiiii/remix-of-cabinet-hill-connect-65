@@ -228,25 +228,15 @@ export const generateCertificateFullHtml = async (
   }
 };
 
-// Fetch certificate data for bulk download
+// Fetch certificate data for bulk download (uses edge function to bypass RLS)
 export const fetchCertificateDataForBulk = async (
   controlNumber: string
 ): Promise<CertificateData | null> => {
   try {
-    const { data: requestData, error } = await supabase
-      .from('certificate_requests')
-      .select(`
-        *,
-        residents (
-          *,
-          households (*)
-        )
-      `)
-      .eq('control_number', controlNumber)
-      .single();
+    const requestData = await getCertificateDataForDownload(controlNumber);
 
-    if (error || !requestData) {
-      console.error("Failed to fetch certificate data:", error);
+    if (!requestData) {
+      console.error("Failed to fetch certificate data for:", controlNumber);
       return null;
     }
 
