@@ -109,6 +109,7 @@ import {
 import {
   getCertificateRequests,
   updateCertificateRequestStatus,
+  getCertificateIdByControlNumber,
   getAnnouncementsForStaff,
   createAnnouncementStaff,
   updateAnnouncementStaff,
