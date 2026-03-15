@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getResidentCount, getPendingRegistrationCount } from "@/utils/staffApi";
+import { getResidentCount, getPendingRegistrationCount, getAllIncidentsForStaff } from "@/utils/staffApi";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 
 interface AgeGroups {
@@ -86,16 +86,13 @@ export const BarangayStatsProvider = ({ children }: { children: ReactNode }) => 
         pendingCountResult,
         householdsResult,
         residentsResult,
-        incidentsResult,
+        incidentsData,
       ] = await Promise.all([
         getResidentCount(),
         getPendingRegistrationCount(),
         supabase.rpc("get_all_households_for_staff"),
         supabase.rpc("get_all_residents_for_staff"),
-        supabase.rpc("get_all_incidents_for_staff", {
-          p_approval_status: "approved",
-          p_status: null,
-        }),
+        getAllIncidentsForStaff("approved", null),
       ]);
 
       // Calculate demographics from residents data
@@ -126,7 +123,6 @@ export const BarangayStatsProvider = ({ children }: { children: ReactNode }) => 
       });
 
       // Calculate incident summary
-      const incidentsData = incidentsResult.data || [];
       const byType: { [key: string]: number } = {};
       let resolved = 0;
       let pending = 0;

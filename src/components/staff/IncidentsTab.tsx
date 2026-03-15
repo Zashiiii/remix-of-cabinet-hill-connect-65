@@ -27,6 +27,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useStaffAuthContext } from "@/context/StaffAuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getAllIncidentsForStaff,
+  createIncidentForStaff,
+  approveIncidentForStaff,
+  rejectIncidentForStaff,
+  updateIncidentStatusForStaff,
+} from "@/utils/staffApi";
 import TableSkeleton from "./TableSkeleton";
 
 const INCIDENT_TYPES = [
@@ -98,44 +105,36 @@ const IncidentsTab = () => {
   const loadIncidents = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Use RPC function to bypass RLS for staff session-based auth
       const approvalFilter = activeTab === "all" ? null : activeTab;
       const statusParam = activeTab === "approved" && statusFilter !== "all" ? statusFilter : null;
 
-      const { data, error } = await supabase.rpc("get_all_incidents_for_staff", {
-        p_approval_status: approvalFilter,
-        p_status: statusParam,
-      });
+      const data = await getAllIncidentsForStaff(approvalFilter, statusParam);
 
-      if (error) throw error;
-
-      if (data) {
-        setIncidents(data.map((i: any) => ({
-          id: i.id,
-          incidentNumber: i.incident_number,
-          incidentDate: new Date(i.incident_date).toLocaleDateString(),
-          incidentType: i.incident_type,
-          complainantName: i.complainant_name,
-          complainantAddress: i.complainant_address || undefined,
-          complainantContact: i.complainant_contact || undefined,
-          respondentName: i.respondent_name || undefined,
-          respondentAddress: i.respondent_address || undefined,
-          incidentLocation: i.incident_location || undefined,
-          incidentDescription: i.incident_description,
-          actionTaken: i.action_taken || undefined,
-          status: i.status || "open",
-          reportedBy: i.reported_by || undefined,
-          handledBy: i.handled_by || undefined,
-          resolutionDate: i.resolution_date ? new Date(i.resolution_date).toLocaleDateString() : undefined,
-          resolutionNotes: i.resolution_notes || undefined,
-          submittedByResidentId: i.submitted_by_resident_id || undefined,
-          approvalStatus: i.approval_status || "pending",
-          reviewedBy: i.reviewed_by || undefined,
-          reviewedAt: i.reviewed_at ? new Date(i.reviewed_at).toLocaleDateString() : undefined,
-          rejectionReason: i.rejection_reason || undefined,
-          photoEvidenceUrl: i.photo_evidence_url || undefined,
-        })));
-      }
+      setIncidents(data.map((i: any) => ({
+        id: i.id,
+        incidentNumber: i.incident_number,
+        incidentDate: new Date(i.incident_date).toLocaleDateString(),
+        incidentType: i.incident_type,
+        complainantName: i.complainant_name,
+        complainantAddress: i.complainant_address || undefined,
+        complainantContact: i.complainant_contact || undefined,
+        respondentName: i.respondent_name || undefined,
+        respondentAddress: i.respondent_address || undefined,
+        incidentLocation: i.incident_location || undefined,
+        incidentDescription: i.incident_description,
+        actionTaken: i.action_taken || undefined,
+        status: i.status || "open",
+        reportedBy: i.reported_by || undefined,
+        handledBy: i.handled_by || undefined,
+        resolutionDate: i.resolution_date ? new Date(i.resolution_date).toLocaleDateString() : undefined,
+        resolutionNotes: i.resolution_notes || undefined,
+        submittedByResidentId: i.submitted_by_resident_id || undefined,
+        approvalStatus: i.approval_status || "pending",
+        reviewedBy: i.reviewed_by || undefined,
+        reviewedAt: i.reviewed_at ? new Date(i.reviewed_at).toLocaleDateString() : undefined,
+        rejectionReason: i.rejection_reason || undefined,
+        photoEvidenceUrl: i.photo_evidence_url || undefined,
+      })));
     } catch (error) {
       console.error("Error loading incidents:", error);
       toast.error("Failed to load incidents");
@@ -186,21 +185,19 @@ const IncidentsTab = () => {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase.rpc("staff_create_incident", {
-        p_incident_type: formData.incidentType,
-        p_incident_date: formData.incidentDate,
-        p_complainant_name: formData.complainantName,
-        p_complainant_address: formData.complainantAddress || null,
-        p_complainant_contact: formData.complainantContact || null,
-        p_respondent_name: formData.respondentName || null,
-        p_respondent_address: formData.respondentAddress || null,
-        p_incident_location: formData.incidentLocation || null,
-        p_incident_description: formData.incidentDescription,
-        p_action_taken: formData.actionTaken || null,
-        p_reported_by: user?.fullName || "Staff",
+      await createIncidentForStaff({
+        incidentType: formData.incidentType,
+        incidentDate: formData.incidentDate,
+        complainantName: formData.complainantName,
+        complainantAddress: formData.complainantAddress || undefined,
+        complainantContact: formData.complainantContact || undefined,
+        respondentName: formData.respondentName || undefined,
+        respondentAddress: formData.respondentAddress || undefined,
+        incidentLocation: formData.incidentLocation || undefined,
+        incidentDescription: formData.incidentDescription,
+        actionTaken: formData.actionTaken || undefined,
+        reportedBy: user?.fullName || "Staff",
       });
-
-      if (error) throw error;
 
       toast.success("Incident logged successfully");
       setShowCreateDialog(false);
@@ -216,13 +213,7 @@ const IncidentsTab = () => {
 
   const handleApproveIncident = async (incident: Incident) => {
     try {
-      const { error } = await supabase.rpc("staff_approve_incident", {
-        p_incident_id: incident.id,
-        p_reviewed_by: user?.fullName || "Staff",
-      });
-
-      if (error) throw error;
-
+      await approveIncidentForStaff(incident.id, user?.fullName || "Staff");
       toast.success("Incident report approved");
       loadIncidents();
     } catch (error: any) {
@@ -239,13 +230,11 @@ const IncidentsTab = () => {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase.rpc("staff_reject_incident", {
-        p_incident_id: selectedIncident.id,
-        p_reviewed_by: user?.fullName || "Staff",
-        p_rejection_reason: rejectionReason,
-      });
-
-      if (error) throw error;
+      await rejectIncidentForStaff(
+        selectedIncident.id,
+        user?.fullName || "Staff",
+        rejectionReason
+      );
 
       toast.success("Incident report rejected");
       setShowRejectDialog(false);
@@ -262,14 +251,7 @@ const IncidentsTab = () => {
 
   const handleUpdateStatus = async (incident: Incident, newStatus: string) => {
     try {
-      const { error } = await supabase.rpc("staff_update_incident_status", {
-        p_incident_id: incident.id,
-        p_status: newStatus,
-        p_handled_by: user?.fullName || "Staff",
-      });
-
-      if (error) throw error;
-
+      await updateIncidentStatusForStaff(incident.id, newStatus, user?.fullName || "Staff");
       toast.success(`Incident marked as ${newStatus}`);
       loadIncidents();
     } catch (error: any) {
