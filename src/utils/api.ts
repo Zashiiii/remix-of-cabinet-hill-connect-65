@@ -192,8 +192,10 @@ export const trackRequest = async (controlNumber: string): Promise<RequestStatus
     // Map database status to our status type
     const statusMap: Record<string, RequestStatus['status']> = {
       'Pending': 'pending',
-      'Processing': 'for_review',
+      'Under Review': 'under_review',
+      'Processing': 'under_review',
       'Verifying': 'verifying',
+      'Incomplete Requirements': 'incomplete_requirements',
       'Approved': 'approved',
       'Ready for Pickup': 'ready_for_pickup',
       'Released': 'released',
@@ -207,7 +209,7 @@ export const trackRequest = async (controlNumber: string): Promise<RequestStatus
       dateRequested: new Date(request.created_at || Date.now()),
       status: statusMap[request.status || 'Pending'] || 'pending',
       purpose: request.purpose || '',
-      remarks: request.rejection_reason || request.notes || undefined,
+      remarks: request.notes || request.rejection_reason || undefined,
     };
   }
 
