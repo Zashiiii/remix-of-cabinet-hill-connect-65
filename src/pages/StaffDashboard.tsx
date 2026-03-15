@@ -3133,10 +3133,23 @@ const StaffDashboard = () => {
             </div>
           )}
 
-          <DialogFooter className="flex gap-2">
+          <DialogFooter className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
               Close
             </Button>
+            {detailsRequest && detailsRequest.status !== "released" && (
+              <Button
+                variant="outline"
+                className="text-primary border-primary/30 hover:bg-primary/10"
+                onClick={() => {
+                  setShowDetailsDialog(false);
+                  handleOpenUpdateStatusDialog(detailsRequest);
+                }}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Update Status
+              </Button>
+            )}
             {detailsRequest && detailsRequest.status === "approved" && (
               <Button
                 variant="default"
