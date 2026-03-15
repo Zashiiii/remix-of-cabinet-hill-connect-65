@@ -109,6 +109,7 @@ import {
 import {
   getCertificateRequests,
   updateCertificateRequestStatus,
+  getCertificateIdByControlNumber,
   getAnnouncementsForStaff,
   createAnnouncementStaff,
   updateAnnouncementStaff,
@@ -1550,14 +1551,10 @@ const StaffDashboard = () => {
 
     try {
       for (const controlNumber of selectedControlNumbers) {
-        // Get database record by control number
-        const { data: dbRequest, error: fetchError } = await supabase
-          .from('certificate_requests')
-          .select('id')
-          .eq('control_number', controlNumber)
-          .single();
+        // Get database record by control number via edge function (bypasses RLS)
+        const dbRequest = await getCertificateIdByControlNumber(controlNumber);
 
-        if (fetchError || !dbRequest) {
+        if (!dbRequest) {
           console.warn(`Could not find request ${controlNumber}`);
           continue;
         }

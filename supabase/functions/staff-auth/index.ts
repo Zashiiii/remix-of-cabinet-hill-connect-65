@@ -834,6 +834,92 @@ serve(async (req) => {
       );
     }
 
+    // Get certificate data for download (bypasses RLS for staff)
+    if (action === 'get-certificate-data-for-download') {
+      const token = getTokenFromCookie(req);
+      const controlNumber = body?.controlNumber;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!controlNumber) {
+        return new Response(
+          JSON.stringify({ error: 'Control number is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: requestData, error } = await supabase
+        .from('certificate_requests')
+        .select(`
+          *,
+          residents (
+            *,
+            households (*)
+          )
+        `)
+        .eq('control_number', controlNumber)
+        .single();
+
+      if (error || !requestData) {
+        console.error('Failed to fetch certificate data:', error);
+        return new Response(
+          JSON.stringify({ error: 'Certificate request not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data: requestData }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update certificate status by control number (for batch Mark as Released)
+    if (action === 'get-certificate-id-by-control-number') {
+      const token = getTokenFromCookie(req);
+      const controlNumber = body?.controlNumber;
+      
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!controlNumber) {
+        return new Response(
+          JSON.stringify({ error: 'Control number is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from('certificate_requests')
+        .select('id')
+        .eq('control_number', controlNumber)
+        .single();
+
+      if (error || !data) {
+        console.error('Could not find request:', controlNumber, error);
+        return new Response(
+          JSON.stringify({ error: 'Request not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get all announcements for staff
     if (action === 'get-announcements') {
       const token = getTokenFromCookie(req);
