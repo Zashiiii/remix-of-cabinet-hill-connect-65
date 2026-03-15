@@ -75,6 +75,7 @@ export function CertificateRequestCard({
   onApprove,
   onReject,
   onVerify,
+  onUpdateStatus,
 }: CertificateRequestCardProps) {
   const isApproved = request.status === "approved";
   const isReadyForPickup = request.status === "ready for pickup";
