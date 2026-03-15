@@ -213,13 +213,7 @@ const IncidentsTab = () => {
 
   const handleApproveIncident = async (incident: Incident) => {
     try {
-      const { error } = await supabase.rpc("staff_approve_incident", {
-        p_incident_id: incident.id,
-        p_reviewed_by: user?.fullName || "Staff",
-      });
-
-      if (error) throw error;
-
+      await approveIncidentForStaff(incident.id, user?.fullName || "Staff");
       toast.success("Incident report approved");
       loadIncidents();
     } catch (error: any) {
