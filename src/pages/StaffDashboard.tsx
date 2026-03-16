@@ -677,13 +677,11 @@ const StaffDashboard = () => {
       };
       loadHouseholdLinkCount();
 
-      // Load pending incidents count
+      // Load pending incidents count via staff API (bypasses RLS)
       const loadIncidentsCount = async () => {
         try {
-          const { data, error } = await supabase.rpc("get_pending_incidents_count");
-          if (!error && data !== null) {
-            setPendingIncidentsCount(data);
-          }
+          const count = await getPendingIncidentsCount();
+          setPendingIncidentsCount(count);
         } catch (err) {
           console.error("Error loading incidents count:", err);
         }
