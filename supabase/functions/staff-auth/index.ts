@@ -2289,6 +2289,36 @@ serve(async (req) => {
       );
     }
 
+    // ========== GET PENDING INCIDENTS COUNT ==========
+    if (action === 'get-pending-incidents-count') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { count, error } = await supabase
+        .from('incidents')
+        .select('*', { count: 'exact', head: true })
+        .eq('approval_status', 'pending');
+
+      if (error) {
+        console.error('Error fetching pending incidents count:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch count' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ count: count || 0 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== GET ALL INCIDENTS FOR STAFF ==========
     if (action === 'get-all-incidents') {
       const token = getTokenFromCookie(req);

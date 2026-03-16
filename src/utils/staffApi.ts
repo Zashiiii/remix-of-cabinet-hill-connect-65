@@ -222,6 +222,11 @@ export const reopenMonitoringReport = async (id: string) => {
 };
 
 // Incident operations
+export const getPendingIncidentsCount = async () => {
+  const result = await callStaffApi('get-pending-incidents-count');
+  return result.count || 0;
+};
+
 export const getAllIncidentsForStaff = async (approvalStatus?: string | null, status?: string | null) => {
   const result = await callStaffApi('get-all-incidents', { approvalStatus, status });
   return result.data || [];
