@@ -689,13 +689,11 @@ const StaffDashboard = () => {
       };
       loadIncidentsCount();
 
-      // Load pending certificate requests count
+      // Load pending certificate requests count via staff API
       const loadCertificatesCount = async () => {
         try {
-          const { data, error } = await supabase.rpc("get_pending_certificate_requests_count");
-          if (!error && data !== null) {
-            setPendingCertificatesCount(data);
-          }
+          const count = await getPendingCertificatesCount();
+          setPendingCertificatesCount(count);
         } catch (err) {
           console.error("Error loading certificates count:", err);
         }
