@@ -118,6 +118,8 @@ import {
   approveResident,
   rejectResident,
   getPendingIncidentsCount,
+  getPendingCertificatesCount,
+  getPendingEcologicalCount,
 } from "@/utils/staffApi";
 import { format } from "date-fns";
 import { MapPin, Search } from "lucide-react";
