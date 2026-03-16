@@ -162,17 +162,22 @@ serve(async (req) => {
       validationErrors.push('Certificate type must be 100 characters or less');
     }
     
-    // Validate certificate type against allowed values
-    const allowedCertificateTypes = [
-      'Barangay Clearance',
-      'Certificate of Residency', 
-      'Certificate of Indigency',
-      'Business Clearance',
-      'Solo Parent Certification',
-      'Good Moral',
-      'Others'
-    ];
-    if (!allowedCertificateTypes.includes(data.certificateType)) {
+    // Validate certificate type against database values
+    const { data: dbCertTypes, error: certTypesError } = await supabase
+      .from('certificate_types')
+      .select('name')
+      .eq('is_active', true);
+
+    const allowedCertificateTypes = dbCertTypes?.map((t: any) => t.name) || [];
+    // Always allow "Others" for custom certificate names
+    if (!allowedCertificateTypes.includes('Others')) {
+      allowedCertificateTypes.push('Others');
+    }
+
+    if (certTypesError) {
+      console.error('Error fetching certificate types:', certTypesError);
+      // Fall through — don't block submission on a lookup failure
+    } else if (!allowedCertificateTypes.includes(data.certificateType)) {
       validationErrors.push('Invalid certificate type');
     }
     
