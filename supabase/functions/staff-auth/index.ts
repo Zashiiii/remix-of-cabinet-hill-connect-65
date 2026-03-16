@@ -2319,6 +2319,67 @@ serve(async (req) => {
       );
     }
 
+    // ========== GET PENDING CERTIFICATES COUNT ==========
+    if (action === 'get-pending-certificates-count') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { count, error } = await supabase
+        .from('certificate_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      if (error) {
+        console.error('Error fetching pending certificates count:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch count' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ count: count || 0 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== GET PENDING ECOLOGICAL SUBMISSIONS COUNT ==========
+    if (action === 'get-pending-ecological-count') {
+      const token = getTokenFromCookie(req);
+      const session = await validateStaffSession(token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { count, error } = await supabase
+        .from('ecological_profile_submissions')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+        .is('deleted_at', null);
+
+      if (error) {
+        console.error('Error fetching pending ecological count:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch count' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ count: count || 0 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== GET ALL INCIDENTS FOR STAFF ==========
     if (action === 'get-all-incidents') {
       const token = getTokenFromCookie(req);

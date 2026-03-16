@@ -118,6 +118,8 @@ import {
   approveResident,
   rejectResident,
   getPendingIncidentsCount,
+  getPendingCertificatesCount,
+  getPendingEcologicalCount,
 } from "@/utils/staffApi";
 import { format } from "date-fns";
 import { MapPin, Search } from "lucide-react";
@@ -639,13 +641,11 @@ const StaffDashboard = () => {
     if (isAuthenticated) {
       loadRequests();
       
-      // Load pending ecological submissions count
+      // Load pending ecological submissions count via staff API
       const loadEcologicalCount = async () => {
         try {
-          const { data, error } = await supabase.rpc("get_pending_ecological_submissions_count");
-          if (!error && data !== null) {
-            setPendingEcologicalCount(data);
-          }
+          const count = await getPendingEcologicalCount();
+          setPendingEcologicalCount(count);
         } catch (err) {
           console.error("Error loading ecological count:", err);
         }
@@ -689,13 +689,11 @@ const StaffDashboard = () => {
       };
       loadIncidentsCount();
 
-      // Load pending certificate requests count
+      // Load pending certificate requests count via staff API
       const loadCertificatesCount = async () => {
         try {
-          const { data, error } = await supabase.rpc("get_pending_certificate_requests_count");
-          if (!error && data !== null) {
-            setPendingCertificatesCount(data);
-          }
+          const count = await getPendingCertificatesCount();
+          setPendingCertificatesCount(count);
         } catch (err) {
           console.error("Error loading certificates count:", err);
         }

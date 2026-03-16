@@ -104,6 +104,16 @@ export const getPendingRegistrationCount = async () => {
   return result.count || 0;
 };
 
+export const getPendingCertificatesCount = async () => {
+  const result = await callStaffApi('get-pending-certificates-count');
+  return result.count || 0;
+};
+
+export const getPendingEcologicalCount = async () => {
+  const result = await callStaffApi('get-pending-ecological-count');
+  return result.count || 0;
+};
+
 // Messages
 export const getStaffMessages = async (staffId?: string) => {
   const result = await callStaffApi('get-staff-messages', { staffId });
