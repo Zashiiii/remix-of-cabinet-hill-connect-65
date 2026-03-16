@@ -641,13 +641,11 @@ const StaffDashboard = () => {
     if (isAuthenticated) {
       loadRequests();
       
-      // Load pending ecological submissions count
+      // Load pending ecological submissions count via staff API
       const loadEcologicalCount = async () => {
         try {
-          const { data, error } = await supabase.rpc("get_pending_ecological_submissions_count");
-          if (!error && data !== null) {
-            setPendingEcologicalCount(data);
-          }
+          const count = await getPendingEcologicalCount();
+          setPendingEcologicalCount(count);
         } catch (err) {
           console.error("Error loading ecological count:", err);
         }
