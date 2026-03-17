@@ -3319,6 +3319,16 @@ const StaffDashboard = () => {
                 placeholder="Enter announcement title"
               />
             </div>
+            <div>
+              <Label htmlFor="description">Description (English)*</Label>
+              <Textarea
+                id="description"
+                value={announcementForm.description}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, description: e.target.value })}
+                placeholder="Enter announcement description"
+                rows={3}
+              />
+            </div>
             <div className="flex justify-end">
               <Button
                 type="button"
@@ -3342,16 +3352,6 @@ const StaffDashboard = () => {
                 value={announcementForm.titleTl}
                 onChange={(e) => setAnnouncementForm({ ...announcementForm, titleTl: e.target.value })}
                 placeholder="Ilagay ang pamagat"
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Description (English)*</Label>
-              <Textarea
-                id="description"
-                value={announcementForm.description}
-                onChange={(e) => setAnnouncementForm({ ...announcementForm, description: e.target.value })}
-                placeholder="Enter announcement description"
-                rows={3}
               />
             </div>
             <div>
